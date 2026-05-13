@@ -26,6 +26,22 @@
 		A017 /* SoundManager.swift */ = {isa = PBXBuildFile; fileRef = B017 /* SoundManager.swift */; };
 		A018 /* Color+App.swift */ = {isa = PBXBuildFile; fileRef = B018 /* Color+App.swift */; };
 		A019 /* Assets.xcassets */ = {isa = PBXBuildFile; fileRef = B019 /* Assets.xcassets */; };
+		/* Unit test build files */
+		T001 /* PhotoGroupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S001 /* PhotoGroupTests.swift */; };
+		T002 /* SifterViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S002 /* SifterViewModelTests.swift */; };
+		T003 /* LibraryViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S003 /* LibraryViewModelTests.swift */; };
+		T004 /* GroupingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S004 /* GroupingServiceTests.swift */; };
+		T005 /* ColorExtensionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S005 /* ColorExtensionTests.swift */; };
+		T006 /* SimilarityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S006 /* SimilarityServiceTests.swift */; };
+		T007 /* MockDeletionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = S007 /* MockDeletionService.swift */; };
+		T008 /* TestAssetHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = S008 /* TestAssetHelpers.swift */; };
+		/* UI test build files */
+		U001 /* PhotoSifterUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R001 /* PhotoSifterUITests.swift */; };
+		U002 /* PermissionFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R002 /* PermissionFlowUITests.swift */; };
+		U003 /* LibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R003 /* LibraryUITests.swift */; };
+		U004 /* SifterFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R004 /* SifterFlowUITests.swift */; };
+		/* PhotoSifter.app as test host */
+		TH01 /* PhotoSifter.app */ = {isa = PBXBuildFile; fileRef = PROD /* PhotoSifter.app */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +66,22 @@
 		B019 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		PROD /* PhotoSifter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoSifter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		/* Unit test file references */
+		S001 /* PhotoGroupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGroupTests.swift; sourceTree = "<group>"; };
+		S002 /* SifterViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterViewModelTests.swift; sourceTree = "<group>"; };
+		S003 /* LibraryViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViewModelTests.swift; sourceTree = "<group>"; };
+		S004 /* GroupingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupingServiceTests.swift; sourceTree = "<group>"; };
+		S005 /* ColorExtensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtensionTests.swift; sourceTree = "<group>"; };
+		S006 /* SimilarityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimilarityServiceTests.swift; sourceTree = "<group>"; };
+		S007 /* MockDeletionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeletionService.swift; sourceTree = "<group>"; };
+		S008 /* TestAssetHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestAssetHelpers.swift; sourceTree = "<group>"; };
+		TPROD /* PhotoSifterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		/* UI test file references */
+		R001 /* PhotoSifterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSifterUITests.swift; sourceTree = "<group>"; };
+		R002 /* PermissionFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionFlowUITests.swift; sourceTree = "<group>"; };
+		R003 /* LibraryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryUITests.swift; sourceTree = "<group>"; };
+		R004 /* SifterFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterFlowUITests.swift; sourceTree = "<group>"; };
+		UPROD /* PhotoSifterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -57,6 +89,8 @@
 			isa = PBXGroup;
 			children = (
 				MAIN /* PhotoSifter */,
+				GRP_TESTS /* PhotoSifterTests */,
+				GRP_UITESTS /* PhotoSifterUITests */,
 				PRODS /* Products */,
 			);
 			sourceTree = "<group>";
@@ -65,6 +99,8 @@
 			isa = PBXGroup;
 			children = (
 				PROD /* PhotoSifter.app */,
+				TPROD /* PhotoSifterTests.xctest */,
+				UPROD /* PhotoSifterUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -168,6 +204,40 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
+		GRP_TESTS /* PhotoSifterTests */ = {
+			isa = PBXGroup;
+			children = (
+				S001 /* PhotoGroupTests.swift */,
+				S002 /* SifterViewModelTests.swift */,
+				S003 /* LibraryViewModelTests.swift */,
+				S004 /* GroupingServiceTests.swift */,
+				S005 /* ColorExtensionTests.swift */,
+				S006 /* SimilarityServiceTests.swift */,
+				GRP_MOCKS /* Mocks */,
+			);
+			path = PhotoSifterTests;
+			sourceTree = "<group>";
+		};
+		GRP_MOCKS /* Mocks */ = {
+			isa = PBXGroup;
+			children = (
+				S007 /* MockDeletionService.swift */,
+				S008 /* TestAssetHelpers.swift */,
+			);
+			path = Mocks;
+			sourceTree = "<group>";
+		};
+		GRP_UITESTS /* PhotoSifterUITests */ = {
+			isa = PBXGroup;
+			children = (
+				R001 /* PhotoSifterUITests.swift */,
+				R002 /* PermissionFlowUITests.swift */,
+				R003 /* LibraryUITests.swift */,
+				R004 /* SifterFlowUITests.swift */,
+			);
+			path = PhotoSifterUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -188,7 +258,46 @@
 			productReference = PROD /* PhotoSifter.app */;
 			productType = "com.apple.product-type.application";
 		};
+		TEST_TARGET /* PhotoSifterTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFGLIST_TEST;
+			buildPhases = (
+				TEST_SOURCES /* Sources */,
+				TEST_FRAMEWORKS /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				TEST_DEP /* PBXTargetDependency */,
+			);
+			name = PhotoSifterTests;
+			productName = PhotoSifterTests;
+			productReference = TPROD /* PhotoSifterTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		UITEST_TARGET /* PhotoSifterUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFGLIST_UITEST;
+			buildPhases = (
+				UITEST_SOURCES /* Sources */,
+				UITEST_FRAMEWORKS /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				UITEST_DEP /* PBXTargetDependency */,
+			);
+			name = PhotoSifterUITests;
+			productName = PhotoSifterUITests;
+			productReference = UPROD /* PhotoSifterUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		TEST_DEP = {isa = PBXTargetDependency; target = TARGET /* PhotoSifter */; };
+		UITEST_DEP = {isa = PBXTargetDependency; target = TARGET /* PhotoSifter */; };
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		PROJECT /* Project object */ = {
@@ -200,6 +309,14 @@
 				TargetAttributes = {
 					TARGET = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					TEST_TARGET = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = TARGET;
+					};
+					UITEST_TARGET = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = TARGET;
 					};
 				};
 			};
@@ -217,6 +334,8 @@
 			projectRoot = "";
 			targets = (
 				TARGET /* PhotoSifter */,
+				TEST_TARGET /* PhotoSifterTests */,
+				UITEST_TARGET /* PhotoSifterUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,10 +377,50 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		TEST_SOURCES /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				T001 /* PhotoGroupTests.swift in Sources */,
+				T002 /* SifterViewModelTests.swift in Sources */,
+				T003 /* LibraryViewModelTests.swift in Sources */,
+				T004 /* GroupingServiceTests.swift in Sources */,
+				T005 /* ColorExtensionTests.swift in Sources */,
+				T006 /* SimilarityServiceTests.swift in Sources */,
+				T007 /* MockDeletionService.swift in Sources */,
+				T008 /* TestAssetHelpers.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		UITEST_SOURCES /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				U001 /* PhotoSifterUITests.swift in Sources */,
+				U002 /* PermissionFlowUITests.swift in Sources */,
+				U003 /* LibraryUITests.swift in Sources */,
+				U004 /* SifterFlowUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		FRAMEWORKS /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		TEST_FRAMEWORKS /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		UITEST_FRAMEWORKS /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -367,6 +526,80 @@
 			};
 			name = Release;
 		};
+		CFG_DEBUG_TEST /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PhotoSifter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PhotoSifter";
+			};
+			name = Debug;
+		};
+		CFG_RELEASE_TEST /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PhotoSifter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PhotoSifter";
+			};
+			name = Release;
+		};
+		CFG_DEBUG_UITEST /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = PhotoSifter;
+			};
+			name = Debug;
+		};
+		CFG_RELEASE_UITEST /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = PhotoSifter;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -384,6 +617,24 @@
 			buildConfigurations = (
 				CFG_DEBUG_TARGET /* Debug */,
 				CFG_RELEASE_TARGET /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CFGLIST_TEST /* Build configuration list for PBXNativeTarget "PhotoSifterTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFG_DEBUG_TEST /* Debug */,
+				CFG_RELEASE_TEST /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CFGLIST_UITEST /* Build configuration list for PBXNativeTarget "PhotoSifterUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFG_DEBUG_UITEST /* Debug */,
+				CFG_RELEASE_UITEST /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

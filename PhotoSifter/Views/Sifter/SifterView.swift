@@ -61,6 +61,7 @@ struct SifterView: View {
                     onSwipeLeft: { vm.swipeLeft(); cardKey = UUID() }
                 )
                 .id(cardKey)
+                .accessibilityIdentifier("photoCard")
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
@@ -116,6 +117,7 @@ struct SifterView: View {
                 Image(systemName: "arrow.uturn.backward.circle")
                     .font(.system(size: 20))
                     .foregroundStyle(vm.canUndo ? .white : .appTextSecondary)
+                    .accessibilityIdentifier("undoButton")
             }
             .disabled(!vm.canUndo)
         }

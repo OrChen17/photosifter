@@ -64,6 +64,7 @@ struct PermissionView: View {
                 }
                 .padding(.horizontal, 32)
                 .padding(.bottom, 48)
+                .accessibilityIdentifier("allowPhotoAccessButton")
             }
         }
     }

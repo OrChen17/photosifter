@@ -38,6 +38,7 @@ struct LibraryView: View {
                 ForEach(vm.groups) { group in
                     GroupRowView(group: group)
                         .onTapGesture { selectedGroup = group }
+                        .accessibilityIdentifier("groupRow_\(group.id)")
                         .transition(.asymmetric(
                             insertion: .move(edge: .top).combined(with: .opacity),
                             removal: .opacity

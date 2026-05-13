@@ -1,6 +1,11 @@
 import Photos
 import SwiftUI
 
+protocol DeletionService: Sendable {
+    func deleteAssets(_ assets: [PHAsset]) async throws
+}
+extension PhotoLibraryService: DeletionService {}
+
 @Observable
 @MainActor
 final class SifterViewModel {
@@ -10,14 +15,15 @@ final class SifterViewModel {
     var deletedCount: Int = 0
     var isDeleting: Bool = false
 
-    private let photoService = PhotoLibraryService.shared
+    private let deletionService: any DeletionService
     private let haptics = HapticManager.shared
     private let sounds = SoundManager.shared
 
     private var decisionHistory: [(index: Int, decision: Decision, asset: PHAsset)] = []
 
-    init(group: PhotoGroup) {
+    init(group: PhotoGroup, deletionService: (any DeletionService)? = nil) {
         self.group = group
+        self.deletionService = deletionService ?? PhotoLibraryService.shared
     }
 
     var currentAsset: PHAsset? {
@@ -47,7 +53,7 @@ final class SifterViewModel {
 
         Task {
             isDeleting = true
-            try? await photoService.deleteAssets([asset])
+            try? await deletionService.deleteAssets([asset])
             deletedCount += 1
             isDeleting = false
         }

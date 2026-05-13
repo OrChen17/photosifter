@@ -64,6 +64,7 @@ struct SessionSummaryView: View {
                         openRecentlyDeleted()
                     } label: {
                         Label("View Recently Deleted", systemImage: "trash")
+                            .accessibilityIdentifier("viewRecentlyDeletedButton")
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
@@ -79,6 +80,7 @@ struct SessionSummaryView: View {
                         dismiss()
                     } label: {
                         Text("Continue Sifting")
+                            .accessibilityIdentifier("continueSiftingButton")
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)

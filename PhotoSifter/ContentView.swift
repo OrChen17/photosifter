@@ -4,15 +4,23 @@ import Photos
 struct ContentView: View {
     @Environment(LibraryViewModel.self) private var vm
 
+    private var isForcedDenied: Bool {
+        ProcessInfo.processInfo.arguments.contains("FORCE_DENIED")
+    }
+
     var body: some View {
-        switch vm.authStatus {
-        case .authorized, .limited:
-            LibraryView()
-        case .denied, .restricted:
+        if isForcedDenied {
             DeniedView()
-        default:
-            PermissionView {
-                await vm.checkAuthorization()
+        } else {
+            switch vm.authStatus {
+            case .authorized, .limited:
+                LibraryView()
+            case .denied, .restricted:
+                DeniedView()
+            default:
+                PermissionView {
+                    await vm.checkAuthorization()
+                }
             }
         }
     }

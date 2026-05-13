@@ -64,7 +64,7 @@ actor GroupingService {
 
     // MARK: - Private
 
-    private static func splitIntoBuckets(_ assets: [PHAsset]) -> [[PHAsset]] {
+    static func splitIntoBuckets(_ assets: [PHAsset]) -> [[PHAsset]] {
         guard !assets.isEmpty else { return [] }
         var buckets: [[PHAsset]] = []
         var current: [PHAsset] = [assets[0]]
