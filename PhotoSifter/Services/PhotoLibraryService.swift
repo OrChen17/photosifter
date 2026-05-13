@@ -17,7 +17,12 @@ actor PhotoLibraryService {
     func fetchAllAssets() -> [PHAsset] {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
-        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
+        // Exclude screenshots — they flood time buckets with unrelated images
+        options.predicate = NSPredicate(
+            format: "mediaType == %d AND NOT ((mediaSubtype & %d) != 0)",
+            PHAssetMediaType.image.rawValue,
+            PHAssetMediaSubtype.photoScreenshot.rawValue
+        )
         let result = PHAsset.fetchAssets(with: options)
         var assets: [PHAsset] = []
         assets.reserveCapacity(result.count)

@@ -3,7 +3,7 @@ import Photos
 
 struct BatchStripView: View {
     let group: PhotoGroup
-    let currentIndex: Int
+    let currentAssetID: String?   // replaces currentIndex — works with skip reordering
 
     @State private var thumbnails: [String: UIImage] = [:]
     @State private var scrollID: String?
@@ -13,8 +13,8 @@ struct BatchStripView: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 8) {
-                ForEach(Array(group.assets.enumerated()), id: \.element.localIdentifier) { i, asset in
-                    thumbnail(for: asset, index: i)
+                ForEach(group.assets, id: \.localIdentifier) { asset in
+                    thumbnail(for: asset)
                         .id(asset.localIdentifier)
                 }
             }
@@ -22,18 +22,18 @@ struct BatchStripView: View {
         }
         .scrollPosition(id: $scrollID, anchor: .center)
         .frame(height: thumbSize + 8)
-        .onChange(of: currentIndex) { _, _ in
-            guard currentIndex < group.assets.count else { return }
+        .onChange(of: currentAssetID) { _, id in
+            guard let id else { return }
             withAnimation(.spring(duration: 0.4)) {
-                scrollID = group.assets[currentIndex].localIdentifier
+                scrollID = id
             }
         }
         .task { await loadAllThumbnails() }
     }
 
     @ViewBuilder
-    private func thumbnail(for asset: PHAsset, index: Int) -> some View {
-        let isCurrent = index == currentIndex
+    private func thumbnail(for asset: PHAsset) -> some View {
+        let isCurrent = asset.localIdentifier == currentAssetID
         let decision = group.decisions[asset.localIdentifier]
 
         ZStack {
@@ -50,7 +50,6 @@ struct BatchStripView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .opacity(decision == .delete ? 0.4 : 1.0)
 
-            // Decision overlay
             if let decision {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(decision == .keep ? Color.appKeep.opacity(0.25) : Color.appDelete.opacity(0.25))
@@ -61,7 +60,6 @@ struct BatchStripView: View {
                     .foregroundStyle(decision == .keep ? .appKeep : .appDelete)
             }
 
-            // Current indicator ring
             if isCurrent {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .stroke(.white, lineWidth: 2.5)

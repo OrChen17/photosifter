@@ -112,32 +112,61 @@ final class SifterViewModelTests: XCTestCase {
         XCTAssertEqual(vm.group.decisions[deletedID], .delete)
     }
 
-    func testSwipeLeft_callsDeletionService() async throws {
+    // Deletion is now deferred — swipeLeft only queues; commitDeletes() executes.
+    func testSwipeLeft_doesNotCallDeletionServiceImmediately() async throws {
         let group = try requirePhotoGroup(assetCount: 2)
         let vm = SifterViewModel(group: group, deletionService: mockDeletion)
-        let expectedID = group.assets[0].localIdentifier
 
         vm.swipeLeft()
-
-        // The deletion runs on a Task; yield to let it complete
         await Task.yield()
-        try await Task.sleep(nanoseconds: 50_000_000)
 
-        XCTAssertEqual(mockDeletion.deletedAssets.count, 1)
-        XCTAssertEqual(mockDeletion.deletedAssets[0].localIdentifier, expectedID)
+        XCTAssertEqual(mockDeletion.deletedAssets.count, 0, "Deletion must be deferred until commitDeletes()")
     }
 
-    func testSwipeLeft_deletionFailure_doesNotCrash() async throws {
+    func testCommitDeletes_callsDeletionServiceWithQueuedAssets() async throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+        let deletedID = group.assets[0].localIdentifier
+
+        vm.swipeLeft()  // queues asset[0]
+        vm.swipeRight() // keeps asset[1]
+        vm.swipeLeft()  // queues asset[2]
+        XCTAssertTrue(vm.isComplete)
+
+        await vm.commitDeletes()
+
+        XCTAssertEqual(mockDeletion.deletedAssets.count, 2)
+        XCTAssertTrue(mockDeletion.deletedAssets.map { $0.localIdentifier }.contains(deletedID))
+    }
+
+    func testCommitDeletes_gracefulOnDeletionFailure() async throws {
         mockDeletion.shouldThrow = true
         let group = try requirePhotoGroup(assetCount: 2)
         let vm = SifterViewModel(group: group, deletionService: mockDeletion)
 
         vm.swipeLeft()
-        await Task.yield()
-        try await Task.sleep(nanoseconds: 50_000_000)
+        vm.swipeRight()
+        XCTAssertTrue(vm.isComplete)
 
-        // isDeleting should be false after failure, isComplete should not be set
-        XCTAssertFalse(vm.isDeleting)
+        await vm.commitDeletes()  // should not throw or crash
+
+        XCTAssertFalse(vm.isCommittingDeletes)
+    }
+
+    func testUndo_afterSwipeLeft_removesFromDeletionQueue() async throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.swipeLeft()  // queues asset[0]
+        vm.undo()       // should dequeue asset[0]
+        vm.swipeRight() // keep asset[0]
+        vm.swipeRight() // keep asset[1]
+        vm.swipeRight() // keep asset[2]
+        XCTAssertTrue(vm.isComplete)
+
+        await vm.commitDeletes()
+
+        XCTAssertEqual(mockDeletion.deletedAssets.count, 0, "Undone delete must not reach the deletion service")
     }
 
     // MARK: - Undo
@@ -184,7 +213,7 @@ final class SifterViewModelTests: XCTestCase {
         XCTAssertFalse(vm.canUndo)
     }
 
-    func testUndo_afterComplete_restoresIncompleteState() throws {
+    func testUndo_afterComplete_resetsIsComplete() throws {
         let group = try requirePhotoGroup(assetCount: 2)
         let vm = SifterViewModel(group: group, deletionService: mockDeletion)
 
@@ -192,11 +221,122 @@ final class SifterViewModelTests: XCTestCase {
         vm.swipeRight()
         XCTAssertTrue(vm.isComplete)
 
-        // Note: undo after complete restores index, but isComplete is set to true
-        // and isn't automatically cleared — this is by design (batch is done).
-        // This test documents that behavior.
         vm.undo()
+
+        // Fix #3: undo must re-open the session
+        XCTAssertFalse(vm.isComplete, "Undo after completion should reset isComplete")
         XCTAssertEqual(vm.currentIndex, 1)
+    }
+
+    // MARK: - Skip
+
+    func testSkipCurrent_movesAssetToEndOfDisplayOrder() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+        let firstID = group.assets[0].localIdentifier
+
+        vm.skipCurrent()
+
+        XCTAssertEqual(vm.displayOrder.last?.localIdentifier, firstID)
+        XCTAssertNotEqual(vm.currentAsset?.localIdentifier, firstID)
+        XCTAssertEqual(vm.currentIndex, 0, "Index stays the same after skip")
+    }
+
+    func testSkipCurrent_cannotSkipSameAssetTwice() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+        let firstID = group.assets[0].localIdentifier
+
+        vm.skipCurrent()
+        // Skip again — the skipped asset is now at index 2; advance past the others first
+        vm.swipeRight() // decide asset[1]
+        vm.swipeRight() // decide asset[2]
+        // Now the skipped asset is current again — canSkip should be false
+        XCTAssertFalse(vm.canSkipCurrent, "Already-skipped asset cannot be skipped again")
+    }
+
+    func testSkipCurrent_doesNotRecordDecision() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+        let firstID = group.assets[0].localIdentifier
+
+        vm.skipCurrent()
+
+        XCTAssertNil(vm.group.decisions[firstID], "Skip must not record a keep or delete decision")
+    }
+
+    // MARK: - Keep only this
+
+    func testKeepOnlyCurrentAndDeleteRest_completesGroup() throws {
+        let group = try requirePhotoGroup(assetCount: 4)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+        let keptID = group.assets[0].localIdentifier
+
+        vm.keepOnlyCurrentAndDeleteRest()
+
+        XCTAssertTrue(vm.isComplete)
+        XCTAssertEqual(vm.group.decisions[keptID], .keep)
+        XCTAssertEqual(vm.group.keptAssets.count, 1)
+        XCTAssertEqual(vm.group.deletedAssets.count, 3)
+    }
+
+    func testKeepOnlyCurrentAndDeleteRest_queuesOthersForDeletion() async throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.keepOnlyCurrentAndDeleteRest()
+        await vm.commitDeletes()
+
+        XCTAssertEqual(mockDeletion.deletedAssets.count, 2, "All non-kept photos should be sent to deletion service")
+    }
+
+    // MARK: - isLastUndecidedWithNoKept
+
+    func testIsLastUndecidedWithNoKept_trueWhenOneRemainingAndNothingKept() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.swipeLeft()  // delete[0]
+        vm.swipeLeft()  // delete[1]
+        // Only asset[2] remains, nothing kept
+
+        XCTAssertTrue(vm.isLastUndecidedWithNoKept)
+    }
+
+    func testIsLastUndecidedWithNoKept_falseWhenSomethingAlreadyKept() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.swipeRight() // keep[0]
+        vm.swipeLeft()  // delete[1]
+        // asset[2] remains, but asset[0] is kept
+
+        XCTAssertFalse(vm.isLastUndecidedWithNoKept)
+    }
+
+    func testIsLastUndecidedWithNoKept_falseWhenMultipleRemaining() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.swipeLeft()  // delete[0]
+        // asset[1] and [2] still undecided
+
+        XCTAssertFalse(vm.isLastUndecidedWithNoKept)
+    }
+
+    // MARK: - deletedCount (computed, not race-prone)
+
+    func testDeletedCount_reflectsDecisions_notAsyncOperations() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        XCTAssertEqual(vm.deletedCount, 0)
+        vm.swipeLeft()
+        XCTAssertEqual(vm.deletedCount, 1, "deletedCount should update immediately when decision is recorded")
+        vm.swipeLeft()
+        XCTAssertEqual(vm.deletedCount, 2)
+        vm.undo()
+        XCTAssertEqual(vm.deletedCount, 1, "Undo should decrement deletedCount")
     }
 
     // MARK: - Progress
