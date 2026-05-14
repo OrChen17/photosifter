@@ -35,7 +35,7 @@ actor PhotoLibraryService {
             let options = PHImageRequestOptions()
             options.deliveryMode = .opportunistic
             options.resizeMode = .fast
-            options.isNetworkAccessAllowed = false
+            options.isNetworkAccessAllowed = true
             imageManager.requestImage(
                 for: asset,
                 targetSize: size,

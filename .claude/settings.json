@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xcodebuild test *)"
+      "Bash(xcodebuild test *)",
+      "Bash(xcrun simctl *)",
+      "Bash(open -a Simulator)"
     ]
   }
 }

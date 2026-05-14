@@ -3,9 +3,9 @@ import Photos
 
 struct LibraryView: View {
     @Environment(LibraryViewModel.self) private var vm
-    @State private var selectedGroup: PhotoGroup?
 
     var body: some View {
+        @Bindable var vm = vm
         NavigationStack {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
@@ -26,7 +26,7 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationDestination(item: $selectedGroup) { group in
+            .navigationDestination(item: $vm.selectedGroup) { group in
                 SifterView(group: group)
             }
         }
@@ -37,7 +37,7 @@ struct LibraryView: View {
             LazyVStack(spacing: 14) {
                 ForEach(vm.groups) { group in
                     GroupRowView(group: group)
-                        .onTapGesture { selectedGroup = group }
+                        .onTapGesture { vm.selectedGroup = group }
                         .accessibilityIdentifier("groupRow_\(group.id)")
                         .transition(.asymmetric(
                             insertion: .move(edge: .top).combined(with: .opacity),

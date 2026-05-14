@@ -1,6 +1,6 @@
 import Photos
 
-enum Decision {
+enum Decision: String, Codable {
     case keep
     case delete
 }

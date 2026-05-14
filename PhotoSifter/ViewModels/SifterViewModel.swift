@@ -6,6 +6,13 @@ protocol DeletionService: Sendable {
 }
 extension PhotoLibraryService: DeletionService {}
 
+enum DeletionOutcome: Equatable {
+    case nothingToDelete   // user kept everything
+    case committed         // photos actually moved to Recently Deleted
+    case cancelledByUser   // user dismissed the system delete prompt
+    case failed(String)    // any other error
+}
+
 @Observable
 @MainActor
 final class SifterViewModel {
@@ -15,6 +22,7 @@ final class SifterViewModel {
     var currentIndex: Int = 0
     var isComplete: Bool = false
     var isCommittingDeletes: Bool = false
+    var deletionOutcome: DeletionOutcome?
 
     // Computed from group decisions, not a race-prone counter (#2, #4)
     var deletedCount: Int { group.decisions.values.filter { $0 == .delete }.count }
@@ -33,7 +41,24 @@ final class SifterViewModel {
         self.group = group
         self.displayOrder = group.assets
         self.deletionService = deletionService ?? PhotoLibraryService.shared
+        // Resume mid-batch: jump past assets already decided in a previous
+        // session, and re-queue their pending deletes so commit catches them.
+        self.currentIndex = group.assets.firstIndex {
+            group.decisions[$0.localIdentifier] == nil
+        } ?? group.assets.count
+        self.pendingDeletes = group.assets.filter {
+            group.decisions[$0.localIdentifier] == .delete
+        }
+        if currentIndex >= group.assets.count && !group.assets.isEmpty {
+            // Restored a group whose decisions were all made — flag complete
+            // so the parent immediately commits and shows summary.
+            self.isComplete = true
+        }
     }
+
+    /// True if the user has made at least one decision in this session.
+    /// Used to decide whether the back button should prompt to save.
+    var hasUnsavedDecisions: Bool { !decisionHistory.isEmpty }
 
     // MARK: - Queries
 
@@ -111,6 +136,28 @@ final class SifterViewModel {
         finishGroup()
     }
 
+    // MARK: - Jump (tap on strip)
+
+    /// Jump the cursor to `asset`. If the asset already has a decision, that
+    /// decision is cleared so the user can re-swipe it — this is how the
+    /// strip-tap replaces the undo button as the "fix a mistake" affordance.
+    func jumpTo(asset: PHAsset) {
+        guard let idx = displayOrder.firstIndex(where: { $0.localIdentifier == asset.localIdentifier })
+        else { return }
+
+        if let existing = group.decisions[asset.localIdentifier] {
+            group.decisions.removeValue(forKey: asset.localIdentifier)
+            if existing == .delete {
+                pendingDeletes.removeAll { $0.localIdentifier == asset.localIdentifier }
+            }
+            decisionHistory.removeAll { $0.asset.localIdentifier == asset.localIdentifier }
+        }
+
+        currentIndex = idx
+        isComplete = false
+        haptics.playUndo()
+    }
+
     // MARK: - Undo
 
     func undo() {
@@ -130,13 +177,58 @@ final class SifterViewModel {
 
     /// Called once by SifterView after isComplete becomes true.
     /// Batches all pending deletes into a single PHPhotoLibrary change.
+    /// Sets `deletionOutcome` so the summary screen can branch on what
+    /// actually happened (committed / cancelled at system prompt / failed).
     func commitDeletes() async {
-        guard !pendingDeletes.isEmpty else { return }
+        // Re-derive from decisions so a retry after cancellation still works
+        // even though pendingDeletes was cleared on the first attempt.
+        let toDelete = group.assets.filter { group.decisions[$0.localIdentifier] == .delete }
+        guard !toDelete.isEmpty else {
+            deletionOutcome = .nothingToDelete
+            return
+        }
         isCommittingDeletes = true
-        let batch = pendingDeletes
-        pendingDeletes = []
-        try? await deletionService.deleteAssets(batch)
+        do {
+            try await deletionService.deleteAssets(toDelete)
+            pendingDeletes = []
+            deletionOutcome = .committed
+        } catch {
+            // PHPhotosError.userCancelled is the canonical cancellation, but
+            // some paths surface NSUserCancelledError — accept both.
+            let ns = error as NSError
+            if (error as? PHPhotosError)?.code == .userCancelled
+                || ns.code == NSUserCancelledError {
+                deletionOutcome = .cancelledByUser
+            } else {
+                deletionOutcome = .failed(error.localizedDescription)
+            }
+        }
         isCommittingDeletes = false
+    }
+
+    func retryCommitDeletes() async {
+        // Don't clear outcome here — the summary screen would render with
+        // stale zeros while waiting on the iOS confirmation prompt. Keep
+        // the previous outcome until commitDeletes resolves with a new one.
+        await commitDeletes()
+    }
+
+    /// Replaces this VM's group with a freshly hydrated one (e.g. from disk),
+    /// and recomputes the resume point. Used by SifterView on appear so the
+    /// view is bulletproof against any in-memory propagation gaps.
+    func applyHydratedGroup(_ hydrated: PhotoGroup) {
+        guard hydrated.id == group.id else { return }
+        self.group = hydrated
+        self.displayOrder = hydrated.assets
+        self.currentIndex = hydrated.assets.firstIndex {
+            hydrated.decisions[$0.localIdentifier] == nil
+        } ?? hydrated.assets.count
+        self.pendingDeletes = hydrated.assets.filter {
+            hydrated.decisions[$0.localIdentifier] == .delete
+        }
+        if currentIndex >= hydrated.assets.count && !hydrated.assets.isEmpty {
+            self.isComplete = true
+        }
     }
 
     // MARK: - Private

@@ -1,15 +1,33 @@
 import Photos
 import Foundation
-import Vision
 
 actor GroupingService {
+    #if DEBUG && targetEnvironment(simulator)
+    // Simulator's Vision/CoreML can't load the feature-print model, so use a
+    // time-proximity stub to populate the UI with real groups. Never ships.
+    static let shared = GroupingService(similarity: DebugTimeProximitySimilarity())
+    #else
     static let shared = GroupingService()
+    #endif
 
-    private let similarityService = SimilarityService.shared
+    private let similarity: any SimilarityProviding
     private let cacheURL: URL = {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return support.appendingPathComponent("grouped_identifiers.json")
     }()
+    private let decisionsURL: URL = {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return support.appendingPathComponent("group_decisions.json")
+    }()
+
+    init(similarity: any SimilarityProviding = SimilarityService.shared) {
+        self.similarity = similarity
+        // iOS doesn't create Application Support automatically — without this,
+        // every persistence write silently fails (try? swallows the error) and
+        // mid-batch progress never survives. (#decisions-not-persisting)
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+    }
 
     private static let similarityThreshold: Float = 0.65
     private static let timeBucketGap: TimeInterval = 5 * 60   // 5 minutes
@@ -67,8 +85,49 @@ actor GroupingService {
         try? data.write(to: cacheURL, options: .atomic)
     }
 
+    // MARK: - Per-group decision persistence (partial-save on mid-batch exit)
+
+    /// Saves the in-progress decisions for one group, keyed by the stable
+    /// identifier set so the mapping survives across launches even though
+    /// `PhotoGroup.id` (UUID) is regenerated each scan.
+    func saveDecisions(for group: PhotoGroup) {
+        var all = loadAllDecisionsRaw()
+        let key = Self.persistenceKey(for: group)
+        if group.decisions.isEmpty {
+            all.removeValue(forKey: key)
+        } else {
+            all[key] = group.decisions.mapValues { $0.rawValue }
+        }
+        guard let data = try? JSONEncoder().encode(all) else { return }
+        try? data.write(to: decisionsURL, options: .atomic)
+    }
+
+    /// Hydrates each input group's `.decisions` from the persisted store.
+    func hydrateDecisions(into groups: [PhotoGroup]) -> [PhotoGroup] {
+        let all = loadAllDecisionsRaw()
+        return groups.map { group in
+            var copy = group
+            if let raw = all[Self.persistenceKey(for: group)] {
+                copy.decisions = raw.compactMapValues { Decision(rawValue: $0) }
+            }
+            return copy
+        }
+    }
+
+    private func loadAllDecisionsRaw() -> [String: [String: String]] {
+        guard let data = try? Data(contentsOf: decisionsURL),
+              let dict = try? JSONDecoder().decode([String: [String: String]].self, from: data)
+        else { return [:] }
+        return dict
+    }
+
+    static func persistenceKey(for group: PhotoGroup) -> String {
+        group.assets.map(\.localIdentifier).sorted().joined(separator: "|")
+    }
+
     func invalidateCache() {
         try? FileManager.default.removeItem(at: cacheURL)
+        try? FileManager.default.removeItem(at: decisionsURL)
     }
 
     // MARK: - Burst groups (#16)
@@ -76,19 +135,18 @@ actor GroupingService {
     /// Returns photo groups formed from iOS burst captures — no Vision needed.
     private static func fetchBurstGroups() -> [PhotoGroup] {
         let options = PHFetchOptions()
-        // Fetch only burst representative photos (one per burst series)
-        options.predicate = NSPredicate(
-            format: "mediaType == %d AND representsBurst == YES",
-            PHAssetMediaType.image.rawValue
-        )
+        // `representsBurst` isn't accepted by PHQuery's predicate parser, so
+        // filter by mediaType at the DB level and check representsBurst in code.
+        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
 
-        let representatives = PHAsset.fetchAssets(with: options)
-        guard representatives.count > 0 else { return [] }
+        let allImages = PHAsset.fetchAssets(with: options)
+        guard allImages.count > 0 else { return [] }
 
         var groups: [PhotoGroup] = []
-        representatives.enumerateObjects { representative, _, _ in
-            guard let burstID = representative.burstIdentifier else { return }
+        allImages.enumerateObjects { representative, _, _ in
+            guard representative.representsBurst,
+                  let burstID = representative.burstIdentifier else { return }
 
             let burstOptions = PHFetchOptions()
             burstOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
@@ -129,11 +187,6 @@ actor GroupingService {
     // MARK: - Vision clustering
 
     private func clusterBucket(_ bucket: [PHAsset]) async throws -> [PhotoGroup] {
-        var prints: [String: VNFeaturePrintObservation] = [:]
-        for asset in bucket {
-            prints[asset.localIdentifier] = try? await similarityService.featurePrint(for: asset)
-        }
-
         var parent: [String: String] = Dictionary(uniqueKeysWithValues: bucket.map { ($0.localIdentifier, $0.localIdentifier) })
 
         func find(_ x: String) -> String {
@@ -145,9 +198,7 @@ actor GroupingService {
         for i in 0..<bucket.count {
             for j in (i + 1)..<bucket.count {
                 let a = bucket[i], b = bucket[j]
-                guard let pa = prints[a.localIdentifier],
-                      let pb = prints[b.localIdentifier],
-                      let dist = try? await similarityService.distance(from: pa, to: pb),
+                guard let dist = try? await similarity.distance(between: a, and: b),
                       dist < Self.similarityThreshold
                 else { continue }
                 let ra = find(a.localIdentifier), rb = find(b.localIdentifier)

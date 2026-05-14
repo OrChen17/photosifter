@@ -1,5 +1,7 @@
 import SwiftUI
 import Photos
+import CoreLocation
+import Contacts
 
 struct SwipeCardView: View {
     let asset: PHAsset
@@ -8,10 +10,14 @@ struct SwipeCardView: View {
     let onSwipeRight: () -> Void
     let onSwipeLeft: () -> Void
     let onSkip: (() -> Void)?
+    /// Reports horizontal swipe progress in [-1, 1] to the parent so it can
+    /// drive a screen-wide vignette. -1 = full left (delete), +1 = full right (keep).
+    var onProgressChange: ((Double) -> Void)? = nil
 
     @State private var offset: CGSize = .zero
     @State private var isThrown: Bool = false
     @State private var image: UIImage?
+    @State private var locationLabel: String?
     // Track threshold crossings so haptic fires once per crossing, not every frame
     @State private var hasCrossedBadgeThreshold: Bool = false
 
@@ -20,6 +26,9 @@ struct SwipeCardView: View {
 
     private var keepOpacity: Double { max(0, min(1, Double(offset.width / badgeThreshold))) }
     private var deleteOpacity: Double { max(0, min(1, Double(-offset.width / badgeThreshold))) }
+    private var horizontalProgress: Double {
+        max(-1, min(1, Double(offset.width) / Double(snapThreshold)))
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -70,10 +79,6 @@ struct SwipeCardView: View {
                     }
                 }
 
-                // Directional tint overlay
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(tintColor)
-
                 // Metadata strip at bottom
                 metadataOverlay
             }
@@ -92,18 +97,11 @@ struct SwipeCardView: View {
             } else {
                 image = await PhotoLibraryService.shared.loadFullImage(for: asset)
             }
+            await loadLocationLabel()
         }
-    }
-
-    // MARK: - Tint overlay
-
-    private var tintColor: Color {
-        if offset.width > 0 {
-            return Color.appKeep.opacity(keepOpacity * 0.15)
-        } else if offset.width < 0 {
-            return Color.appDelete.opacity(deleteOpacity * 0.15)
+        .onChange(of: offset) { _, _ in
+            onProgressChange?(horizontalProgress)
         }
-        return .clear
     }
 
     // MARK: - Card photo
@@ -137,9 +135,14 @@ struct SwipeCardView: View {
                         .monospacedDigit()
                 }
                 Spacer()
-                Text(resolutionString)
+                if let loc = locationLabel {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 10))
+                    Text(loc)
+                        .lineLimit(1)
+                }
                 if let size = fileSize {
-                    Text("·")
+                    if locationLabel != nil { Text("·") }
                     Text(size)
                 }
             }
@@ -157,9 +160,31 @@ struct SwipeCardView: View {
         return s == 0 ? "\(m)m" : "\(m)m \(s)s"
     }
 
-    private var resolutionString: String {
-        let mp = Double(asset.pixelWidth * asset.pixelHeight) / 1_000_000
-        return String(format: "%.1f MP", mp)
+    private func loadLocationLabel() async {
+        guard let loc = asset.location else { return }
+        if let cached = SwipeCardView.locationCache[Self.cacheKey(loc)] {
+            locationLabel = cached
+            return
+        }
+        let geocoder = CLGeocoder()
+        if let placemark = try? await geocoder.reverseGeocodeLocation(loc).first {
+            // Prefer city; fall back to admin area, then country
+            let label = placemark.locality
+                ?? placemark.subAdministrativeArea
+                ?? placemark.administrativeArea
+                ?? placemark.country
+            if let label {
+                SwipeCardView.locationCache[Self.cacheKey(loc)] = label
+                locationLabel = label
+            }
+        }
+    }
+
+    /// Reverse-geocode cache keyed by ~1km-rounded coords so nearby photos
+    /// don't each hit the geocoder. Static so it survives card recreation.
+    nonisolated(unsafe) static var locationCache: [String: String] = [:]
+    private static func cacheKey(_ l: CLLocation) -> String {
+        String(format: "%.2f,%.2f", l.coordinate.latitude, l.coordinate.longitude)
     }
 
     private var fileSize: String? {

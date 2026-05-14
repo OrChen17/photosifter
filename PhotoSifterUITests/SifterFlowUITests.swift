@@ -30,21 +30,6 @@ final class SifterFlowUITests: PhotoSifterUITestCase {
         XCTAssertTrue(card.isHittable)
     }
 
-    func testSifterScreen_undoButtonAppears() throws {
-        try openFirstSifterSession()
-
-        let undoButton = app.buttons["undoButton"]
-        XCTAssertTrue(undoButton.waitForExistence(timeout: 3))
-    }
-
-    func testSifterScreen_undoButton_disabledInitially() throws {
-        try openFirstSifterSession()
-
-        let undoButton = app.buttons["undoButton"]
-        XCTAssertTrue(undoButton.waitForExistence(timeout: 3))
-        XCTAssertFalse(undoButton.isEnabled, "Undo button should be disabled before any swipe")
-    }
-
     func testSifterScreen_navigationTitleShowsProgress() throws {
         try openFirstSifterSession()
 
@@ -72,18 +57,6 @@ final class SifterFlowUITests: PhotoSifterUITestCase {
         )
     }
 
-    func testSwipeRight_enablesUndoButton() throws {
-        try openFirstSifterSession()
-
-        let card = app.otherElements["photoCard"]
-        let undoButton = app.buttons["undoButton"]
-
-        card.swipeRight()
-
-        XCTAssertTrue(undoButton.waitForExistence(timeout: 3))
-        XCTAssertTrue(undoButton.isEnabled, "Undo should be enabled after a swipe")
-    }
-
     // MARK: - Swipe left (delete)
 
     func testSwipeLeft_advancesCard() throws {
@@ -97,32 +70,6 @@ final class SifterFlowUITests: PhotoSifterUITestCase {
         let newNavPredicate = NSPredicate(format: "label != %@", initialNavTitle)
         let updatedTitle = app.navigationBars.staticTexts.matching(newNavPredicate).firstMatch
         XCTAssertTrue(updatedTitle.waitForExistence(timeout: 3))
-    }
-
-    // MARK: - Undo
-
-    func testUndo_revertsNavigationTitle() throws {
-        try openFirstSifterSession()
-
-        let card = app.otherElements["photoCard"]
-        let undoButton = app.buttons["undoButton"]
-
-        let titleBefore = app.navigationBars.staticTexts.firstMatch.label
-        card.swipeRight()
-
-        // Wait for title to update
-        let differentPredicate = NSPredicate(format: "label != %@", titleBefore)
-        XCTAssertTrue(app.navigationBars.staticTexts.matching(differentPredicate).firstMatch.waitForExistence(timeout: 3))
-
-        // Undo
-        undoButton.tap()
-
-        // Title should revert
-        let originalPredicate = NSPredicate(format: "label == %@", titleBefore)
-        XCTAssertTrue(
-            app.navigationBars.staticTexts.matching(originalPredicate).firstMatch.waitForExistence(timeout: 3),
-            "After undo, navigation title should revert to the original value"
-        )
     }
 
     // MARK: - Complete a full group

@@ -4,11 +4,14 @@ import Photos
 struct BatchStripView: View {
     let group: PhotoGroup
     let currentAssetID: String?   // replaces currentIndex — works with skip reordering
+    var onTap: ((PHAsset) -> Void)? = nil
 
     @State private var thumbnails: [String: UIImage] = [:]
     @State private var scrollID: String?
 
     private let thumbSize: CGFloat = 64
+    // Subtle tint — color signals the decision without overwhelming the photo.
+    private let decisionTintOpacity: Double = 0.35
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -36,6 +39,9 @@ struct BatchStripView: View {
         let isCurrent = asset.localIdentifier == currentAssetID
         let decision = group.decisions[asset.localIdentifier]
 
+        // Button inside a horizontal ScrollView routinely loses its tap to
+        // the scroll gesture — using a plain hit-tested ZStack with
+        // onTapGesture is the reliable path.
         ZStack {
             Group {
                 if let img = thumbnails[asset.localIdentifier] {
@@ -48,16 +54,14 @@ struct BatchStripView: View {
             }
             .frame(width: thumbSize, height: thumbSize)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .opacity(decision == .delete ? 0.4 : 1.0)
+            .opacity(decision == .delete ? 0.45 : 1.0)
 
             if let decision {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(decision == .keep ? Color.appKeep.opacity(0.25) : Color.appDelete.opacity(0.25))
+                    .fill(decision == .keep
+                          ? Color.appKeep.opacity(decisionTintOpacity)
+                          : Color.appDelete.opacity(decisionTintOpacity))
                     .frame(width: thumbSize, height: thumbSize)
-
-                Image(systemName: decision == .keep ? "checkmark" : "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(decision == .keep ? .appKeep : .appDelete)
             }
 
             if isCurrent {
@@ -66,8 +70,12 @@ struct BatchStripView: View {
                     .frame(width: thumbSize, height: thumbSize)
             }
         }
+        .frame(width: thumbSize, height: thumbSize)
         .scaleEffect(isCurrent ? 1.08 : 1.0)
         .animation(.spring(duration: 0.3), value: isCurrent)
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .onTapGesture { onTap?(asset) }
+        .accessibilityIdentifier("stripThumb_\(asset.localIdentifier)")
     }
 
     private func loadAllThumbnails() async {

@@ -10,6 +10,10 @@ struct PhotoSifterApp: App {
                 .environment(libraryViewModel)
                 .preferredColorScheme(.dark)
                 .onAppear { applyUITestingOverrides() }
+                // Check (and if needed request) authorization automatically on
+                // every launch so returning users never see PermissionView
+                // when they've already granted access.
+                .task { await libraryViewModel.checkAuthorization() }
         }
     }
 

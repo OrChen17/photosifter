@@ -13,6 +13,7 @@
 		A004 /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B004 /* PhotoLibraryService.swift */; };
 		A005 /* SimilarityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B005 /* SimilarityService.swift */; };
 		A006 /* GroupingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B006 /* GroupingService.swift */; };
+		A006D /* DebugSimilarityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B006D /* DebugSimilarityService.swift */; };
 		A007 /* LibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B007 /* LibraryViewModel.swift */; };
 		A008 /* SifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B008 /* SifterViewModel.swift */; };
 		A009 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009 /* PermissionView.swift */; };
@@ -34,6 +35,9 @@
 		T006 /* SimilarityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S006 /* SimilarityServiceTests.swift */; };
 		T007 /* MockDeletionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = S007 /* MockDeletionService.swift */; };
 		T008 /* TestAssetHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = S008 /* TestAssetHelpers.swift */; };
+		T009 /* GroupingDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S009 /* GroupingDiagnosticTests.swift */; };
+		T010 /* MockSimilarityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = S010 /* MockSimilarityService.swift */; };
+		T011 /* GroupingServiceMockedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S011 /* GroupingServiceMockedTests.swift */; };
 		U001 /* PhotoSifterUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R001 /* PhotoSifterUITests.swift */; };
 		U002 /* PermissionFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R002 /* PermissionFlowUITests.swift */; };
 		U003 /* LibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R003 /* LibraryUITests.swift */; };
@@ -64,6 +68,7 @@
 		B004 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
 		B005 /* SimilarityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimilarityService.swift; sourceTree = "<group>"; };
 		B006 /* GroupingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupingService.swift; sourceTree = "<group>"; };
+		B006D /* DebugSimilarityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugSimilarityService.swift; sourceTree = "<group>"; };
 		B007 /* LibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViewModel.swift; sourceTree = "<group>"; };
 		B008 /* SifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterViewModel.swift; sourceTree = "<group>"; };
 		B009 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
@@ -91,6 +96,9 @@
 		S006 /* SimilarityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimilarityServiceTests.swift; sourceTree = "<group>"; };
 		S007 /* MockDeletionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeletionService.swift; sourceTree = "<group>"; };
 		S008 /* TestAssetHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestAssetHelpers.swift; sourceTree = "<group>"; };
+		S009 /* GroupingDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupingDiagnosticTests.swift; sourceTree = "<group>"; };
+		S010 /* MockSimilarityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockSimilarityService.swift; sourceTree = "<group>"; };
+		S011 /* GroupingServiceMockedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupingServiceMockedTests.swift; sourceTree = "<group>"; };
 		TPROD /* PhotoSifterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		UPROD /* PhotoSifterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -125,6 +133,7 @@
 			children = (
 				S007 /* MockDeletionService.swift */,
 				S008 /* TestAssetHelpers.swift */,
+				S010 /* MockSimilarityService.swift */,
 			);
 			path = Mocks;
 			sourceTree = "<group>";
@@ -143,6 +152,7 @@
 				B004 /* PhotoLibraryService.swift */,
 				B005 /* SimilarityService.swift */,
 				B006 /* GroupingService.swift */,
+				B006D /* DebugSimilarityService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -156,6 +166,8 @@
 				S004 /* GroupingServiceTests.swift */,
 				S005 /* ColorExtensionTests.swift */,
 				S006 /* SimilarityServiceTests.swift */,
+				S009 /* GroupingDiagnosticTests.swift */,
+				S011 /* GroupingServiceMockedTests.swift */,
 				GRP_MOCKS /* Mocks */,
 			);
 			path = PhotoSifterTests;
@@ -392,6 +404,7 @@
 				A004 /* PhotoLibraryService.swift in Sources */,
 				A005 /* SimilarityService.swift in Sources */,
 				A006 /* GroupingService.swift in Sources */,
+				A006D /* DebugSimilarityService.swift in Sources */,
 				A007 /* LibraryViewModel.swift in Sources */,
 				A008 /* SifterViewModel.swift in Sources */,
 				A009 /* PermissionView.swift in Sources */,
@@ -419,6 +432,9 @@
 				T006 /* SimilarityServiceTests.swift in Sources */,
 				T007 /* MockDeletionService.swift in Sources */,
 				T008 /* TestAssetHelpers.swift in Sources */,
+				T009 /* GroupingDiagnosticTests.swift in Sources */,
+				T010 /* MockSimilarityService.swift in Sources */,
+				T011 /* GroupingServiceMockedTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -493,7 +509,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.9;
@@ -513,7 +529,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -532,7 +548,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -576,7 +592,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.9;
@@ -596,7 +612,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -615,7 +631,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.photosifter.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;

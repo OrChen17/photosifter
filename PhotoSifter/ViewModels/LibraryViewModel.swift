@@ -5,13 +5,20 @@ import SwiftUI
 @MainActor
 final class LibraryViewModel {
     var groups: [PhotoGroup] = []
-    var authStatus: PHAuthorizationStatus = .notDetermined
+    var selectedGroup: PhotoGroup?
+    var authStatus: PHAuthorizationStatus
     var isScanning: Bool = false
     var scanProgress: (current: Int, total: Int) = (0, 0)
     var error: String?
 
     private let photoService = PhotoLibraryService.shared
     private let groupingService = GroupingService.shared
+
+    init() {
+        // Read current status synchronously so ContentView shows the correct
+        // screen on first render without waiting for any user interaction.
+        authStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    }
 
     func checkAuthorization() async {
         authStatus = await photoService.requestAuthorization()
@@ -23,9 +30,9 @@ final class LibraryViewModel {
     func load() async {
         error = nil
 
-        // Layer 1: Serve cached groups immediately
+        // Layer 1: Serve cached groups immediately (hydrated with saved decisions)
         if let cached = await groupingService.loadCachedGroups(), !cached.isEmpty {
-            groups = cached
+            groups = await groupingService.hydrateDecisions(into: cached)
         }
 
         // Layer 2: Re-scan in background, streaming results in
@@ -35,8 +42,10 @@ final class LibraryViewModel {
         scanProgress = (0, assets.count)
 
         for await group in await groupingService.streamGroups(from: assets) {
+            // Hydrate this single new group's decisions before insertion
+            let hydrated = await groupingService.hydrateDecisions(into: [group]).first ?? group
             withAnimation(.spring(duration: 0.35)) {
-                freshGroups.append(group)
+                freshGroups.append(hydrated)
                 // Sort by group size desc, then date desc
                 groups = freshGroups.sorted {
                     if $0.assets.count != $1.assets.count { return $0.assets.count > $1.assets.count }
@@ -50,12 +59,36 @@ final class LibraryViewModel {
     }
 
     func markGroupComplete(_ group: PhotoGroup) {
+        // Remove from the list immediately so it vanishes from the library.
+        groups.removeAll { $0.id == group.id }
+        // Clear persisted partial state so the group doesn't rehydrate.
+        Task { await groupingService.saveDecisions(for: PhotoGroup(id: group.id, assets: group.assets, decisions: [:])) }
+    }
+
+    /// Updates the in-memory copy of a group and persists its decisions so
+    /// the user can resume the batch on next launch.
+    func updateGroup(_ group: PhotoGroup) {
         if let idx = groups.firstIndex(where: { $0.id == group.id }) {
             groups[idx] = group
         }
     }
 
+    func saveGroupProgress(_ group: PhotoGroup) async {
+        updateGroup(group)
+        await groupingService.saveDecisions(for: group)
+    }
+
     func removeGroup(id: UUID) {
         groups.removeAll { $0.id == id }
+    }
+
+    /// Returns the next incomplete group chronologically after `current` —
+    /// the one to suggest behind a "Continue" CTA. Pure lookup, no mutation,
+    /// so the caller can decide when to actually navigate.
+    func nextIncompleteGroup(after current: PhotoGroup) -> PhotoGroup? {
+        let currentDate = current.captureDate ?? .distantPast
+        return groups
+            .filter { $0.id != current.id && !$0.isComplete && ($0.captureDate ?? .distantPast) > currentDate }
+            .min(by: { ($0.captureDate ?? .distantPast) < ($1.captureDate ?? .distantPast) })
     }
 }
