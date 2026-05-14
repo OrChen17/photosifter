@@ -61,7 +61,7 @@ final class LibraryUITests: PhotoSifterUITestCase {
 
     // MARK: - Navigation to sifter
 
-    func testTappingGroupRow_navigatesToSifterScreen() {
+    func testTappingGroupRow_navigatesToSifterScreen() throws {
         launchAuthorized()
 
         // Wait for a group row and tap it

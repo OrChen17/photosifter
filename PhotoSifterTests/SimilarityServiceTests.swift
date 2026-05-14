@@ -35,7 +35,7 @@ final class SimilarityServiceTests: XCTestCase {
     func testDistance_selfToSelf_isZero() async throws {
         let assets = try requirePhotoAssets(minimum: 1)
         let fp = try await service.featurePrint(for: assets[0])
-        let dist = try service.distance(from: fp, to: fp)
+        let dist = try await service.distance(from: fp, to: fp)
         XCTAssertEqual(dist, 0.0, accuracy: 0.001)
     }
 
@@ -44,8 +44,8 @@ final class SimilarityServiceTests: XCTestCase {
         let fpA = try await service.featurePrint(for: assets[0])
         let fpB = try await service.featurePrint(for: assets[1])
 
-        let ab = try service.distance(from: fpA, to: fpB)
-        let ba = try service.distance(from: fpB, to: fpA)
+        let ab = try await service.distance(from: fpA, to: fpB)
+        let ba = try await service.distance(from: fpB, to: fpA)
 
         XCTAssertEqual(ab, ba, accuracy: 0.001, "Distance should be symmetric")
     }
@@ -55,7 +55,7 @@ final class SimilarityServiceTests: XCTestCase {
         let fpA = try await service.featurePrint(for: assets[0])
         let fpB = try await service.featurePrint(for: assets[1])
 
-        let dist = try service.distance(from: fpA, to: fpB)
+        let dist = try await service.distance(from: fpA, to: fpB)
         XCTAssertGreaterThanOrEqual(dist, 0.0)
     }
 

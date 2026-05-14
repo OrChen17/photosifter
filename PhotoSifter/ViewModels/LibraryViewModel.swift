@@ -34,7 +34,7 @@ final class LibraryViewModel {
         let assets = await photoService.fetchAllAssets()
         scanProgress = (0, assets.count)
 
-        for await group in groupingService.streamGroups(from: assets) {
+        for await group in await groupingService.streamGroups(from: assets) {
             withAnimation(.spring(duration: 0.35)) {
                 freshGroups.append(group)
                 // Sort by group size desc, then date desc

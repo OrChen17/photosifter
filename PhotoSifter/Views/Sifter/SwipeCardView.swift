@@ -163,8 +163,9 @@ struct SwipeCardView: View {
     }
 
     private var fileSize: String? {
+        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
         let resources = PHAssetResource.assetResources(for: asset)
-        let resource = resources.first { $0.type == .photo || $0.type == .fullSizePhoto || $0.type == .adjustedPhoto }
+        let resource = resources.first { acceptable.contains($0.type) }
         guard let bytes = resource?.value(forKey: "fileSize") as? Int64, bytes > 0 else { return nil }
         if bytes < 1_000_000 { return "\(bytes / 1024) KB" }
         return String(format: "%.1f MB", Double(bytes) / 1_000_000)

@@ -18,3 +18,12 @@ extension Color {
         self.init(red: r, green: g, blue: b)
     }
 }
+
+extension ShapeStyle where Self == Color {
+    static var appBackground: Color      { Color.appBackground }
+    static var appCard: Color            { Color.appCard }
+    static var appKeep: Color            { Color.appKeep }
+    static var appDelete: Color          { Color.appDelete }
+    static var appAccent: Color          { Color.appAccent }
+    static var appTextSecondary: Color   { Color.appTextSecondary }
+}

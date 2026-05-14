@@ -1,5 +1,6 @@
 import Photos
 import Foundation
+import Vision
 
 actor GroupingService {
     static let shared = GroupingService()
@@ -77,9 +78,8 @@ actor GroupingService {
         let options = PHFetchOptions()
         // Fetch only burst representative photos (one per burst series)
         options.predicate = NSPredicate(
-            format: "mediaType == %d AND (mediaSubtype & %d) != 0",
-            PHAssetMediaType.image.rawValue,
-            PHAssetMediaSubtype.photoBurst.rawValue
+            format: "mediaType == %d AND representsBurst == YES",
+            PHAssetMediaType.image.rawValue
         )
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
 
@@ -147,7 +147,7 @@ actor GroupingService {
                 let a = bucket[i], b = bucket[j]
                 guard let pa = prints[a.localIdentifier],
                       let pb = prints[b.localIdentifier],
-                      let dist = try? similarityService.distance(from: pa, to: pb),
+                      let dist = try? await similarityService.distance(from: pa, to: pb),
                       dist < Self.similarityThreshold
                 else { continue }
                 let ra = find(a.localIdentifier), rb = find(b.localIdentifier)

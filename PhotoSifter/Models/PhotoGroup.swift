@@ -34,3 +34,8 @@ struct PhotoGroup: Identifiable, Sendable {
         assets.first?.creationDate
     }
 }
+
+extension PhotoGroup: Hashable {
+    static func == (lhs: PhotoGroup, rhs: PhotoGroup) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
