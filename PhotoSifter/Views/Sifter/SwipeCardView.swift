@@ -5,7 +5,6 @@ import Contacts
 
 struct SwipeCardView: View {
     let asset: PHAsset
-    let groupFirstDate: Date?
     let preloadedImage: UIImage?
     let onSwipeRight: () -> Void
     let onSwipeLeft: () -> Void
@@ -129,9 +128,8 @@ struct SwipeCardView: View {
         VStack {
             Spacer()
             HStack(spacing: 10) {
-                if let date = asset.creationDate, let first = groupFirstDate {
-                    let delta = date.timeIntervalSince(first)
-                    Text(delta < 0.5 ? "First" : "+\(formatDelta(delta))")
+                if let date = asset.creationDate {
+                    Text(date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().second()))
                         .monospacedDigit()
                 }
                 Spacer()
@@ -152,12 +150,6 @@ struct SwipeCardView: View {
             .padding(.vertical, 8)
             .background(.ultraThinMaterial)
         }
-    }
-
-    private func formatDelta(_ seconds: TimeInterval) -> String {
-        if seconds < 60 { return "\(Int(seconds))s" }
-        let m = Int(seconds) / 60, s = Int(seconds) % 60
-        return s == 0 ? "\(m)m" : "\(m)m \(s)s"
     }
 
     private func loadLocationLabel() async {

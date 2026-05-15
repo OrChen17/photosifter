@@ -23,6 +23,7 @@ final class SifterViewModel {
     var isComplete: Bool = false
     var isCommittingDeletes: Bool = false
     var deletionOutcome: DeletionOutcome?
+    var deletedBytes: Int64 = 0
 
     // Computed from group decisions, not a race-prone counter (#2, #4)
     var deletedCount: Int { group.decisions.values.filter { $0 == .delete }.count }
@@ -186,6 +187,14 @@ final class SifterViewModel {
         guard !toDelete.isEmpty else {
             deletionOutcome = .nothingToDelete
             return
+        }
+        // Compute sizes before deletion — PHAssetResource returns nothing after photos are removed
+        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
+        deletedBytes = toDelete.reduce(Int64(0)) { total, asset in
+            let resources = PHAssetResource.assetResources(for: asset)
+            guard let r = resources.first(where: { acceptable.contains($0.type) }),
+                  let bytes = r.value(forKey: "fileSize") as? Int64 else { return total }
+            return total + bytes
         }
         isCommittingDeletes = true
         do {

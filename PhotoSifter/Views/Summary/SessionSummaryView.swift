@@ -5,6 +5,7 @@ struct SessionSummaryView: View {
     let group: PhotoGroup
     let nextGroup: PhotoGroup?
     let outcome: DeletionOutcome?
+    let deletedBytes: Int64
     var onContinue: (() -> Void)? = nil
     var onRetry: (() -> Void)? = nil
 
@@ -51,7 +52,7 @@ struct SessionSummaryView: View {
     ]
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             Color.appBackground.ignoresSafeArea()
             VStack(spacing: 28) {
                 if isCancelledOrFailed {
@@ -63,6 +64,15 @@ struct SessionSummaryView: View {
             .padding(.horizontal, 24)
             .padding(.top, 64)
             .padding(.bottom, 32)
+
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(12)
+            }
+            .padding(.top, 52)
+            .padding(.leading, 12)
         }
         .task {
             await loadNextThumbnails()
@@ -82,7 +92,7 @@ struct SessionSummaryView: View {
 
     private func runCommittedAnimation() async {
         headline = Self.headlinePool.randomElement() ?? "Done."
-        totalBytes = computeTotalBytes()
+        totalBytes = deletedBytes
         animatedCount = 0
         animatedBytes = 0
         await tickUp(count: deletedCount, bytes: totalBytes, duration: 1.0)
@@ -105,18 +115,12 @@ struct SessionSummaryView: View {
                 .foregroundStyle(.appTextSecondary)
         }
 
-        Spacer(minLength: 16)
-
-        nextBatchPreview
-
-        Spacer(minLength: 16)
-
         actionStack
     }
 
     private var statsRow: some View {
         HStack(alignment: .center, spacing: 0) {
-            VStack(alignment: .trailing, spacing: 6) {
+            VStack(alignment: .center, spacing: 6) {
                 Text("\(animatedCount)")
                     .font(.system(size: 56, weight: .black, design: .rounded))
                     .foregroundStyle(
@@ -131,14 +135,14 @@ struct SessionSummaryView: View {
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(.appTextSecondary)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity)
 
             Rectangle()
                 .fill(Color.white.opacity(0.1))
                 .frame(width: 1, height: 56)
                 .padding(.horizontal, 20)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .center, spacing: 6) {
                 Text(totalBytes > 0 ? animatedBytesString : "—")
                     .font(.system(size: 56, weight: .black, design: .rounded))
                     .foregroundStyle(
@@ -155,71 +159,42 @@ struct SessionSummaryView: View {
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(.appTextSecondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    @ViewBuilder
-    private var nextBatchPreview: some View {
-        if let next = nextGroup {
-            VStack(spacing: 12) {
-                HStack(spacing: 10) {
-                    Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
-                    Text("UP NEXT")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                        .tracking(2)
-                        .foregroundStyle(.appTextSecondary)
-                    Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
-                }
-
-                HStack(spacing: 8) {
-                    ForEach(Array(nextThumbnails.prefix(4).enumerated()), id: \.offset) { _, img in
-                        Image(uiImage: img)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 64, height: 64)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    }
-                    if nextThumbnails.isEmpty {
-                        ForEach(0..<min(4, next.assets.count), id: \.self) { _ in
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Color.appCard)
-                                .frame(width: 64, height: 64)
-                        }
-                    }
-                }
-
-                VStack(spacing: 2) {
-                    Text("\(next.assets.count) photos")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                    if let date = next.captureDate {
-                        Text(date, format: .dateTime.month(.abbreviated).day().year())
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundStyle(.appTextSecondary)
-                    }
-                }
-            }
-            .padding(16)
             .frame(maxWidth: .infinity)
-            .background(Color.appCard.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
-            )
         }
     }
 
     @ViewBuilder
     private var actionStack: some View {
         VStack(spacing: 10) {
-            Button {
-                dismiss()
-                onContinue?()
-            } label: {
-                continueButtonLabel
+            if let next = nextGroup {
+                // UP NEXT card + Continue merged into one tappable block
+                Button {
+                    dismiss()
+                    onContinue?()
+                } label: {
+                    nextBatchCard(next: next)
+                }
+                .accessibilityIdentifier("continueSiftingButton")
+            } else {
+                Button {
+                    dismiss()
+                    onContinue?()
+                } label: {
+                    Text("Back to Library")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [.appAccent, Color(hex: "9B59B6")],
+                                startPoint: .leading, endPoint: .trailing
+                            ),
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        )
+                }
+                .accessibilityIdentifier("continueSiftingButton")
             }
-            .accessibilityIdentifier("continueSiftingButton")
 
             if deletedCount > 0 {
                 Button { openRecentlyDeleted() } label: {
@@ -235,25 +210,73 @@ struct SessionSummaryView: View {
     }
 
     @ViewBuilder
-    private var continueButtonLabel: some View {
-        VStack(spacing: 2) {
-            Text(nextGroup != nil ? "Continue" : "Back to Library")
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-            if let next = nextGroup {
-                Text("Next batch · \(next.assets.count) photos")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+    private func nextBatchCard(next: PhotoGroup) -> some View {
+        VStack(spacing: 0) {
+            // 2x2 thumbnail grid fills most of the card
+            GeometryReader { geo in
+                let cell = geo.size.width / 2
+                LazyVGrid(columns: [GridItem(.fixed(cell), spacing: 2), GridItem(.fixed(cell), spacing: 2)], spacing: 2) {
+                    ForEach(0..<min(4, next.assets.count), id: \.self) { i in
+                        Group {
+                            if i < nextThumbnails.count {
+                                Image(uiImage: nextThumbnails[i])
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: cell, height: cell)
+                                    .clipped()
+                            } else {
+                                Color.appCard
+                                    .frame(width: cell, height: cell)
+                            }
+                        }
+                    }
+                }
             }
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            // Metadata + Continue inside the card
+            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                    Text("UP NEXT")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .tracking(2)
+                        .foregroundStyle(.appTextSecondary)
+                    Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                }
+
+                VStack(spacing: 2) {
+                    Text("\(next.assets.count) photos")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                    if let date = next.captureDate {
+                        Text(date, format: .dateTime.month(.abbreviated).day().year())
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundStyle(.appTextSecondary)
+                    }
+                }
+
+                Text("Continue")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [.appAccent, Color(hex: "9B59B6")],
+                            startPoint: .leading, endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+            }
+            .padding(16)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            LinearGradient(
-                colors: [.appAccent, Color(hex: "9B59B6")],
-                startPoint: .leading, endPoint: .trailing
-            ),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .background(Color.appCard.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
     }
 
@@ -280,10 +303,6 @@ struct SessionSummaryView: View {
 
         Spacer(minLength: 16)
 
-        nextBatchPreview
-
-        Spacer(minLength: 16)
-
         VStack(spacing: 10) {
             Button {
                 onRetry?()
@@ -302,15 +321,24 @@ struct SessionSummaryView: View {
                     )
             }
 
-            Button {
-                dismiss()
-                onContinue?()
-            } label: {
-                Text(nextGroup != nil ? "Skip — continue to next batch" : "Back to Library")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.appTextSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+            if let next = nextGroup {
+                Button {
+                    dismiss()
+                    onContinue?()
+                } label: {
+                    nextBatchCard(next: next)
+                }
+            } else {
+                Button {
+                    dismiss()
+                    onContinue?()
+                } label: {
+                    Text("Back to Library")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.appTextSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
             }
         }
     }
@@ -337,22 +365,9 @@ struct SessionSummaryView: View {
         ByteCountFormatter.string(fromByteCount: animatedBytes, countStyle: .file)
     }
 
-    private func computeTotalBytes() -> Int64 {
-        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
-        var total: Int64 = 0
-        for asset in group.deletedAssets {
-            let resources = PHAssetResource.assetResources(for: asset)
-            if let r = resources.first(where: { acceptable.contains($0.type) }),
-               let bytes = r.value(forKey: "fileSize") as? Int64 {
-                total += bytes
-            }
-        }
-        return total
-    }
-
     private func loadNextThumbnails() async {
         guard let next = nextGroup else { return }
-        let size = CGSize(width: 160, height: 160)
+        let size = CGSize(width: 320, height: 320)
         for asset in next.assets.prefix(4) {
             if let img = await PhotoLibraryService.shared.loadThumbnail(for: asset, size: size) {
                 nextThumbnails.append(img)

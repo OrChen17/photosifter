@@ -16,7 +16,7 @@ struct LibraryView: View {
                     groupList
                 }
             }
-            .navigationTitle("PhotoSifter")
+            .navigationTitle("Memories")
             .navigationBarTitleDisplayMode(.large)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -34,13 +34,16 @@ struct LibraryView: View {
 
     private var groupList: some View {
         ScrollView {
-            LazyVStack(spacing: 14) {
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                spacing: 12
+            ) {
                 ForEach(vm.groups) { group in
-                    GroupRowView(group: group)
+                    MemoryCardView(group: group)
                         .onTapGesture { vm.selectedGroup = group }
                         .accessibilityIdentifier("groupRow_\(group.id)")
                         .transition(.asymmetric(
-                            insertion: .move(edge: .top).combined(with: .opacity),
+                            insertion: .scale(scale: 0.9).combined(with: .opacity),
                             removal: .opacity
                         ))
                 }
@@ -68,72 +71,75 @@ struct LibraryView: View {
     }
 }
 
-// MARK: - Group Row
+// MARK: - Memory Card (grid cell)
 
-struct GroupRowView: View {
+struct MemoryCardView: View {
     let group: PhotoGroup
     @State private var thumbnails: [UIImage?] = []
 
     var body: some View {
-        HStack(spacing: 14) {
+        VStack(spacing: 0) {
             thumbnailGrid
-                .frame(width: 88, height: 88)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("\(group.assets.count) photos")
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
+                    .lineLimit(1)
 
                 if let date = group.captureDate {
                     Text(date, style: .relative)
-                        .font(.system(size: 14, design: .rounded))
+                        .font(.system(size: 12, design: .rounded))
                         .foregroundStyle(.appTextSecondary)
+                        .lineLimit(1)
                 }
 
                 if group.deleteCount > 0 {
-                    Text("\(group.deleteCount) deleted")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                    Text("\(group.deleteCount) marked")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(.appDelete)
                 }
             }
-
-            Spacer()
-
-            Image(systemName: group.isComplete ? "checkmark.circle.fill" : "chevron.right")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(group.isComplete ? .appKeep : .appTextSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
         }
-        .padding(14)
         .background(Color.appCard, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .task { await loadThumbnails() }
     }
 
     private var thumbnailGrid: some View {
-        let preview = thumbnails.prefix(4)
-        return GeometryReader { geo in
-            let half = geo.size.width / 2
-            LazyVGrid(columns: [GridItem(.fixed(half), spacing: 2), GridItem(.fixed(half), spacing: 2)], spacing: 2) {
-                ForEach(0..<min(4, group.assets.count), id: \.self) { i in
-                    Group {
-                        if i < preview.count, let img = preview[i] {
-                            Image(uiImage: img)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: half, height: half)
-                                .clipped()
-                        } else {
-                            Color.appCard
-                                .frame(width: half, height: half)
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay(
+                GeometryReader { geo in
+                    let half = geo.size.width / 2
+                    LazyVGrid(
+                        columns: [GridItem(.fixed(half), spacing: 2), GridItem(.fixed(half), spacing: 2)],
+                        spacing: 2
+                    ) {
+                        ForEach(0..<min(4, group.assets.count), id: \.self) { i in
+                            Group {
+                                if i < thumbnails.count, let img = thumbnails[i] {
+                                    Image(uiImage: img)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: half, height: half)
+                                        .clipped()
+                                } else {
+                                    Color.appBackground
+                                        .frame(width: half, height: half)
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
+            )
     }
 
     private func loadThumbnails() async {
-        let size = CGSize(width: 100, height: 100)
+        let size = CGSize(width: 200, height: 200)
         thumbnails = Array(repeating: nil, count: min(4, group.assets.count))
         for (i, asset) in group.assets.prefix(4).enumerated() {
             let img = await PhotoLibraryService.shared.loadThumbnail(for: asset, size: size)

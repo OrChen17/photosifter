@@ -18,10 +18,6 @@ struct SifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
 
-    private var groupFirstDate: Date? {
-        vm.group.assets.compactMap { $0.creationDate }.min()
-    }
-
     init(group: PhotoGroup) {
         _vm = State(initialValue: SifterViewModel(group: group))
     }
@@ -78,6 +74,7 @@ struct SifterView: View {
                 group: vm.group,
                 nextGroup: libraryVM.nextIncompleteGroup(after: vm.group),
                 outcome: vm.deletionOutcome,
+                deletedBytes: vm.deletedBytes,
                 onContinue: { handleContinue() },
                 onRetry: { Task { await vm.retryCommitDeletes() } }
             )
@@ -155,7 +152,6 @@ struct SifterView: View {
             if let asset = vm.currentAsset {
                 SwipeCardView(
                     asset: asset,
-                    groupFirstDate: groupFirstDate,
                     preloadedImage: imageCache[asset.localIdentifier],
                     onSwipeRight: {
                         vm.swipeRight()
