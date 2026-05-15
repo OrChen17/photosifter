@@ -10,6 +10,8 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleDisplayName</key>
+	<string>KickPic</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -21,9 +23,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>PhotoSifter needs access to your photo library to find and help you delete near-duplicate photos.</string>
+	<string>KickPic needs access to your photo library to find and help you delete near-duplicate photos.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>PhotoSifter needs access to your photo library to manage your photos.</string>
+	<string>KickPic needs access to your photo library to manage your photos.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

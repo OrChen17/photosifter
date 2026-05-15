@@ -93,8 +93,6 @@ final class SifterViewModel {
     func swipeRight() {
         guard let asset = currentAsset else { return }
         recordDecision(.keep, for: asset)
-        haptics.playKeep()
-        sounds.playKeep()
         advance()
     }
 
@@ -103,8 +101,6 @@ final class SifterViewModel {
         guard let asset = currentAsset else { return }
         recordDecision(.delete, for: asset)
         pendingDeletes.append(asset)
-        haptics.playDelete()
-        sounds.playDelete()
         advance()
     }
 

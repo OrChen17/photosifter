@@ -17,7 +17,9 @@ struct LibraryView: View {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
 
-                if vm.groups.isEmpty && !vm.isScanning {
+                if vm.groups.isEmpty && vm.isScanning {
+                    scanningState
+                } else if vm.groups.isEmpty && !vm.isScanning {
                     emptyState
                 } else {
                     groupList
@@ -103,6 +105,18 @@ struct LibraryView: View {
             }
 
             Spacer().frame(height: 32)
+        }
+    }
+
+    private var scanningState: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.4)
+                .tint(.appAccent)
+
+            Text("Scanning library…")
+                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .foregroundStyle(.appTextSecondary)
         }
     }
 

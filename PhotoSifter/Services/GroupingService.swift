@@ -50,15 +50,9 @@ actor GroupingService {
                 let nonBurst = assets.filter { !burstIDs.contains($0.localIdentifier) }
                 let buckets = Self.splitIntoBuckets(nonBurst)
 
-                await withTaskGroup(of: [PhotoGroup].self) { group in
-                    for bucket in buckets {
-                        group.addTask(priority: .background) {
-                            (try? await self.clusterBucket(bucket)) ?? []
-                        }
-                    }
-                    for await groups in group {
-                        for g in groups { continuation.yield(g) }
-                    }
+                for bucket in buckets {
+                    let groups = (try? await self.clusterBucket(bucket)) ?? []
+                    for g in groups { continuation.yield(g) }
                 }
                 continuation.finish()
             }

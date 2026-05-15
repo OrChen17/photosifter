@@ -22,7 +22,7 @@ struct PermissionView: View {
                         )
 
                     VStack(spacing: 12) {
-                        Text("PhotoSifter")
+                        Text("KickPic")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
 

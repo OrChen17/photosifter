@@ -75,7 +75,7 @@ struct SifterView: View {
         } message: {
             Text("Your decisions will be saved, but no photos will be deleted until you finish this batch.")
         }
-        .fullScreenCover(isPresented: $showSummary) {
+        .sheet(isPresented: $showSummary) {
             SessionSummaryView(
                 group: vm.group,
                 nextGroup: libraryVM.nextIncompleteGroup(after: vm.group),
@@ -128,7 +128,7 @@ struct SifterView: View {
                 case .cancelledByUser, .failed, .none:
                     await libraryVM.saveGroupProgress(vm.group)
                 }
-                try? await Task.sleep(for: .milliseconds(600))
+                try? await Task.sleep(for: .milliseconds(50))
                 showSummary = true
             }
         }
@@ -176,37 +176,63 @@ struct SifterView: View {
             .padding(.top, 8)
 
             if let asset = vm.currentAsset {
-                SwipeCardView(
-                    asset: asset,
-                    preloadedImage: imageCache[asset.localIdentifier],
-                    onSwipeRight: {
-                        vm.swipeRight()
-                        cardKey = UUID()
-                        swipeProgress = 0
-                        triggerFlash(tint: .appKeep)
-                        preloadUpcomingCards()
-                    },
-                    onSwipeLeft: {
-                        if vm.isLastUndecidedWithNoKept {
-                            showDeleteLastWarning = true
-                        } else {
-                            vm.swipeLeft()
+                ZStack {
+                    // Next card pre-rendered behind the current one — already
+                    // visible so there's no pop-in when the top card flies away.
+                    if let next = nextPreviewAsset {
+                        SwipeCardView(
+                            asset: next,
+                            preloadedImage: imageCache[next.localIdentifier],
+                            onSwipeRight: {},
+                            onSwipeLeft: {}
+                        )
+                        .scaleEffect(0.95)
+                        .offset(y: 10)
+                        .allowsHitTesting(false)
+                        .id(next.localIdentifier)
+                    }
+
+                    SwipeCardView(
+                        asset: asset,
+                        preloadedImage: imageCache[asset.localIdentifier],
+                        onSwipeRight: {
+                            vm.swipeRight()
                             cardKey = UUID()
                             swipeProgress = 0
-                            triggerFlash(tint: .appDelete)
                             preloadUpcomingCards()
+                        },
+                        onSwipeLeft: {
+                            if vm.isLastUndecidedWithNoKept {
+                                showDeleteLastWarning = true
+                            } else {
+                                vm.swipeLeft()
+                                cardKey = UUID()
+                                swipeProgress = 0
+                                preloadUpcomingCards()
+                            }
+                        },
+                        onSkip: vm.canSkipCurrent ? {
+                            vm.skipCurrent()
+                            cardKey = UUID()
+                            swipeProgress = 0
+                            preloadUpcomingCards()
+                        } : nil,
+                        onProgressChange: { swipeProgress = $0 },
+                        onThrowRight: {
+                            triggerFlash(tint: .appKeep)
+                            HapticManager.shared.playKeep()
+                            SoundManager.shared.playKeep()
+                        },
+                        onThrowLeft: {
+                            guard !vm.isLastUndecidedWithNoKept else { return }
+                            triggerFlash(tint: .appDelete)
+                            HapticManager.shared.playDelete()
+                            SoundManager.shared.playDelete()
                         }
-                    },
-                    onSkip: vm.canSkipCurrent ? {
-                        vm.skipCurrent()
-                        cardKey = UUID()
-                        swipeProgress = 0
-                        preloadUpcomingCards()
-                    } : nil,
-                    onProgressChange: { swipeProgress = $0 }
-                )
-                .id(cardKey)
-                .accessibilityIdentifier("photoCard")
+                    )
+                    .id(cardKey)
+                    .accessibilityIdentifier("photoCard")
+                }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
@@ -379,28 +405,24 @@ struct SifterView: View {
     // MARK: - Completion flash
 
     private var completionFlash: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 16) {
             Spacer()
-            Group {
-                if vm.isCommittingDeletes {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .tint(.appAccent)
-                } else {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 64))
-                        .foregroundStyle(.appAccent)
-                        .symbolEffect(.bounce)
-                }
-            }
-            Text(vm.isCommittingDeletes ? "Cleaning up…" : "Batch done!")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+            ProgressView()
+                .scaleEffect(1.5)
+                .tint(.appAccent)
+            Text("Cleaning up…")
+                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .foregroundStyle(.appTextSecondary)
             Spacer()
         }
     }
 
     // MARK: - Preloading
+
+    private var nextPreviewAsset: PHAsset? {
+        let idx = vm.currentIndex + 1
+        return idx < vm.displayOrder.count ? vm.displayOrder[idx] : nil
+    }
 
     private func preloadUpcomingCards() {
         let assets = vm.displayOrder

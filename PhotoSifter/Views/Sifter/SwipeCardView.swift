@@ -8,10 +8,13 @@ struct SwipeCardView: View {
     let preloadedImage: UIImage?
     let onSwipeRight: () -> Void
     let onSwipeLeft: () -> Void
-    let onSkip: (() -> Void)?
+    var onSkip: (() -> Void)? = nil
     /// Reports horizontal swipe progress in [-1, 1] to the parent so it can
     /// drive a screen-wide vignette. -1 = full left (delete), +1 = full right (keep).
     var onProgressChange: ((Double) -> Void)? = nil
+    /// Fires at throw start (before the animation completes) — use for immediate haptic/flash feedback.
+    var onThrowRight: (() -> Void)? = nil
+    var onThrowLeft: (() -> Void)? = nil
     /// Override the badge labels (defaults: "KEEP" / "DELETE")
     var rightBadgeLabel: String? = nil
     var leftBadgeLabel: String? = nil
@@ -229,6 +232,7 @@ struct SwipeCardView: View {
 
     private func throwCard(direction: CGFloat, then action: @escaping () -> Void) {
         isThrown = true
+        if direction > 0 { onThrowRight?() } else { onThrowLeft?() }
         withAnimation(.spring(duration: 0.4, bounce: 0.1)) {
             offset = CGSize(width: direction * 600, height: -50)
         }

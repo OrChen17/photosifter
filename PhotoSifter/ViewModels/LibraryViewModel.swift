@@ -36,6 +36,7 @@ final class LibraryViewModel {
 
     func load() async {
         error = nil
+        isScanning = true
 
         // Layer 1: Serve cached groups immediately (hydrated with saved decisions)
         if let cached = await groupingService.loadCachedGroups(), !cached.isEmpty {
@@ -43,7 +44,6 @@ final class LibraryViewModel {
         }
 
         // Layer 2: Re-scan in background, streaming results in
-        isScanning = true
         var freshGroups: [PhotoGroup] = []
         let assets = await photoService.fetchAllAssets()
         scanProgress = (0, assets.count)
@@ -54,7 +54,10 @@ final class LibraryViewModel {
             withAnimation(.spring(duration: 0.35)) {
                 freshGroups.append(hydrated)
                 // Sort by group size desc, then date desc
-                groups = freshGroups.shuffled()
+                groups = freshGroups.sorted {
+                    if $0.assets.count != $1.assets.count { return $0.assets.count > $1.assets.count }
+                    return ($0.captureDate ?? .distantPast) > ($1.captureDate ?? .distantPast)
+                }
             }
         }
 
