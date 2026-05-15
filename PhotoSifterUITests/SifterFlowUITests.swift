@@ -146,4 +146,57 @@ final class SifterFlowUITests: PhotoSifterUITestCase {
         let libraryNav = app.navigationBars["PhotoSifter"]
         XCTAssertTrue(libraryNav.waitForExistence(timeout: 3), "Should return to library after tapping back")
     }
+
+    // MARK: - Quick Win mode buttons
+
+    func testQuickWinScreenshots_deleteAllButtonReplacesKeepOnly() throws {
+        app.launchArguments = ["UI_TESTING", "QUICK_WIN_SCREENSHOTS"]
+        app.launch()
+
+        let firstRow = app.cells.firstMatch
+        guard firstRow.waitForExistence(timeout: 30) else {
+            throw XCTSkip("No photo groups on this device.")
+        }
+
+        // Tap the Screenshots pill if visible; otherwise open any group
+        let screenshotsPill = app.buttons["Screenshots"]
+        if screenshotsPill.waitForExistence(timeout: 5) {
+            screenshotsPill.tap()
+        } else {
+            throw XCTSkip("No screenshots found on this simulator — skipping Quick Win UI test.")
+        }
+
+        let card = app.otherElements["photoCard"]
+        guard card.waitForExistence(timeout: 5) else {
+            throw XCTSkip("Sifter card did not appear.")
+        }
+
+        XCTAssertTrue(app.buttons["deleteAllButton"].exists,   "Delete All button should be present in screenshots mode")
+        XCTAssertFalse(app.buttons["keepOnlyButton"].exists,   "Keep Only button must not appear in screenshots mode")
+    }
+
+    func testQuickWinDuplicates_keepOldestButtonReplacesKeepOnly() throws {
+        app.launchArguments = ["UI_TESTING"]
+        app.launch()
+
+        let firstRow = app.cells.firstMatch
+        guard firstRow.waitForExistence(timeout: 30) else {
+            throw XCTSkip("No photo groups on this device.")
+        }
+
+        let duplicatesPill = app.buttons["Exact Duplicates"]
+        if duplicatesPill.waitForExistence(timeout: 5) {
+            duplicatesPill.tap()
+        } else {
+            throw XCTSkip("No exact duplicates found on this simulator — skipping Quick Win UI test.")
+        }
+
+        let card = app.otherElements["photoCard"]
+        guard card.waitForExistence(timeout: 5) else {
+            throw XCTSkip("Sifter card did not appear.")
+        }
+
+        XCTAssertTrue(app.buttons["keepOldestButton"].exists,  "Keep Oldest button should be present in duplicates mode")
+        XCTAssertFalse(app.buttons["keepOnlyButton"].exists,   "Keep Only button must not appear in duplicates mode")
+    }
 }

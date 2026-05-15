@@ -10,6 +10,13 @@ final class LibraryViewModel {
     var isScanning: Bool = false
     var scanProgress: (current: Int, total: Int) = (0, 0)
     var error: String?
+    var completedBatches: [CompletedBatch] = []
+    var quickWins: [QuickWin] = []
+    var selectedQuickWin: QuickWin?
+    var selectedDuplicateSession: DuplicateSession?
+
+    var totalDeletedCount: Int { completedBatches.reduce(0) { $0 + $1.deletedCount } }
+    var totalSavedBytes: Int64 { completedBatches.reduce(Int64(0)) { $0 + $1.savedBytes } }
 
     private let photoService = PhotoLibraryService.shared
     private let groupingService = GroupingService.shared
@@ -56,13 +63,24 @@ final class LibraryViewModel {
 
         isScanning = false
         await groupingService.persistGroups(groups)
+        completedBatches = await CompletedBatchStore.shared.loadAll()
+
+        // Quick wins fetch runs at utility priority after scan — doesn't block the grid
+        Task(priority: .utility) {
+            let wins = await QuickWinsService.shared.fetchAll()
+            await MainActor.run { self.quickWins = wins }
+        }
     }
 
     func markGroupComplete(_ group: PhotoGroup) {
-        // Remove from the list immediately so it vanishes from the library.
         groups.removeAll { $0.id == group.id }
-        // Clear persisted partial state so the group doesn't rehydrate.
+        quickWins.removeAll { $0.group.id == group.id }
         Task { await groupingService.saveDecisions(for: PhotoGroup(id: group.id, assets: group.assets, decisions: [:])) }
+    }
+
+    func recordCompletedBatch(_ batch: CompletedBatch) async {
+        await CompletedBatchStore.shared.append(batch)
+        completedBatches.insert(batch, at: 0)
     }
 
     /// Updates the in-memory copy of a group and persists its decisions so
@@ -80,6 +98,10 @@ final class LibraryViewModel {
 
     func removeGroup(id: UUID) {
         groups.removeAll { $0.id == id }
+    }
+
+    func removeQuickWins(ofCategory category: QuickWinCategory) {
+        quickWins.removeAll { $0.category == category }
     }
 
     /// Returns the next incomplete group chronologically after `current` —

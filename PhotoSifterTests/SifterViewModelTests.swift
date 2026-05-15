@@ -365,4 +365,69 @@ final class SifterViewModelTests: XCTestCase {
         vm.undo()
         XCTAssertEqual(vm.progress, 0.25, accuracy: 0.001)
     }
+
+    // MARK: - deleteAll
+
+    func testDeleteAll_marksAllAssetsDelete() throws {
+        let group = try requirePhotoGroup(assetCount: 5)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.deleteAll()
+
+        XCTAssertTrue(vm.isComplete)
+        XCTAssertEqual(vm.group.deletedAssets.count, 5)
+        XCTAssertEqual(vm.group.keptAssets.count, 0)
+    }
+
+    func testDeleteAll_skipsAlreadyDecidedAssets() throws {
+        let group = try requirePhotoGroup(assetCount: 4)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.swipeRight() // pre-decide asset[0] as keep
+        vm.swipeLeft()  // pre-decide asset[1] as delete
+        vm.deleteAll()  // should only affect undecided [2] and [3]
+
+        XCTAssertTrue(vm.isComplete)
+        XCTAssertEqual(vm.group.decisions[group.assets[0].localIdentifier], .keep,  "Pre-decided keep must not be overwritten")
+        XCTAssertEqual(vm.group.decisions[group.assets[1].localIdentifier], .delete, "Pre-decided delete must not be changed")
+        XCTAssertEqual(vm.group.decisions[group.assets[2].localIdentifier], .delete)
+        XCTAssertEqual(vm.group.decisions[group.assets[3].localIdentifier], .delete)
+    }
+
+    // MARK: - keepOldestAndDeleteRest
+
+    func testKeepOldestAndDeleteRest_keepsEarliestCreationDate() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        let oldest = group.assets.min(by: {
+            ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast)
+        })!
+
+        vm.keepOldestAndDeleteRest()
+
+        XCTAssertEqual(vm.group.decisions[oldest.localIdentifier], .keep)
+        for asset in group.assets where asset.localIdentifier != oldest.localIdentifier {
+            XCTAssertEqual(vm.group.decisions[asset.localIdentifier], .delete)
+        }
+    }
+
+    func testKeepOldestAndDeleteRest_exactlyOneKept() throws {
+        let group = try requirePhotoGroup(assetCount: 4)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.keepOldestAndDeleteRest()
+
+        XCTAssertEqual(vm.group.keptAssets.count, 1)
+        XCTAssertEqual(vm.group.deletedAssets.count, 3)
+    }
+
+    func testKeepOldestAndDeleteRest_completesGroup() throws {
+        let group = try requirePhotoGroup(assetCount: 3)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.keepOldestAndDeleteRest()
+
+        XCTAssertTrue(vm.isComplete)
+    }
 }

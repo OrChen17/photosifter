@@ -1,8 +1,15 @@
 import SwiftUI
 import Photos
 
+private struct ScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct LibraryView: View {
     @Environment(LibraryViewModel.self) private var vm
+    @State private var stripCollapsed = false
+    @State private var initialGridY: CGFloat? = nil
 
     var body: some View {
         @Bindable var vm = vm
@@ -29,15 +36,53 @@ struct LibraryView: View {
             .navigationDestination(item: $vm.selectedGroup) { group in
                 SifterView(group: group)
             }
+            .navigationDestination(item: $vm.selectedQuickWin) { win in
+                SifterView(group: win.group, mode: .screenshots)
+            }
+            .navigationDestination(item: $vm.selectedDuplicateSession) { session in
+                DuplicateGroupSifterView(groups: session.groups)
+            }
         }
     }
 
     private var groupList: some View {
         ScrollView {
+            // Quick wins strip — collapses when user scrolls down
+            if !vm.quickWins.isEmpty {
+                QuickWinsStripView(quickWins: vm.quickWins) { win in
+                    switch win.category {
+                    case .screenshots:
+                        vm.selectedQuickWin = win
+                    case .duplicates:
+                        let groups = vm.quickWins
+                            .filter { $0.category == .duplicates }
+                            .map { $0.group }
+                        if !groups.isEmpty {
+                            vm.selectedDuplicateSession = DuplicateSession(groups: groups)
+                        }
+                    }
+                }
+                .frame(height: stripCollapsed ? 0 : nil)
+                .clipped()
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: stripCollapsed)
+            }
+
             LazyVGrid(
                 columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
                 spacing: 12
             ) {
+                // Invisible sentinel at y=0 to track scroll offset
+                Color.clear
+                    .frame(height: 0)
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(
+                                key: ScrollOffsetKey.self,
+                                value: geo.frame(in: .global).minY
+                            )
+                        }
+                    )
+
                 ForEach(vm.groups) { group in
                     MemoryCardView(group: group)
                         .onTapGesture { vm.selectedGroup = group }
@@ -50,7 +95,28 @@ struct LibraryView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            .padding(.bottom, 32)
+            .onPreferenceChange(ScrollOffsetKey.self) { y in
+                if initialGridY == nil { initialGridY = y }
+                let offset = (initialGridY ?? y) - y
+                let should = offset > 60
+                if should != stripCollapsed {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        stripCollapsed = should
+                    }
+                }
+            }
+
+            if !vm.completedBatches.isEmpty {
+                CompletedSectionView(
+                    completedBatches: vm.completedBatches,
+                    totalDeletedCount: vm.totalDeletedCount,
+                    totalSavedBytes: vm.totalSavedBytes
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
+
+            Spacer().frame(height: 32)
         }
     }
 

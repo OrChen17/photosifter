@@ -137,6 +137,37 @@ final class SifterViewModel {
         finishGroup()
     }
 
+    // MARK: - Quick win bulk actions
+
+    /// Marks every undecided asset as delete and completes the group.
+    /// Intentionally bypasses the isLastUndecidedWithNoKept guard — this is a
+    /// deliberate bulk delete (confirmed by the caller before invoking).
+    func deleteAll() {
+        for asset in displayOrder where group.decisions[asset.localIdentifier] == nil {
+            recordDecision(.delete, for: asset)
+            pendingDeletes.append(asset)
+        }
+        finishGroup()
+    }
+
+    /// Keeps the asset with the earliest creationDate, marks all others delete.
+    func keepOldestAndDeleteRest() {
+        guard !displayOrder.isEmpty else { return }
+        let oldest = displayOrder.min(by: {
+            ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast)
+        })!
+        for asset in displayOrder {
+            guard group.decisions[asset.localIdentifier] == nil else { continue }
+            if asset.localIdentifier == oldest.localIdentifier {
+                recordDecision(.keep, for: asset)
+            } else {
+                recordDecision(.delete, for: asset)
+                pendingDeletes.append(asset)
+            }
+        }
+        finishGroup()
+    }
+
     // MARK: - Jump (tap on strip)
 
     /// Jump the cursor to `asset`. If the asset already has a decision, that

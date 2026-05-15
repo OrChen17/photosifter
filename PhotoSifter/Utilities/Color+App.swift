@@ -3,8 +3,8 @@ import SwiftUI
 extension Color {
     static let appBackground   = Color(hex: "0A0A0F")
     static let appCard         = Color(hex: "1C1C24")
-    static let appKeep         = Color(hex: "34C759")
-    static let appDelete       = Color(hex: "FF3B30")
+    static let appKeep         = Color(hex: "22D3EE")
+    static let appDelete       = Color(hex: "6C63FF")
     static let appAccent       = Color(hex: "6C63FF")
     static let appTextSecondary = Color(white: 0.55)
 

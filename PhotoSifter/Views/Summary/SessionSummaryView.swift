@@ -125,7 +125,7 @@ struct SessionSummaryView: View {
                     .font(.system(size: 56, weight: .black, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.appDelete, Color(hex: "FF6B6B")],
+                            colors: [.appDelete, Color(hex: "9B8BFF")],
                             startPoint: .top, endPoint: .bottom
                         )
                     )
@@ -147,7 +147,7 @@ struct SessionSummaryView: View {
                     .font(.system(size: 56, weight: .black, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.appKeep, Color(hex: "5DDC9A")],
+                            colors: [.appKeep, Color(hex: "67E8F9")],
                             startPoint: .top, endPoint: .bottom
                         )
                     )

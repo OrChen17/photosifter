@@ -27,6 +27,15 @@
 		A017 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B017 /* SoundManager.swift */; };
 		A018 /* Color+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018 /* Color+App.swift */; };
 		A019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B019 /* Assets.xcassets */; };
+		X001 /* CompletedBatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX01 /* CompletedBatch.swift */; };
+		X002 /* CompletedBatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX02 /* CompletedBatchStore.swift */; };
+		X003 /* QuickWin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX03 /* QuickWin.swift */; };
+		X004 /* QuickWinsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX04 /* QuickWinsService.swift */; };
+		X005 /* CompletedBatchCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX05 /* CompletedBatchCardView.swift */; };
+		X006 /* CompletedSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX06 /* CompletedSectionView.swift */; };
+		X007 /* QuickWinsStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX07 /* QuickWinsStripView.swift */; };
+		X008 /* DuplicateGroupSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX08 /* DuplicateGroupSifterViewModel.swift */; };
+		X009 /* DuplicateGroupSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX09 /* DuplicateGroupSifterView.swift */; };
 		T001 /* PhotoGroupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S001 /* PhotoGroupTests.swift */; };
 		T002 /* SifterViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S002 /* SifterViewModelTests.swift */; };
 		T003 /* LibraryViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S003 /* LibraryViewModelTests.swift */; };
@@ -38,6 +47,8 @@
 		T009 /* GroupingDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S009 /* GroupingDiagnosticTests.swift */; };
 		T010 /* MockSimilarityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = S010 /* MockSimilarityService.swift */; };
 		T011 /* GroupingServiceMockedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S011 /* GroupingServiceMockedTests.swift */; };
+		T012 /* CompletedBatchStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S012 /* CompletedBatchStoreTests.swift */; };
+		T013 /* QuickWinsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S013 /* QuickWinsServiceTests.swift */; };
 		U001 /* PhotoSifterUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R001 /* PhotoSifterUITests.swift */; };
 		U002 /* PermissionFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R002 /* PermissionFlowUITests.swift */; };
 		U003 /* LibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R003 /* LibraryUITests.swift */; };
@@ -82,6 +93,15 @@
 		B017 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		B018 /* Color+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+App.swift"; sourceTree = "<group>"; };
 		B019 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BX01 /* CompletedBatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatch.swift; sourceTree = "<group>"; };
+		BX02 /* CompletedBatchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchStore.swift; sourceTree = "<group>"; };
+		BX03 /* QuickWin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWin.swift; sourceTree = "<group>"; };
+		BX04 /* QuickWinsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsService.swift; sourceTree = "<group>"; };
+		BX05 /* CompletedBatchCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchCardView.swift; sourceTree = "<group>"; };
+		BX06 /* CompletedSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedSectionView.swift; sourceTree = "<group>"; };
+		BX07 /* QuickWinsStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsStripView.swift; sourceTree = "<group>"; };
+		BX08 /* DuplicateGroupSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterViewModel.swift; sourceTree = "<group>"; };
+		BX09 /* DuplicateGroupSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterView.swift; sourceTree = "<group>"; };
 		C001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		PROD /* PhotoSifter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoSifter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		R001 /* PhotoSifterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSifterUITests.swift; sourceTree = "<group>"; };
@@ -99,6 +119,8 @@
 		S009 /* GroupingDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupingDiagnosticTests.swift; sourceTree = "<group>"; };
 		S010 /* MockSimilarityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockSimilarityService.swift; sourceTree = "<group>"; };
 		S011 /* GroupingServiceMockedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupingServiceMockedTests.swift; sourceTree = "<group>"; };
+		S012 /* CompletedBatchStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchStoreTests.swift; sourceTree = "<group>"; };
+		S013 /* QuickWinsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsServiceTests.swift; sourceTree = "<group>"; };
 		TPROD /* PhotoSifterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		UPROD /* PhotoSifterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -142,6 +164,8 @@
 			isa = PBXGroup;
 			children = (
 				B003 /* PhotoGroup.swift */,
+				BX01 /* CompletedBatch.swift */,
+				BX03 /* QuickWin.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -153,6 +177,8 @@
 				B005 /* SimilarityService.swift */,
 				B006 /* GroupingService.swift */,
 				B006D /* DebugSimilarityService.swift */,
+				BX02 /* CompletedBatchStore.swift */,
+				BX04 /* QuickWinsService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -168,6 +194,8 @@
 				S006 /* SimilarityServiceTests.swift */,
 				S009 /* GroupingDiagnosticTests.swift */,
 				S011 /* GroupingServiceMockedTests.swift */,
+				S012 /* CompletedBatchStoreTests.swift */,
+				S013 /* QuickWinsServiceTests.swift */,
 				GRP_MOCKS /* Mocks */,
 			);
 			path = PhotoSifterTests;
@@ -209,6 +237,9 @@
 			isa = PBXGroup;
 			children = (
 				B010 /* LibraryView.swift */,
+				BX05 /* CompletedBatchCardView.swift */,
+				BX06 /* CompletedSectionView.swift */,
+				BX07 /* QuickWinsStripView.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -218,6 +249,7 @@
 			children = (
 				B007 /* LibraryViewModel.swift */,
 				B008 /* SifterViewModel.swift */,
+				BX08 /* DuplicateGroupSifterViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -237,6 +269,7 @@
 				B012 /* SwipeCardView.swift */,
 				B013 /* BatchStripView.swift */,
 				B014 /* DecisionBadgeView.swift */,
+				BX09 /* DuplicateGroupSifterView.swift */,
 			);
 			path = Sifter;
 			sourceTree = "<group>";
@@ -417,6 +450,15 @@
 				A016 /* HapticManager.swift in Sources */,
 				A017 /* SoundManager.swift in Sources */,
 				A018 /* Color+App.swift in Sources */,
+				X001 /* CompletedBatch.swift in Sources */,
+				X002 /* CompletedBatchStore.swift in Sources */,
+				X003 /* QuickWin.swift in Sources */,
+				X004 /* QuickWinsService.swift in Sources */,
+				X005 /* CompletedBatchCardView.swift in Sources */,
+				X006 /* CompletedSectionView.swift in Sources */,
+				X007 /* QuickWinsStripView.swift in Sources */,
+				X008 /* DuplicateGroupSifterViewModel.swift in Sources */,
+				X009 /* DuplicateGroupSifterView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -435,6 +477,8 @@
 				T009 /* GroupingDiagnosticTests.swift in Sources */,
 				T010 /* MockSimilarityService.swift in Sources */,
 				T011 /* GroupingServiceMockedTests.swift in Sources */,
+				T012 /* CompletedBatchStoreTests.swift in Sources */,
+				T013 /* QuickWinsServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -496,6 +540,7 @@
 		CFG_DEBUG_TARGET /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TU8RQA5TLD;
