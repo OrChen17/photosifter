@@ -1,56 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Background: diagonal 80% purple → 20% cyan -->
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%"   stop-color="#5A52D5"/>
       <stop offset="70%"  stop-color="#6C63FF"/>
       <stop offset="100%" stop-color="#22D3EE"/>
     </linearGradient>
-
-    <!-- Cards: frosted glass layers -->
-    <linearGradient id="cardBack" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="rgba(255,255,255,0.09)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0.03)"/>
-    </linearGradient>
-    <linearGradient id="cardMid" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="rgba(255,255,255,0.16)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0.06)"/>
-    </linearGradient>
-    <linearGradient id="cardFront" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="rgba(255,255,255,0.32)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0.12)"/>
-    </linearGradient>
-
-    <filter id="cardShadow">
-      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="rgba(0,0,12,0.45)"/>
-    </filter>
   </defs>
 
   <!-- Background -->
   <rect width="1024" height="1024" fill="url(#bg)"/>
 
-  <!-- Card stack centered at (545, 525), card 380×530 -->
-  <!-- x base = 545-190 = 355, y base = 525-265 = 260 -->
-
-  <!-- Back card: CW rotation, shifted right/down -->
+  <!-- Back card -->
   <g transform="translate(28, 22) rotate(9, 545, 525)">
     <rect x="355" y="260" width="380" height="530" rx="36"
-          fill="url(#cardBack)" stroke="rgba(255,255,255,0.14)" stroke-width="2"
-          filter="url(#cardShadow)"/>
+          fill="white" fill-opacity="0.10"
+          stroke="white" stroke-opacity="0.18" stroke-width="2"/>
   </g>
 
-  <!-- Middle card: slight CW rotation -->
+  <!-- Middle card -->
   <g transform="translate(13, 10) rotate(3.5, 545, 525)">
     <rect x="355" y="260" width="380" height="530" rx="36"
-          fill="url(#cardMid)" stroke="rgba(255,255,255,0.22)" stroke-width="2"
-          filter="url(#cardShadow)"/>
+          fill="white" fill-opacity="0.18"
+          stroke="white" stroke-opacity="0.28" stroke-width="2"/>
   </g>
 
-  <!-- Front card: swiping left — translate left, rotate CCW from bottom -->
+  <!-- Front card: swiping left -->
   <g transform="translate(-82, -12) rotate(-17, 545, 720)">
     <rect x="355" y="260" width="380" height="530" rx="36"
-          fill="url(#cardFront)" stroke="rgba(255,255,255,0.42)" stroke-width="2.5"
-          filter="url(#cardShadow)"/>
+          fill="white" fill-opacity="0.28"
+          stroke="white" stroke-opacity="0.50" stroke-width="2.5"/>
   </g>
-
 </svg>

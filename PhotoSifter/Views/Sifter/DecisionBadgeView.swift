@@ -5,9 +5,10 @@ struct DecisionBadgeView: View {
 
     let kind: Kind
     let opacity: Double
+    var label: String? = nil
 
     var body: some View {
-        Text(kind == .keep ? "KEEP" : "DELETE")
+        Text(label ?? (kind == .keep ? "KEEP" : "DELETE"))
             .font(.system(size: 28, weight: .black, design: .rounded))
             .foregroundStyle(kind == .keep ? Color.appKeep : Color.appDelete)
             .padding(.horizontal, 18)

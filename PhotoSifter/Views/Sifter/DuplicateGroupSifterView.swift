@@ -8,6 +8,8 @@ struct DuplicateGroupSifterView: View {
     @State private var cardKey: UUID = UUID()
     @State private var swipeProgress: Double = 0
     @State private var isDone: Bool = false
+    @State private var currentAssetIndex: Int = 0
+    @State private var imageCache: [String: UIImage] = [:]
 
     init(groups: [PhotoGroup]) {
         _vm = State(initialValue: DuplicateGroupSifterViewModel(groups: groups))
@@ -31,9 +33,7 @@ struct DuplicateGroupSifterView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
+                Button { dismiss() } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.backward")
                             .font(.system(size: 17, weight: .semibold))
@@ -53,21 +53,47 @@ struct DuplicateGroupSifterView: View {
                 isDone = true
             }
         }
+        .onChange(of: vm.currentIndex) { _, _ in
+            currentAssetIndex = 0
+            cardKey = UUID()
+            swipeProgress = 0
+            preloadGroupImages()
+        }
+        .task { preloadGroupImages() }
     }
 
     private var navigationTitle: String {
         "Duplicate \(min(vm.currentIndex + 1, vm.groups.count)) of \(vm.groups.count)"
     }
 
+    private var currentAsset: PHAsset? {
+        guard let group = vm.currentGroup, currentAssetIndex < group.assets.count else { return nil }
+        return group.assets[currentAssetIndex]
+    }
+
     // MARK: - Main content
 
     private var mainContent: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 8)
-
             if let group = vm.currentGroup {
-                DuplicateGroupCardView(
+                BatchStripView(
                     group: group,
+                    currentAssetID: currentAsset?.localIdentifier,
+                    onTap: { asset in
+                        if let idx = group.assets.firstIndex(where: { $0.localIdentifier == asset.localIdentifier }) {
+                            currentAssetIndex = idx
+                            cardKey = UUID()
+                            swipeProgress = 0
+                        }
+                    }
+                )
+                .padding(.top, 8)
+            }
+
+            if let asset = currentAsset {
+                SwipeCardView(
+                    asset: asset,
+                    preloadedImage: imageCache[asset.localIdentifier],
                     onSwipeRight: {
                         vm.swipeKeepAll()
                         cardKey = UUID()
@@ -78,20 +104,27 @@ struct DuplicateGroupSifterView: View {
                         cardKey = UUID()
                         swipeProgress = 0
                     },
-                    onProgressChange: { swipeProgress = $0 }
+                    onSkip: nil,
+                    onProgressChange: { swipeProgress = $0 },
+                    rightBadgeLabel: "KEEP ALL",
+                    leftBadgeLabel: "MERGE"
                 )
                 .id(cardKey)
+                .accessibilityIdentifier("photoCard")
                 .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
 
             bottomBar
                 .padding(.horizontal, 24)
-                .padding(.bottom, 20)
+                .padding(.bottom, 16)
         }
     }
 
+    // MARK: - Bottom bar
+
     private var bottomBar: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 14) {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
@@ -212,8 +245,11 @@ struct DuplicateGroupSifterView: View {
                 gradient: Gradient(stops: [
                     .init(color: .clear,                         location: 0.00),
                     .init(color: .clear,                         location: 0.32),
+                    .init(color: tint.opacity(magnitude * 0.04), location: 0.46),
                     .init(color: tint.opacity(magnitude * 0.09), location: 0.58),
+                    .init(color: tint.opacity(magnitude * 0.16), location: 0.69),
                     .init(color: tint.opacity(magnitude * 0.26), location: 0.79),
+                    .init(color: tint.opacity(magnitude * 0.38), location: 0.88),
                     .init(color: tint.opacity(magnitude * 0.52), location: 0.95),
                     .init(color: tint.opacity(magnitude * 0.68), location: 1.00),
                 ]),
@@ -225,123 +261,18 @@ struct DuplicateGroupSifterView: View {
             .ignoresSafeArea()
         }
     }
-}
 
-// MARK: - Card
+    // MARK: - Preloading
 
-private struct DuplicateGroupCardView: View {
-    let group: PhotoGroup
-    var onSwipeRight: () -> Void
-    var onSwipeLeft: () -> Void
-    var onProgressChange: (Double) -> Void
-
-    @State private var offset: CGFloat = 0
-    @State private var thumbnails: [UIImage] = []
-
-    private let badgeThreshold: CGFloat = 60
-    private let snapThreshold: CGFloat = 120
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.appCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
-                )
-
-            thumbnailGrid
-
-            if offset > badgeThreshold {
-                badge(text: "KEEP ALL", color: .appKeep)
-                    .padding(16)
-                    .transition(.scale.combined(with: .opacity))
-            } else if offset < -badgeThreshold {
-                badge(text: "MERGE", color: .appDelete)
-                    .padding(16)
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .aspectRatio(1, contentMode: .fit)
-        .rotationEffect(.degrees(Double(offset) / 18))
-        .offset(x: offset, y: abs(offset) * 0.06)
-        .gesture(dragGesture)
-        .animation(.interactiveSpring(), value: offset)
-        .task { await loadThumbnails() }
-    }
-
-    private var dragGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                offset = value.translation.width
-                onProgressChange(Double(value.translation.width) / 150)
-            }
-            .onEnded { value in
-                let x = value.translation.width
-                if x > snapThreshold {
-                    snapOff(direction: 1, action: onSwipeRight)
-                } else if x < -snapThreshold {
-                    snapOff(direction: -1, action: onSwipeLeft)
-                } else {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { offset = 0 }
-                    onProgressChange(0)
+    private func preloadGroupImages() {
+        guard let group = vm.currentGroup else { return }
+        Task(priority: .utility) {
+            for asset in group.assets {
+                let id = asset.localIdentifier
+                guard imageCache[id] == nil else { continue }
+                if let img = await PhotoLibraryService.shared.loadFullImage(for: asset) {
+                    imageCache[id] = img
                 }
-            }
-    }
-
-    private func snapOff(direction: CGFloat, action: @escaping () -> Void) {
-        withAnimation(.easeIn(duration: 0.2)) { offset = direction * 600 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { action() }
-    }
-
-    private var thumbnailGrid: some View {
-        Color.clear
-            .aspectRatio(1, contentMode: .fit)
-            .overlay(
-                GeometryReader { geo in
-                    let n = min(4, group.assets.count)
-                    let cols = n == 1 ? 1 : 2
-                    let cell = geo.size.width / CGFloat(cols)
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.fixed(cell), spacing: 2), count: cols),
-                        spacing: 2
-                    ) {
-                        ForEach(0..<n, id: \.self) { i in
-                            Group {
-                                if i < thumbnails.count {
-                                    Image(uiImage: thumbnails[i])
-                                        .resizable().scaledToFill()
-                                        .frame(width: cell, height: cell).clipped()
-                                } else {
-                                    Color.appBackground.frame(width: cell, height: cell)
-                                }
-                            }
-                        }
-                    }
-                }
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
-    private func badge(text: String, color: Color) -> some View {
-        Text(text)
-            .font(.system(size: 14, weight: .heavy, design: .rounded))
-            .tracking(1.5)
-            .foregroundStyle(color)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(color.opacity(0.6), lineWidth: 1.5)
-            )
-    }
-
-    private func loadThumbnails() async {
-        let size = CGSize(width: 400, height: 400)
-        for asset in group.assets.prefix(4) {
-            if let img = await PhotoLibraryService.shared.loadThumbnail(for: asset, size: size) {
-                thumbnails.append(img)
             }
         }
     }

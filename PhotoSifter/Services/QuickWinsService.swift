@@ -47,19 +47,14 @@ actor QuickWinsService {
         }
     }
 
-    // MARK: - Exact duplicates (Apple smart album + SHA-256)
+    // MARK: - Exact duplicates (size pre-filter + SHA-256, memory-conscious)
 
     private func findExactDuplicateWins() async -> [QuickWin] {
-        // Use Apple's Duplicates smart album (iOS 16+) as the candidate pool.
-        // This is far smaller than the full library, making hashing cheap.
-        let collections = PHAssetCollection.fetchAssetCollections(
-            with: .smartAlbum, subtype: .smartAlbumDuplicates, options: nil
-        )
-        guard let dupAlbum = collections.firstObject else { return [] }
-
+        // Fetch all images, then use size pre-filter to eliminate >95% before hashing.
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
         var assets: [PHAsset] = []
-        PHAsset.fetchAssets(in: dupAlbum, options: nil)
-            .enumerateObjects { a, _, _ in assets.append(a) }
+        PHAsset.fetchAssets(with: fetchOptions).enumerateObjects { a, _, _ in assets.append(a) }
         guard assets.count >= 2 else { return [] }
 
         // Step 1: size pre-filter using the pure helper

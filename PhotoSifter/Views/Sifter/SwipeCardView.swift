@@ -12,6 +12,9 @@ struct SwipeCardView: View {
     /// Reports horizontal swipe progress in [-1, 1] to the parent so it can
     /// drive a screen-wide vignette. -1 = full left (delete), +1 = full right (keep).
     var onProgressChange: ((Double) -> Void)? = nil
+    /// Override the badge labels (defaults: "KEEP" / "DELETE")
+    var rightBadgeLabel: String? = nil
+    var leftBadgeLabel: String? = nil
 
     @State private var offset: CGSize = .zero
     @State private var isThrown: Bool = false
@@ -37,7 +40,7 @@ struct SwipeCardView: View {
                 // KEEP badge — top left when dragging right
                 VStack {
                     HStack {
-                        DecisionBadgeView(kind: .keep, opacity: keepOpacity)
+                        DecisionBadgeView(kind: .keep, opacity: keepOpacity, label: rightBadgeLabel)
                             .padding(24)
                         Spacer()
                     }
@@ -48,7 +51,7 @@ struct SwipeCardView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        DecisionBadgeView(kind: .delete, opacity: deleteOpacity)
+                        DecisionBadgeView(kind: .delete, opacity: deleteOpacity, label: leftBadgeLabel)
                             .padding(24)
                     }
                     Spacer()

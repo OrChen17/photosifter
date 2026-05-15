@@ -2,6 +2,32 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Rebuild & Run on Orr Iphone",
+      "type": "shell",
+      "command": "xcodebuild -scheme PhotoSifter -destination 'id=00008120-001261E402A0C01E' -derivedDataPath build build 2>&1 | grep -E '(error:|warning:|BUILD SUCCEEDED|BUILD FAILED)' && xcrun devicectl device install app --device 00008120-001261E402A0C01E build/Build/Products/Debug-iphoneos/PhotoSifter.app && xcrun devicectl device process launch --device 00008120-001261E402A0C01E com.photosifter.app",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": {
+        "owner": "xcode",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+):\\s+(error|warning):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    },
+    {
       "label": "Rebuild & Run on Simulator",
       "type": "shell",
       "command": "xcodebuild -scheme PhotoSifter -destination 'id=4902F1E6-4F1C-40A8-8C57-F1D91073F8F1' -derivedDataPath build build 2>&1 | grep -E '(error:|warning:|BUILD SUCCEEDED|BUILD FAILED)' && open -a Simulator && xcrun simctl bootstatus 4902F1E6-4F1C-40A8-8C57-F1D91073F8F1 -b && xcrun simctl terminate 4902F1E6-4F1C-40A8-8C57-F1D91073F8F1 com.photosifter.app 2>/dev/null; xcrun simctl install 4902F1E6-4F1C-40A8-8C57-F1D91073F8F1 build/Build/Products/Debug-iphonesimulator/PhotoSifter.app && xcrun simctl launch 4902F1E6-4F1C-40A8-8C57-F1D91073F8F1 com.photosifter.app",

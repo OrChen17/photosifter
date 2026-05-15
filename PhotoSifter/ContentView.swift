@@ -14,7 +14,17 @@ struct ContentView: View {
         } else {
             switch vm.authStatus {
             case .authorized, .limited:
-                LibraryView()
+                TabView {
+                    LibraryView()
+                        .tabItem {
+                            Label("Sift", systemImage: "photo.stack")
+                        }
+                    HistoryView()
+                        .tabItem {
+                            Label("History", systemImage: "checkmark.circle.fill")
+                        }
+                }
+                .tint(.appAccent)
             case .denied, .restricted:
                 DeniedView()
             default:

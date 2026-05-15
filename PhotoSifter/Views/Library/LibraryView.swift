@@ -23,7 +23,7 @@ struct LibraryView: View {
                     groupList
                 }
             }
-            .navigationTitle("Memories")
+            .navigationTitle("Sift Away")
             .navigationBarTitleDisplayMode(.large)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -71,18 +71,6 @@ struct LibraryView: View {
                 columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
                 spacing: 12
             ) {
-                // Invisible sentinel at y=0 to track scroll offset
-                Color.clear
-                    .frame(height: 0)
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: ScrollOffsetKey.self,
-                                value: geo.frame(in: .global).minY
-                            )
-                        }
-                    )
-
                 ForEach(vm.groups) { group in
                     MemoryCardView(group: group)
                         .onTapGesture { vm.selectedGroup = group }
@@ -93,6 +81,14 @@ struct LibraryView: View {
                         ))
                 }
             }
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: ScrollOffsetKey.self,
+                        value: geo.frame(in: .global).minY
+                    )
+                }
+            )
             .padding(.horizontal, 16)
             .padding(.top, 8)
             .onPreferenceChange(ScrollOffsetKey.self) { y in
@@ -104,16 +100,6 @@ struct LibraryView: View {
                         stripCollapsed = should
                     }
                 }
-            }
-
-            if !vm.completedBatches.isEmpty {
-                CompletedSectionView(
-                    completedBatches: vm.completedBatches,
-                    totalDeletedCount: vm.totalDeletedCount,
-                    totalSavedBytes: vm.totalSavedBytes
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
             }
 
             Spacer().frame(height: 32)

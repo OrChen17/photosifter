@@ -54,10 +54,7 @@ final class LibraryViewModel {
             withAnimation(.spring(duration: 0.35)) {
                 freshGroups.append(hydrated)
                 // Sort by group size desc, then date desc
-                groups = freshGroups.sorted {
-                    if $0.assets.count != $1.assets.count { return $0.assets.count > $1.assets.count }
-                    return ($0.captureDate ?? .distantPast) > ($1.captureDate ?? .distantPast)
-                }
+                groups = freshGroups.shuffled()
             }
         }
 

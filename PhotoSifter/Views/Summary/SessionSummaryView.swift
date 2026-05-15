@@ -15,6 +15,8 @@ struct SessionSummaryView: View {
     @State private var totalBytes: Int64 = 0
     @State private var headline: String = ""
     @State private var nextThumbnails: [UIImage] = []
+    @State private var countdown: Int = 5
+    @State private var autoTask: Task<Void, Never>?
 
     private var deletedCount: Int { group.deletedAssets.count }
     private var isCancelledOrFailed: Bool {
@@ -82,6 +84,7 @@ struct SessionSummaryView: View {
                 await runCommittedAnimation()
             }
         }
+        .onDisappear { autoTask?.cancel() }
         // Re-run when a retry flips outcome to .committed so the numbers
         // count up from 0 instead of staying frozen at the initial zeros.
         .onChange(of: outcome) { _, newOutcome in
@@ -96,6 +99,21 @@ struct SessionSummaryView: View {
         animatedCount = 0
         animatedBytes = 0
         await tickUp(count: deletedCount, bytes: totalBytes, duration: 1.0)
+        if nextGroup != nil { startCountdown() }
+    }
+
+    private func startCountdown() {
+        autoTask?.cancel()
+        countdown = 5
+        autoTask = Task {
+            for i in stride(from: 5, through: 1, by: -1) {
+                countdown = i
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+            }
+            dismiss()
+            onContinue?()
+        }
     }
 
     // MARK: - Committed (success / nothing-to-delete)
@@ -169,10 +187,11 @@ struct SessionSummaryView: View {
             if let next = nextGroup {
                 // UP NEXT card + Continue merged into one tappable block
                 Button {
+                    autoTask?.cancel()
                     dismiss()
                     onContinue?()
                 } label: {
-                    nextBatchCard(next: next)
+                    nextBatchCard(next: next, countdown: countdown)
                 }
                 .accessibilityIdentifier("continueSiftingButton")
             } else {
@@ -210,7 +229,7 @@ struct SessionSummaryView: View {
     }
 
     @ViewBuilder
-    private func nextBatchCard(next: PhotoGroup) -> some View {
+    private func nextBatchCard(next: PhotoGroup, countdown: Int? = nil) -> some View {
         VStack(spacing: 0) {
             // 2x2 thumbnail grid fills most of the card
             GeometryReader { geo in
@@ -257,11 +276,13 @@ struct SessionSummaryView: View {
                     }
                 }
 
-                Text("Continue")
+                Text(countdown.map { "Continue · \($0)" } ?? "Continue")
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
+                    .contentTransition(.numericText())
+                    .animation(.default, value: countdown)
                     .background(
                         LinearGradient(
                             colors: [.appAccent, Color(hex: "9B59B6")],
@@ -362,7 +383,13 @@ struct SessionSummaryView: View {
     // MARK: - Helpers
 
     private var animatedBytesString: String {
-        ByteCountFormatter.string(fromByteCount: animatedBytes, countStyle: .file)
+        if animatedBytes >= 1_000_000_000 {
+            return String(format: "%.0f GB", Double(animatedBytes) / 1_000_000_000)
+        } else if animatedBytes >= 1_000_000 {
+            return String(format: "%.0f MB", Double(animatedBytes) / 1_000_000)
+        } else {
+            return ByteCountFormatter.string(fromByteCount: animatedBytes, countStyle: .file)
+        }
     }
 
     private func loadNextThumbnails() async {

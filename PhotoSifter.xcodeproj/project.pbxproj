@@ -36,6 +36,7 @@
 		X007 /* QuickWinsStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX07 /* QuickWinsStripView.swift */; };
 		X008 /* DuplicateGroupSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX08 /* DuplicateGroupSifterViewModel.swift */; };
 		X009 /* DuplicateGroupSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX09 /* DuplicateGroupSifterView.swift */; };
+		X010 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX10 /* HistoryView.swift */; };
 		T001 /* PhotoGroupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S001 /* PhotoGroupTests.swift */; };
 		T002 /* SifterViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S002 /* SifterViewModelTests.swift */; };
 		T003 /* LibraryViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S003 /* LibraryViewModelTests.swift */; };
@@ -102,6 +103,7 @@
 		BX07 /* QuickWinsStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsStripView.swift; sourceTree = "<group>"; };
 		BX08 /* DuplicateGroupSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterViewModel.swift; sourceTree = "<group>"; };
 		BX09 /* DuplicateGroupSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterView.swift; sourceTree = "<group>"; };
+		BX10 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		C001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		PROD /* PhotoSifter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoSifter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		R001 /* PhotoSifterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSifterUITests.swift; sourceTree = "<group>"; };
@@ -240,6 +242,7 @@
 				BX05 /* CompletedBatchCardView.swift */,
 				BX06 /* CompletedSectionView.swift */,
 				BX07 /* QuickWinsStripView.swift */,
+				BX10 /* HistoryView.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -459,6 +462,7 @@
 				X007 /* QuickWinsStripView.swift in Sources */,
 				X008 /* DuplicateGroupSifterViewModel.swift in Sources */,
 				X009 /* DuplicateGroupSifterView.swift in Sources */,
+				X010 /* HistoryView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
