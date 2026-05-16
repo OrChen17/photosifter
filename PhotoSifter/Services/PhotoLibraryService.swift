@@ -36,12 +36,18 @@ actor PhotoLibraryService {
             options.deliveryMode = .opportunistic
             options.resizeMode = .fast
             options.isNetworkAccessAllowed = true
+            // .opportunistic delivers two callbacks (degraded then final).
+            // CheckedContinuation must only be resumed once — guard with Once.
+            final class Once { var fired = false }
+            let once = Once()
             imageManager.requestImage(
                 for: asset,
                 targetSize: size,
                 contentMode: .aspectFill,
                 options: options
             ) { image, _ in
+                guard !once.fired else { return }
+                once.fired = true
                 continuation.resume(returning: image)
             }
         }
