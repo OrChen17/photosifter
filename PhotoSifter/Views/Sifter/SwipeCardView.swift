@@ -23,7 +23,6 @@ struct SwipeCardView: View {
     @State private var isThrown: Bool = false
     @State private var image: UIImage?
     @State private var locationLabel: String?
-    // Track threshold crossings so haptic fires once per crossing, not every frame
     @State private var hasCrossedBadgeThreshold: Bool = false
 
     private let snapThreshold: CGFloat = 120
@@ -96,7 +95,6 @@ struct SwipeCardView: View {
             .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.85), value: offset)
         }
         .task {
-            // Use preloaded image if available, otherwise fetch
             if let preloaded = preloadedImage {
                 image = preloaded
             } else {
@@ -136,22 +134,26 @@ struct SwipeCardView: View {
             HStack(spacing: 10) {
                 if let date = asset.creationDate {
                     Text(date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().second()))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .monospacedDigit()
+                        .foregroundStyle(.white)
                 }
                 Spacer()
-                if let loc = locationLabel {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 10))
-                    Text(loc)
-                        .lineLimit(1)
+                HStack(spacing: 4) {
+                    if let loc = locationLabel {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 9))
+                        Text(loc)
+                            .lineLimit(1)
+                    }
+                    if let size = fileSize {
+                        if locationLabel != nil { Text("·") }
+                        Text(size)
+                    }
                 }
-                if let size = fileSize {
-                    if locationLabel != nil { Text("·") }
-                    Text(size)
-                }
+                .font(.system(size: 11, weight: .regular, design: .rounded))
+                .foregroundStyle(.white.opacity(0.65))
             }
-            .font(.system(size: 12, weight: .medium, design: .rounded))
-            .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(.ultraThinMaterial)

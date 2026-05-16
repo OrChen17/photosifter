@@ -9,16 +9,15 @@ struct SifterView: View {
     @State private var showSummary: Bool = false
     @State private var cardKey: UUID = UUID()
     @State private var showDeleteLastWarning: Bool = false
-    @State private var showDeleteAllConfirmation: Bool = false
     @State private var imageCache: [String: UIImage] = [:]
     // Horizontal swipe progress reported by SwipeCardView in [-1, +1].
     // Drives the screen-wide vignette: + = keep (green), - = delete (red).
     @State private var swipeProgress: Double = 0
     @State private var flashTint: Color = .appKeep
     @State private var flashIntensity: Double = 0
-    @State private var showExitConfirmation: Bool = false
     @State private var isTopCardThrown: Bool = false
-    @AppStorage("midBatchAlwaysSave") private var midBatchAlwaysSave: Bool = false
+    @State private var cardAppearWobble: Double = 1.5
+    @AppStorage("skipUsageCount") private var skipUsageCount: Int = 0
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
 
@@ -45,38 +44,14 @@ struct SifterView: View {
                 .allowsHitTesting(false)
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             backButton
         }
-        .confirmationDialog(
-            "Exit batch?",
-            isPresented: $showExitConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Save Progress") {
-                Task {
-                    await libraryVM.saveGroupProgress(vm.group)
-                    dismiss()
-                }
-            }
-            Button("Don't Save", role: .destructive) {
-                dismiss()
-            }
-            Button("Always Save (don't ask again)") {
-                midBatchAlwaysSave = true
-                Task {
-                    await libraryVM.saveGroupProgress(vm.group)
-                    dismiss()
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your decisions will be saved, but no photos will be deleted until you finish this batch.")
-        }
-        .sheet(isPresented: $showSummary) {
+        .fullScreenCover(isPresented: $showSummary) {
             SessionSummaryView(
                 group: vm.group,
                 nextGroup: libraryVM.nextIncompleteGroup(after: vm.group),
@@ -85,16 +60,6 @@ struct SifterView: View {
                 onContinue: { handleContinue() },
                 onRetry: { Task { await vm.retryCommitDeletes() } }
             )
-        }
-        .alert("Delete All \(vm.group.assets.count) Photos?", isPresented: $showDeleteAllConfirmation) {
-            Button("Delete All", role: .destructive) {
-                vm.deleteAll()
-                cardKey = UUID()
-                swipeProgress = 0
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("All \(vm.group.assets.count) photos in this batch will be deleted.")
         }
         .alert("Delete All Photos?", isPresented: $showDeleteLastWarning) {
             Button("Delete Anyway", role: .destructive) {
@@ -164,6 +129,22 @@ struct SifterView: View {
 
     private var mainContent: some View {
         VStack(spacing: 0) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.white.opacity(0.12))
+                        .frame(height: 4)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: geo.size.width * vm.progress, height: 4)
+                        .animation(.spring(duration: 0.4), value: vm.progress)
+                }
+            }
+            .frame(height: 4)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            .padding(.bottom, 2)
+
             BatchStripView(
                 group: vm.group,
                 currentAssetID: vm.currentAsset?.localIdentifier,
@@ -217,6 +198,7 @@ struct SifterView: View {
                             }
                         },
                         onSkip: vm.canSkipCurrent ? {
+                            skipUsageCount += 1
                             vm.skipCurrent()
                             cardKey = UUID()
                             isTopCardThrown = false
@@ -239,6 +221,14 @@ struct SifterView: View {
                         }
                     )
                     .id(cardKey)
+                    .rotationEffect(.degrees(cardAppearWobble))
+                    .onAppear {
+                        guard cardAppearWobble != 0 else { return }
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(120))
+                            withAnimation(.spring(duration: 0.7, bounce: 0.45)) { cardAppearWobble = 0 }
+                        }
+                    }
                     .accessibilityIdentifier("photoCard")
                 }
                 .padding(.horizontal, 16)
@@ -255,24 +245,12 @@ struct SifterView: View {
 
     private var bottomBar: some View {
         VStack(spacing: 14) {
-            // Progress bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.white.opacity(0.12))
-                        .frame(height: 4)
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: geo.size.width * vm.progress, height: 4)
-                        .animation(.spring(duration: 0.4), value: vm.progress)
-                }
-            }
-            .frame(height: 4)
-
             switch mode {
             case .screenshots:
                 Button {
-                    showDeleteAllConfirmation = true
+                    vm.deleteAll()
+                    cardKey = UUID()
+                    swipeProgress = 0
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "trash.circle")
@@ -301,24 +279,25 @@ struct SifterView: View {
                 .accessibilityIdentifier("keepOldestButton")
 
             case .none:
-                if vm.group.assets.count >= 3 {
+                if vm.group.assets.count >= 2 {
                     Button {
-                        vm.keepOnlyCurrentAndDeleteRest()
+                        vm.deleteAll()
+                        cardKey = UUID()
+                        swipeProgress = 0
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "star.circle")
-                            Text("Keep only this")
+                            Image(systemName: "trash.circle")
+                            Text("Delete all remaining")
                         }
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.appAccent)
+                        .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("keepOnlyButton")
+                    .accessibilityIdentifier("deleteAllRemainingButton")
                 }
             }
 
-            // Skip hint — only shown if skipping is available
-            if vm.canSkipCurrent {
+            if vm.canSkipCurrent && skipUsageCount < 3 {
                 Text("Swipe ↑ to skip")
                     .font(.system(size: 11, design: .rounded))
                     .foregroundStyle(.appTextSecondary)
@@ -365,13 +344,9 @@ struct SifterView: View {
             dismiss()
             return
         }
-        if midBatchAlwaysSave {
-            Task {
-                await libraryVM.saveGroupProgress(vm.group)
-                dismiss()
-            }
-        } else {
-            showExitConfirmation = true
+        Task {
+            await libraryVM.saveGroupProgress(vm.group)
+            dismiss()
         }
     }
 

@@ -29,6 +29,6 @@ final class SoundManager: @unchecked Sendable {
 
     func playComplete() {
         if let p = players["complete"] { p.play(); return }
-        AudioServicesPlaySystemSound(1025)
+        AudioServicesPlaySystemSound(1057)
     }
 }

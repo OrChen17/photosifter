@@ -19,39 +19,47 @@ struct QuickWinsStripView: View {
     }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(pills, id: \.category) { category, win, total in
-                    QuickWinPillView(category: category, totalCount: total)
-                        .onTapGesture { onSelect(win) }
-                }
+        HStack(spacing: 10) {
+            ForEach(pills, id: \.category) { category, win, total in
+                QuickWinCardView(category: category, totalCount: total)
+                    .onTapGesture { onSelect(win) }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 }
 
-private struct QuickWinPillView: View {
+private struct QuickWinCardView: View {
     let category: QuickWinCategory
     let totalCount: Int
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: category.systemImage)
-                .font(.system(size: 14, weight: .medium))
-            Text(category.label)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-            Text("\(totalCount)")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.white.opacity(0.15), in: Capsule())
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Image(systemName: category.systemImage)
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(category.label)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                }
+                Text("\(totalCount) photos")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.35))
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background(Color.appCard, in: Capsule())
-        .overlay(Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1))
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(Color.appCard, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
     }
 }

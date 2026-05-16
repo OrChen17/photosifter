@@ -1,6 +1,22 @@
 import Photos
 import SwiftUI
 
+enum GroupSortOrder: String, CaseIterable {
+    case oldestBiggest
+    case newestBiggest
+    case biggestFirst
+    case random
+
+    var label: String {
+        switch self {
+        case .oldestBiggest: return "Oldest first"
+        case .newestBiggest: return "Newest first"
+        case .biggestFirst: return "Largest groups"
+        case .random: return "Random"
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class LibraryViewModel {
@@ -14,12 +30,14 @@ final class LibraryViewModel {
     var quickWins: [QuickWin] = []
     var selectedQuickWin: QuickWin?
     var selectedDuplicateSession: DuplicateSession?
+    var sortOrder: GroupSortOrder = .oldestBiggest
 
     var totalDeletedCount: Int { completedBatches.reduce(0) { $0 + $1.deletedCount } }
     var totalSavedBytes: Int64 { completedBatches.reduce(Int64(0)) { $0 + $1.savedBytes } }
 
     private let photoService = PhotoLibraryService.shared
     private let groupingService = GroupingService.shared
+    private var completedGroupIDs: Set<UUID> = []
 
     init() {
         // Read current status synchronously so ContentView shows the correct
@@ -38,6 +56,9 @@ final class LibraryViewModel {
         error = nil
         isScanning = true
 
+        // Load stats immediately so counters are non-zero on first render
+        completedBatches = await CompletedBatchStore.shared.loadAll()
+
         // Layer 1: Serve cached groups immediately (hydrated with saved decisions)
         if let cached = await groupingService.loadCachedGroups(), !cached.isEmpty {
             groups = await groupingService.hydrateDecisions(into: cached)
@@ -51,19 +72,15 @@ final class LibraryViewModel {
         for await group in await groupingService.streamGroups(from: assets) {
             // Hydrate this single new group's decisions before insertion
             let hydrated = await groupingService.hydrateDecisions(into: [group]).first ?? group
+            guard !completedGroupIDs.contains(hydrated.id) else { continue }
             withAnimation(.spring(duration: 0.35)) {
                 freshGroups.append(hydrated)
-                // Sort by group size desc, then date desc
-                groups = freshGroups.sorted {
-                    if $0.assets.count != $1.assets.count { return $0.assets.count > $1.assets.count }
-                    return ($0.captureDate ?? .distantPast) > ($1.captureDate ?? .distantPast)
-                }
+                groups = sorted(freshGroups)
             }
         }
 
         isScanning = false
         await groupingService.persistGroups(groups)
-        completedBatches = await CompletedBatchStore.shared.loadAll()
 
         // Quick wins fetch runs at utility priority after scan — doesn't block the grid
         Task(priority: .utility) {
@@ -72,7 +89,31 @@ final class LibraryViewModel {
         }
     }
 
+    func applySort() {
+        groups = sorted(groups)
+    }
+
+    private func sorted(_ groups: [PhotoGroup]) -> [PhotoGroup] {
+        switch sortOrder {
+        case .oldestBiggest:
+            return groups.sorted {
+                if $0.assets.count != $1.assets.count { return $0.assets.count > $1.assets.count }
+                return ($0.captureDate ?? .distantFuture) < ($1.captureDate ?? .distantFuture)
+            }
+        case .newestBiggest:
+            return groups.sorted {
+                if $0.assets.count != $1.assets.count { return $0.assets.count > $1.assets.count }
+                return ($0.captureDate ?? .distantPast) > ($1.captureDate ?? .distantPast)
+            }
+        case .biggestFirst:
+            return groups.sorted { $0.assets.count > $1.assets.count }
+        case .random:
+            return groups.shuffled()
+        }
+    }
+
     func markGroupComplete(_ group: PhotoGroup) {
+        completedGroupIDs.insert(group.id)
         groups.removeAll { $0.id == group.id }
         quickWins.removeAll { $0.group.id == group.id }
         Task { await groupingService.saveDecisions(for: PhotoGroup(id: group.id, assets: group.assets, decisions: [:])) }

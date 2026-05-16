@@ -25,10 +25,34 @@ struct LibraryView: View {
                     groupList
                 }
             }
-            .navigationTitle("Sift Away")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(GroupSortOrder.allCases, id: \.self) { order in
+                            Button {
+                                vm.sortOrder = order
+                                vm.applySort()
+                            } label: {
+                                if vm.sortOrder == order {
+                                    Label(order.label, systemImage: "checkmark")
+                                } else {
+                                    Text(order.label)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "line.3.horizontal.decrease")
+                                .font(.system(size: 12, weight: .medium))
+                            Text(vm.sortOrder.label)
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                        }
+                        .foregroundStyle(.appTextSecondary)
+                    }
+                }
                 if vm.isScanning {
                     ToolbarItem(placement: .topBarTrailing) {
                         ScanningBadge()
@@ -146,6 +170,7 @@ struct LibraryView: View {
 struct MemoryCardView: View {
     let group: PhotoGroup
     @State private var thumbnails: [UIImage?] = []
+    @State private var groupBytes: Int64 = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -158,8 +183,15 @@ struct MemoryCardView: View {
                     .foregroundStyle(.white)
                     .lineLimit(1)
 
+                if groupBytes > 0 {
+                    Text(formattedBytes(groupBytes))
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundStyle(.appTextSecondary)
+                        .lineLimit(1)
+                }
+
                 if let date = group.captureDate {
-                    Text(date, style: .relative)
+                    Text(Self.relativeDateFormatter.localizedString(for: date, relativeTo: .now))
                         .font(.system(size: 12, design: .rounded))
                         .foregroundStyle(.appTextSecondary)
                         .lineLimit(1)
@@ -179,41 +211,73 @@ struct MemoryCardView: View {
         .task { await loadThumbnails() }
     }
 
+    private static let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .full
+        return f
+    }()
+
+    private var displayIndices: [Int] {
+        let last = group.assets.count - 1
+        return last > 0 ? [0, last] : [0]
+    }
+
     private var thumbnailGrid: some View {
         Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay(
                 GeometryReader { geo in
-                    let half = geo.size.width / 2
-                    LazyVGrid(
-                        columns: [GridItem(.fixed(half), spacing: 2), GridItem(.fixed(half), spacing: 2)],
-                        spacing: 2
-                    ) {
-                        ForEach(0..<min(4, group.assets.count), id: \.self) { i in
+                    let indices = displayIndices
+                    let slotWidth = geo.size.width / CGFloat(indices.count)
+                    HStack(spacing: 2) {
+                        ForEach(Array(indices.enumerated()), id: \.offset) { slot, _ in
                             Group {
-                                if i < thumbnails.count, let img = thumbnails[i] {
+                                if slot < thumbnails.count, let img = thumbnails[slot] {
                                     Image(uiImage: img)
                                         .resizable()
                                         .scaledToFill()
-                                        .frame(width: half, height: half)
+                                        .frame(width: slotWidth, height: geo.size.height)
                                         .clipped()
                                 } else {
                                     Color.appBackground
-                                        .frame(width: half, height: half)
+                                        .frame(width: slotWidth, height: geo.size.height)
                                 }
                             }
                         }
                     }
+                    .frame(width: geo.size.width, height: geo.size.height)
                 }
             )
     }
 
     private func loadThumbnails() async {
         let size = CGSize(width: 200, height: 200)
-        thumbnails = Array(repeating: nil, count: min(4, group.assets.count))
-        for (i, asset) in group.assets.prefix(4).enumerated() {
-            let img = await PhotoLibraryService.shared.loadThumbnail(for: asset, size: size)
-            thumbnails[i] = img
+        let indices = displayIndices
+        thumbnails = Array(repeating: nil, count: indices.count)
+        for (slot, assetIndex) in indices.enumerated() {
+            let img = await PhotoLibraryService.shared.loadThumbnail(for: group.assets[assetIndex], size: size)
+            thumbnails[slot] = img
+        }
+
+        var total: Int64 = 0
+        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
+        for asset in group.assets {
+            let resources = PHAssetResource.assetResources(for: asset)
+            if let r = resources.first(where: { acceptable.contains($0.type) }),
+               let bytes = r.value(forKey: "fileSize") as? Int64 {
+                total += bytes
+            }
+        }
+        groupBytes = total
+    }
+
+    private func formattedBytes(_ bytes: Int64) -> String {
+        if bytes >= 1_000_000_000 {
+            return String(format: "%.1f GB", Double(bytes) / 1_000_000_000)
+        } else if bytes >= 1_000_000 {
+            return String(format: "%.0f MB", Double(bytes) / 1_000_000)
+        } else {
+            return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
         }
     }
 }

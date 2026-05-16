@@ -366,7 +366,31 @@ final class SifterViewModelTests: XCTestCase {
         XCTAssertEqual(vm.progress, 0.25, accuracy: 0.001)
     }
 
-    // MARK: - deleteAll
+    // MARK: - deleteAll (used by "Delete all remaining" button, threshold >= 2)
+
+    func testDeleteAll_twoAssetGroup_completesAndDeletesAll() throws {
+        let group = try requirePhotoGroup(assetCount: 2)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.deleteAll()
+
+        XCTAssertTrue(vm.isComplete)
+        XCTAssertEqual(vm.group.deletedAssets.count, 2)
+        XCTAssertEqual(vm.group.keptAssets.count, 0)
+    }
+
+    func testDeleteAll_afterPartialDecisions_onlyDeletesUndecided() throws {
+        let group = try requirePhotoGroup(assetCount: 4)
+        let vm = SifterViewModel(group: group, deletionService: mockDeletion)
+
+        vm.swipeRight() // keep asset[0]
+        vm.deleteAll()  // should delete only [1], [2], [3] (undecided)
+
+        XCTAssertEqual(vm.group.decisions[group.assets[0].localIdentifier], .keep,
+                       "Pre-decided keep must survive deleteAll")
+        XCTAssertEqual(vm.group.deletedAssets.count, 3)
+        XCTAssertTrue(vm.isComplete)
+    }
 
     func testDeleteAll_marksAllAssetsDelete() throws {
         let group = try requirePhotoGroup(assetCount: 5)
