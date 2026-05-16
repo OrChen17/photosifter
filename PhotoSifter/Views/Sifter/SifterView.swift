@@ -8,7 +8,6 @@ struct SifterView: View {
     @State private var vm: SifterViewModel
     @State private var showSummary: Bool = false
     @State private var cardKey: UUID = UUID()
-    @State private var showDeleteLastWarning: Bool = false
     @State private var imageCache: [String: UIImage] = [:]
     // Horizontal swipe progress reported by SwipeCardView in [-1, +1].
     // Drives the screen-wide vignette: + = keep (green), - = delete (red).
@@ -61,48 +60,22 @@ struct SifterView: View {
                 onRetry: { Task { await vm.retryCommitDeletes() } }
             )
         }
-        .alert("Delete All Photos?", isPresented: $showDeleteLastWarning) {
-            Button("Delete Anyway", role: .destructive) {
-                vm.swipeLeft()
-                cardKey = UUID()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("You haven't kept any photo from this group. Deleting this one removes all of them.")
-        }
         .onChange(of: vm.isComplete) { _, complete in
             guard complete else { return }
-            Task {
-                await vm.commitDeletes()
-                // Only mark the group complete + clear persisted state when
-                // the deletion actually succeeded (or there was nothing to
-                // delete). On cancel/failure the decisions stay saved so the
-                // user can retry from the summary screen.
-                switch vm.deletionOutcome {
-                case .committed, .nothingToDelete:
-                    let batch = CompletedBatch(
-                        id: UUID(),
-                        photoCount: vm.group.assets.count,
-                        deletedCount: vm.deletedCount,
-                        savedBytes: vm.deletedBytes,
-                        completedAt: Date(),
-                        captureDate: vm.group.captureDate,
-                        previewAssetIdentifiers: vm.group.assets.prefix(4).map { $0.localIdentifier }
-                    )
-                    await libraryVM.recordCompletedBatch(batch)
-                    libraryVM.markGroupComplete(vm.group)
-                case .cancelledByUser, .failed, .none:
-                    await libraryVM.saveGroupProgress(vm.group)
-                }
-                try? await Task.sleep(for: .milliseconds(50))
-                showSummary = true
-            }
+            Task { await runCompletionFlow() }
         }
         .onChange(of: vm.deletionOutcome) { _, newOutcome in
-            // Retry path: once commitDeletes finishes on retry, refresh the
-            // group's completion state in the library if it now committed.
-            guard newOutcome == .committed else { return }
-            libraryVM.markGroupComplete(vm.group)
+            // Retry path: once commitDeletes finishes on retry, play sound and
+            // refresh the group's completion state in the library.
+            switch newOutcome {
+            case .committed:
+                SoundManager.shared.playSuccess()
+                libraryVM.markGroupComplete(vm.group)
+            case .cancelledByUser, .failed:
+                SoundManager.shared.playFailure()
+            default:
+                break
+            }
         }
         .onChange(of: vm.currentIndex) { _, _ in
             preloadUpcomingCards()
@@ -116,6 +89,15 @@ struct SifterView: View {
                 vm.applyHydratedGroup(hydrated)
             }
             preloadUpcomingCards()
+            // If the group was already complete before this view appeared (e.g.,
+            // re-entering after a cancelled deletion prompt), isComplete is true
+            // from init and onChange never fires. Reset all decisions so the user
+            // can reconsider from scratch rather than being sent straight to commit.
+            if vm.isComplete && !showSummary {
+                vm.resetAllDecisions()
+                // Clear the stale persisted decisions so re-entry next time is clean.
+                await libraryVM.saveGroupProgress(vm.group)
+            }
         }
     }
 
@@ -187,15 +169,11 @@ struct SifterView: View {
                             preloadUpcomingCards()
                         },
                         onSwipeLeft: {
-                            if vm.isLastUndecidedWithNoKept {
-                                showDeleteLastWarning = true
-                            } else {
-                                vm.swipeLeft()
-                                cardKey = UUID()
-                                isTopCardThrown = false
-                                swipeProgress = 0
-                                preloadUpcomingCards()
-                            }
+                            vm.swipeLeft()
+                            cardKey = UUID()
+                            isTopCardThrown = false
+                            swipeProgress = 0
+                            preloadUpcomingCards()
                         },
                         onSkip: vm.canSkipCurrent ? {
                             skipUsageCount += 1
@@ -213,7 +191,6 @@ struct SifterView: View {
                             SoundManager.shared.playKeep()
                         },
                         onThrowLeft: {
-                            guard !vm.isLastUndecidedWithNoKept else { return }
                             isTopCardThrown = true
                             triggerFlash(tint: .appDelete)
                             HapticManager.shared.playDelete()
@@ -348,6 +325,45 @@ struct SifterView: View {
             await libraryVM.saveGroupProgress(vm.group)
             dismiss()
         }
+    }
+
+    // Shared completion logic called both from onChange(of: vm.isComplete) and
+    // from .task when isComplete is already true at view load (re-entry after cancel).
+    private func runCompletionFlow() async {
+        await vm.commitDeletes()
+        switch vm.deletionOutcome {
+        case .committed:
+            SoundManager.shared.playSuccess()
+            let batch = CompletedBatch(
+                id: UUID(),
+                photoCount: vm.group.assets.count,
+                deletedCount: vm.deletedCount,
+                savedBytes: vm.deletedBytes,
+                completedAt: Date(),
+                captureDate: vm.group.captureDate,
+                previewAssetIdentifiers: vm.group.assets.prefix(4).map { $0.localIdentifier }
+            )
+            await libraryVM.recordCompletedBatch(batch)
+            libraryVM.markGroupComplete(vm.group)
+        case .nothingToDelete:
+            await libraryVM.recordCompletedBatch(CompletedBatch(
+                id: UUID(),
+                photoCount: vm.group.assets.count,
+                deletedCount: 0,
+                savedBytes: 0,
+                completedAt: Date(),
+                captureDate: vm.group.captureDate,
+                previewAssetIdentifiers: vm.group.assets.prefix(4).map { $0.localIdentifier }
+            ))
+            libraryVM.markGroupComplete(vm.group)
+        case .cancelledByUser, .failed:
+            SoundManager.shared.playFailure()
+            await libraryVM.saveGroupProgress(vm.group)
+        case .none:
+            await libraryVM.saveGroupProgress(vm.group)
+        }
+        try? await Task.sleep(for: .milliseconds(50))
+        showSummary = true
     }
 
     // MARK: - Swipe vignette

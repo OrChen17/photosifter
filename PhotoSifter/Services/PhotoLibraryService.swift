@@ -36,19 +36,16 @@ actor PhotoLibraryService {
             options.deliveryMode = .opportunistic
             options.resizeMode = .fast
             options.isNetworkAccessAllowed = true
-            // .opportunistic delivers two callbacks (degraded then final).
-            // CheckedContinuation must only be resumed once — guard with Once.
-            final class Once { var fired = false }
-            let once = Once()
+            // .opportunistic fires twice: degraded first, then final quality.
+            // Discard the degraded result and resume only on the final one.
             imageManager.requestImage(
                 for: asset,
                 targetSize: size,
                 contentMode: .aspectFill,
                 options: options
-            ) { image, _ in
-                guard !once.fired else { return }
-                once.fired = true
-                continuation.resume(returning: image)
+            ) { image, info in
+                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                if !isDegraded { continuation.resume(returning: image) }
             }
         }
     }

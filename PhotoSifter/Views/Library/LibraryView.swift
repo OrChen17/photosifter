@@ -251,7 +251,10 @@ struct MemoryCardView: View {
     }
 
     private func loadThumbnails() async {
-        let size = CGSize(width: 200, height: 200)
+        // targetSize is in pixels. Scale by screen density so thumbnails aren't
+        // upscaled and blurry on 2x/3x devices.
+        let px = 200.0 * UIScreen.main.scale
+        let size = CGSize(width: px, height: px)
         let indices = displayIndices
         thumbnails = Array(repeating: nil, count: indices.count)
         for (slot, assetIndex) in indices.enumerated() {

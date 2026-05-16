@@ -249,6 +249,19 @@ final class SifterViewModel {
         await commitDeletes()
     }
 
+    /// Called when re-entering a batch whose decisions were all saved but deletion
+    /// was never committed (e.g. user cancelled the iOS prompt). Wipes all decisions
+    /// so the user can reconsider from the beginning.
+    func resetAllDecisions() {
+        group.decisions = [:]
+        pendingDeletes = []
+        decisionHistory = []
+        skippedIdentifiers = []
+        displayOrder = group.assets
+        currentIndex = 0
+        isComplete = false
+    }
+
     /// Replaces this VM's group with a freshly hydrated one (e.g. from disk),
     /// and recomputes the resume point. Used by SifterView on appear so the
     /// view is bulletproof against any in-memory propagation gaps.
@@ -285,6 +298,5 @@ final class SifterViewModel {
         currentIndex = displayOrder.count
         isComplete = true
         haptics.playBatchComplete()
-        sounds.playComplete()
     }
 }

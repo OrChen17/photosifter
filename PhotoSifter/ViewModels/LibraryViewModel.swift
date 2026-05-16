@@ -30,7 +30,7 @@ final class LibraryViewModel {
     var quickWins: [QuickWin] = []
     var selectedQuickWin: QuickWin?
     var selectedDuplicateSession: DuplicateSession?
-    var sortOrder: GroupSortOrder = .oldestBiggest
+    var sortOrder: GroupSortOrder = .biggestFirst
 
     var totalDeletedCount: Int { completedBatches.reduce(0) { $0 + $1.deletedCount } }
     var totalSavedBytes: Int64 { completedBatches.reduce(Int64(0)) { $0 + $1.savedBytes } }
@@ -60,26 +60,37 @@ final class LibraryViewModel {
         completedBatches = await CompletedBatchStore.shared.loadAll()
 
         // Layer 1: Serve cached groups immediately (hydrated with saved decisions)
+        var baseGroups: [PhotoGroup] = []
         if let cached = await groupingService.loadCachedGroups(), !cached.isEmpty {
-            groups = await groupingService.hydrateDecisions(into: cached)
+            baseGroups = await groupingService.hydrateDecisions(into: cached)
+                .filter { !completedGroupIDs.contains($0.id) }
+            groups = sorted(baseGroups)
         }
 
-        // Layer 2: Re-scan in background, streaming results in
-        var freshGroups: [PhotoGroup] = []
+        // Identify assets already in a cached group and the last scan cutoff so
+        // Vision skips photos it has already processed.
+        let knownIDs = Set(baseGroups.flatMap { $0.assets.map(\.localIdentifier) })
+        let cutoff = await groupingService.loadScanCutoff()
+        // Record now (before fetching) so photos added during a slow scan are
+        // caught on the next launch rather than permanently skipped.
+        let scanStartDate = Date()
+
+        // Layer 2: Stream only new/changed groups; existing ones stay in the list
         let assets = await photoService.fetchAllAssets()
         scanProgress = (0, assets.count)
 
-        for await group in await groupingService.streamGroups(from: assets) {
-            // Hydrate this single new group's decisions before insertion
+        var allGroups = baseGroups
+        for await group in await groupingService.streamGroups(from: assets, excluding: knownIDs, since: cutoff) {
             let hydrated = await groupingService.hydrateDecisions(into: [group]).first ?? group
             guard !completedGroupIDs.contains(hydrated.id) else { continue }
             withAnimation(.spring(duration: 0.35)) {
-                freshGroups.append(hydrated)
-                groups = sorted(freshGroups)
+                allGroups.append(hydrated)
+                groups = sorted(allGroups)
             }
         }
 
         isScanning = false
+        await groupingService.saveScanCutoff(scanStartDate)
         await groupingService.persistGroups(groups)
 
         // Quick wins fetch runs at utility priority after scan — doesn't block the grid

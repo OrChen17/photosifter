@@ -384,7 +384,7 @@ struct SessionSummaryView: View {
     private var cancelledSubtitle: String {
         switch outcome {
         case .cancelledByUser:
-            return "You dismissed the system prompt. Your swipe decisions are saved — try again whenever you're ready."
+            return "You dismissed the deletion request. Your swipe decisions are saved — try again whenever you're ready."
         case .failed(let reason):
             return reason
         default:

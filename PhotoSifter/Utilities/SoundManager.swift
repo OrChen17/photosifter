@@ -8,7 +8,6 @@ final class SoundManager: @unchecked Sendable {
     private init() {
         preload("keep",   resource: "keep",   ext: "caf")
         preload("delete", resource: "delete", ext: "caf")
-        preload("complete", resource: "complete", ext: "caf")
     }
 
     private func preload(_ key: String, resource: String, ext: String) {
@@ -27,8 +26,11 @@ final class SoundManager: @unchecked Sendable {
         AudioServicesPlaySystemSound(1105)
     }
 
-    func playComplete() {
-        if let p = players["complete"] { p.play(); return }
-        AudioServicesPlaySystemSound(1057)
+    func playSuccess() {
+        AudioServicesPlaySystemSound(1001)  // mail-sent swoosh — satisfying, bigger than a tick
+    }
+
+    func playFailure() {
+        AudioServicesPlaySystemSound(1519) 
     }
 }

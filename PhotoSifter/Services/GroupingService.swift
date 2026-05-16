@@ -19,6 +19,10 @@ actor GroupingService {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return support.appendingPathComponent("group_decisions.json")
     }()
+    private let scanCutoffURL: URL = {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return support.appendingPathComponent("scan_cutoff.json")
+    }()
 
     init(similarity: any SimilarityProviding = SimilarityService.shared) {
         self.similarity = similarity
@@ -34,20 +38,37 @@ actor GroupingService {
 
     // MARK: - Public API
 
-    /// Streams PhotoGroups as they are found.
+    /// Streams PhotoGroups as they are found, skipping assets that have already
+    /// been grouped (`knownIDs`) or that predate the last scan (`cutoff`).
     /// Burst groups are emitted first (instant, no Vision needed), then
     /// Vision-based groups from non-burst photos stream in afterwards.
     /// All background tasks run at .background QoS (#17).
-    func streamGroups(from assets: [PHAsset]) -> AsyncStream<PhotoGroup> {
-        AsyncStream { continuation in
+    func streamGroups(
+        from assets: [PHAsset],
+        excluding knownIDs: Set<String> = [],
+        since cutoff: Date? = nil
+    ) -> AsyncStream<PhotoGroup> {
+        // Pre-filter before any ML work: skip assets already in a cached group,
+        // and (once a cutoff exists) skip assets that haven't changed since the
+        // last scan — these were either grouped already or are old singletons.
+        let toScan = assets.filter { asset in
+            guard !knownIDs.contains(asset.localIdentifier) else { return false }
+            if let cutoff {
+                let date = asset.modificationDate ?? asset.creationDate ?? .distantPast
+                return date > cutoff
+            }
+            return true
+        }
+
+        return AsyncStream { continuation in
             Task(priority: .background) {
-                // Phase 1: Burst groups (fast, no ML)
-                let burstGroups = Self.fetchBurstGroups()
+                // Phase 1: Burst groups — skip representatives already grouped
+                let burstGroups = Self.fetchBurstGroups(excluding: knownIDs, since: cutoff)
                 let burstIDs = Set(burstGroups.flatMap { $0.assets.map { $0.localIdentifier } })
                 for g in burstGroups { continuation.yield(g) }
 
-                // Phase 2: Vision clustering on non-burst photos
-                let nonBurst = assets.filter { !burstIDs.contains($0.localIdentifier) }
+                // Phase 2: Vision clustering on new non-burst assets only
+                let nonBurst = toScan.filter { !burstIDs.contains($0.localIdentifier) }
                 let buckets = Self.splitIntoBuckets(nonBurst)
 
                 for bucket in buckets {
@@ -119,15 +140,29 @@ actor GroupingService {
         group.assets.map(\.localIdentifier).sorted().joined(separator: "|")
     }
 
+    func loadScanCutoff() -> Date? {
+        guard let data = try? Data(contentsOf: scanCutoffURL),
+              let date = try? JSONDecoder().decode(Date.self, from: data)
+        else { return nil }
+        return date
+    }
+
+    func saveScanCutoff(_ date: Date) {
+        guard let data = try? JSONEncoder().encode(date) else { return }
+        try? data.write(to: scanCutoffURL, options: .atomic)
+    }
+
     func invalidateCache() {
         try? FileManager.default.removeItem(at: cacheURL)
         try? FileManager.default.removeItem(at: decisionsURL)
+        try? FileManager.default.removeItem(at: scanCutoffURL)
     }
 
     // MARK: - Burst groups (#16)
 
     /// Returns photo groups formed from iOS burst captures — no Vision needed.
-    private static func fetchBurstGroups() -> [PhotoGroup] {
+    /// Skips burst representatives already in `knownIDs` or older than `cutoff`.
+    private static func fetchBurstGroups(excluding knownIDs: Set<String> = [], since cutoff: Date? = nil) -> [PhotoGroup] {
         let options = PHFetchOptions()
         // `representsBurst` isn't accepted by PHQuery's predicate parser, so
         // filter by mediaType at the DB level and check representsBurst in code.
@@ -141,6 +176,10 @@ actor GroupingService {
         allImages.enumerateObjects { representative, _, _ in
             guard representative.representsBurst,
                   let burstID = representative.burstIdentifier else { return }
+            // Skip if this burst is already grouped
+            guard !knownIDs.contains(representative.localIdentifier) else { return }
+            // Skip if the representative predates the scan cutoff
+            if let cutoff, let created = representative.creationDate, created <= cutoff { return }
 
             let burstOptions = PHFetchOptions()
             burstOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
