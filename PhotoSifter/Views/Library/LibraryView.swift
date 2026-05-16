@@ -52,6 +52,7 @@ struct LibraryView: View {
             // Quick wins strip — collapses when user scrolls down
             if !vm.quickWins.isEmpty {
                 QuickWinsStripView(quickWins: vm.quickWins) { win in
+                    HapticManager.shared.playNavigate()
                     switch win.category {
                     case .screenshots:
                         vm.selectedQuickWin = win
@@ -75,7 +76,10 @@ struct LibraryView: View {
             ) {
                 ForEach(vm.groups) { group in
                     MemoryCardView(group: group)
-                        .onTapGesture { vm.selectedGroup = group }
+                        .onTapGesture {
+                            HapticManager.shared.playNavigate()
+                            vm.selectedGroup = group
+                        }
                         .accessibilityIdentifier("groupRow_\(group.id)")
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.9).combined(with: .opacity),

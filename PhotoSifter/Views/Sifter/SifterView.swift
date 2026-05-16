@@ -17,6 +17,7 @@ struct SifterView: View {
     @State private var flashTint: Color = .appKeep
     @State private var flashIntensity: Double = 0
     @State private var showExitConfirmation: Bool = false
+    @State private var isTopCardThrown: Bool = false
     @AppStorage("midBatchAlwaysSave") private var midBatchAlwaysSave: Bool = false
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
@@ -169,6 +170,7 @@ struct SifterView: View {
                 onTap: { asset in
                     vm.jumpTo(asset: asset)
                     cardKey = UUID()
+                    isTopCardThrown = false
                     swipeProgress = 0
                     preloadUpcomingCards()
                 }
@@ -186,8 +188,9 @@ struct SifterView: View {
                             onSwipeRight: {},
                             onSwipeLeft: {}
                         )
-                        .scaleEffect(0.95)
-                        .offset(y: 10)
+                        .scaleEffect(isTopCardThrown ? 1.0 : 0.95)
+                        .offset(y: isTopCardThrown ? 0 : 10)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isTopCardThrown)
                         .allowsHitTesting(false)
                         .id(next.localIdentifier)
                     }
@@ -198,6 +201,7 @@ struct SifterView: View {
                         onSwipeRight: {
                             vm.swipeRight()
                             cardKey = UUID()
+                            isTopCardThrown = false
                             swipeProgress = 0
                             preloadUpcomingCards()
                         },
@@ -207,6 +211,7 @@ struct SifterView: View {
                             } else {
                                 vm.swipeLeft()
                                 cardKey = UUID()
+                                isTopCardThrown = false
                                 swipeProgress = 0
                                 preloadUpcomingCards()
                             }
@@ -214,17 +219,20 @@ struct SifterView: View {
                         onSkip: vm.canSkipCurrent ? {
                             vm.skipCurrent()
                             cardKey = UUID()
+                            isTopCardThrown = false
                             swipeProgress = 0
                             preloadUpcomingCards()
                         } : nil,
                         onProgressChange: { swipeProgress = $0 },
                         onThrowRight: {
+                            isTopCardThrown = true
                             triggerFlash(tint: .appKeep)
                             HapticManager.shared.playKeep()
                             SoundManager.shared.playKeep()
                         },
                         onThrowLeft: {
                             guard !vm.isLastUndecidedWithNoKept else { return }
+                            isTopCardThrown = true
                             triggerFlash(tint: .appDelete)
                             HapticManager.shared.playDelete()
                             SoundManager.shared.playDelete()

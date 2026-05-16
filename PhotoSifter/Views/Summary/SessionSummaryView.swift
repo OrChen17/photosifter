@@ -84,11 +84,19 @@ struct SessionSummaryView: View {
             }
         }
         .onDisappear { autoTask?.cancel() }
-        // Re-run when a retry flips outcome to .committed so the numbers
-        // count up from 0 instead of staying frozen at the initial zeros.
         .onChange(of: outcome) { _, newOutcome in
             guard newOutcome == .committed || newOutcome == .nothingToDelete else { return }
             Task { await runCommittedAnimation() }
+        }
+        // Tick on each integer increment during the count-up animation
+        .onChange(of: animatedCount) { _, newCount in
+            guard newCount > 0 else { return }
+            HapticManager.shared.playTick()
+        }
+        // Tick on each countdown decrement (4 → 3 → 2 → 1)
+        .onChange(of: countdown) { _, newVal in
+            guard newVal < 5 else { return }
+            HapticManager.shared.playTick()
         }
     }
 
@@ -186,6 +194,7 @@ struct SessionSummaryView: View {
             if let next = nextGroup {
                 // UP NEXT card + Continue merged into one tappable block
                 Button {
+                    HapticManager.shared.playNavigate()
                     autoTask?.cancel()
                     dismiss()
                     onContinue?()
@@ -195,6 +204,7 @@ struct SessionSummaryView: View {
                 .accessibilityIdentifier("continueSiftingButton")
             } else {
                 Button {
+                    HapticManager.shared.playNavigate()
                     dismiss()
                     onContinue?()
                 } label: {
@@ -215,7 +225,10 @@ struct SessionSummaryView: View {
             }
 
             if deletedCount > 0 {
-                Button { openRecentlyDeleted() } label: {
+                Button {
+                    HapticManager.shared.playNavigate()
+                    openRecentlyDeleted()
+                } label: {
                     Label("View Recently Deleted", systemImage: "trash")
                         .accessibilityIdentifier("viewRecentlyDeletedButton")
                         .font(.system(size: 14, weight: .medium, design: .rounded))

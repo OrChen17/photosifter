@@ -67,4 +67,14 @@ final class HapticManager {
     func playDragTick() {
         UISelectionFeedbackGenerator().selectionChanged()
     }
+
+    // Light tick for counters and countdown — same feel as drag threshold but contextually distinct
+    func playTick() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    // Light tap for navigation and CTA buttons
+    func playNavigate() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.8)
+    }
 }
