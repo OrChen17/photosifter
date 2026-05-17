@@ -17,16 +17,16 @@ actor PhotoLibraryService {
     func fetchAllAssets() -> [PHAsset] {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
-        // Exclude screenshots — they flood time buckets with unrelated images
-        options.predicate = NSPredicate(
-            format: "mediaType == %d AND NOT ((mediaSubtype & %d) != 0)",
-            PHAssetMediaType.image.rawValue,
-            PHAssetMediaSubtype.photoScreenshot.rawValue
-        )
+        // Only filter by mediaType in the DB predicate — PHQuery doesn't support
+        // bitwise operators (&), so screenshot/cloud filtering is done in-memory below.
+        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
         let result = PHAsset.fetchAssets(with: options)
         var assets: [PHAsset] = []
         assets.reserveCapacity(result.count)
-        result.enumerateObjects { asset, _, _ in assets.append(asset) }
+        result.enumerateObjects { asset, _, _ in
+            guard !asset.mediaSubtypes.contains(.photoScreenshot) else { return }
+            assets.append(asset)
+        }
         return assets
     }
 
@@ -35,17 +35,20 @@ actor PhotoLibraryService {
             let options = PHImageRequestOptions()
             options.deliveryMode = .opportunistic
             options.resizeMode = .fast
-            options.isNetworkAccessAllowed = true
-            // .opportunistic fires twice: degraded first, then final quality.
-            // Discard the degraded result and resume only on the final one.
+            options.isNetworkAccessAllowed = AppSettings.cloudDownloadEnabled
+            // .opportunistic fires twice: degraded first (OS thumbnail cache — fast),
+            // then full quality. Accept the first result so we return immediately from
+            // cache rather than waiting for a full re-decode.
+            var resumed = false
             imageManager.requestImage(
                 for: asset,
                 targetSize: size,
                 contentMode: .aspectFill,
                 options: options
-            ) { image, info in
-                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-                if !isDegraded { continuation.resume(returning: image) }
+            ) { image, _ in
+                guard !resumed else { return }
+                resumed = true
+                continuation.resume(returning: image)
             }
         }
     }
@@ -54,7 +57,7 @@ actor PhotoLibraryService {
         await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
             options.deliveryMode = .highQualityFormat
-            options.isNetworkAccessAllowed = true
+            options.isNetworkAccessAllowed = AppSettings.cloudDownloadEnabled
             imageManager.requestImage(
                 for: asset,
                 targetSize: PHImageManagerMaximumSize,

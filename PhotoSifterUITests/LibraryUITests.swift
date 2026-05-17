@@ -4,11 +4,12 @@ final class LibraryUITests: PhotoSifterUITestCase {
 
     // MARK: - Library screen
 
-    func testLibraryScreen_navigationTitle() {
+    func testLibraryScreen_navigationBar_appears() {
         launchAuthorized()
 
-        let title = app.navigationBars["PhotoSifter"]
-        XCTAssertTrue(title.waitForExistence(timeout: 10), "Navigation bar title 'PhotoSifter' should appear")
+        // Library uses an empty nav title; verify the bar itself renders
+        XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10),
+                      "Library navigation bar should appear after launch")
     }
 
     func testLibraryScreen_scanningBadge_appearsWhileProcessing() {

@@ -33,37 +33,28 @@ actor GroupingService {
         try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
     }
 
-    private static let similarityThreshold: Float = 0.65
+    private static let similarityThreshold: Float = 0.55
     private static let timeBucketGap: TimeInterval = 5 * 60   // 5 minutes
 
     // MARK: - Public API
 
-    /// Streams PhotoGroups as they are found, skipping assets that have already
-    /// been grouped (`knownIDs`) or that predate the last scan (`cutoff`).
-    /// Burst groups are emitted first (instant, no Vision needed), then
-    /// Vision-based groups from non-burst photos stream in afterwards.
-    /// All background tasks run at .background QoS (#17).
+    /// Streams PhotoGroups as they are found, skipping assets already in a cached
+    /// group (`knownIDs`). Burst groups are emitted first (instant, no Vision
+    /// needed), then Vision-based groups stream in afterwards.
     func streamGroups(
         from assets: [PHAsset],
-        excluding knownIDs: Set<String> = [],
-        since cutoff: Date? = nil
+        excluding knownIDs: Set<String> = []
     ) -> AsyncStream<PhotoGroup> {
-        // Pre-filter before any ML work: skip assets already in a cached group,
-        // and (once a cutoff exists) skip assets that haven't changed since the
-        // last scan — these were either grouped already or are old singletons.
-        let toScan = assets.filter { asset in
-            guard !knownIDs.contains(asset.localIdentifier) else { return false }
-            if let cutoff {
-                let date = asset.modificationDate ?? asset.creationDate ?? .distantPast
-                return date > cutoff
-            }
-            return true
-        }
+        // Pre-filter before any ML work: skip only assets already in a cached group.
+        // The cutoff is intentionally NOT applied here — photos that weren't grouped
+        // on a previous scan (singletons) must still be re-evaluated since they could
+        // form a group with newly imported photos or with each other in a future run.
+        let toScan = assets.filter { !knownIDs.contains($0.localIdentifier) }
 
         return AsyncStream { continuation in
             Task(priority: .background) {
                 // Phase 1: Burst groups — skip representatives already grouped
-                let burstGroups = Self.fetchBurstGroups(excluding: knownIDs, since: cutoff)
+                let burstGroups = Self.fetchBurstGroups(excluding: knownIDs)
                 let burstIDs = Set(burstGroups.flatMap { $0.assets.map { $0.localIdentifier } })
                 for g in burstGroups { continuation.yield(g) }
 
@@ -162,7 +153,7 @@ actor GroupingService {
 
     /// Returns photo groups formed from iOS burst captures — no Vision needed.
     /// Skips burst representatives already in `knownIDs` or older than `cutoff`.
-    private static func fetchBurstGroups(excluding knownIDs: Set<String> = [], since cutoff: Date? = nil) -> [PhotoGroup] {
+    private static func fetchBurstGroups(excluding knownIDs: Set<String> = []) -> [PhotoGroup] {
         let options = PHFetchOptions()
         // `representsBurst` isn't accepted by PHQuery's predicate parser, so
         // filter by mediaType at the DB level and check representsBurst in code.
@@ -178,8 +169,6 @@ actor GroupingService {
                   let burstID = representative.burstIdentifier else { return }
             // Skip if this burst is already grouped
             guard !knownIDs.contains(representative.localIdentifier) else { return }
-            // Skip if the representative predates the scan cutoff
-            if let cutoff, let created = representative.creationDate, created <= cutoff { return }
 
             let burstOptions = PHFetchOptions()
             burstOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]

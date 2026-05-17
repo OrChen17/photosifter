@@ -17,6 +17,7 @@ struct SifterView: View {
     @State private var isTopCardThrown: Bool = false
     @State private var cardAppearWobble: Double = 1.5
     @AppStorage("skipUsageCount") private var skipUsageCount: Int = 0
+    @State private var pendingNextGroup: PhotoGroup? = nil
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
 
@@ -53,7 +54,7 @@ struct SifterView: View {
         .fullScreenCover(isPresented: $showSummary) {
             SessionSummaryView(
                 group: vm.group,
-                nextGroup: libraryVM.nextIncompleteGroup(after: vm.group),
+                nextGroup: pendingNextGroup,
                 outcome: vm.deletionOutcome,
                 deletedBytes: vm.deletedBytes,
                 onContinue: { handleContinue() },
@@ -69,6 +70,7 @@ struct SifterView: View {
             // refresh the group's completion state in the library.
             switch newOutcome {
             case .committed:
+                pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
                 SoundManager.shared.playSuccess()
                 libraryVM.markGroupComplete(vm.group)
             case .cancelledByUser, .failed:
@@ -308,7 +310,7 @@ struct SifterView: View {
     /// to a new value while the destination is still mounted, which
     /// NavigationStack tends to ignore.
     private func handleContinue() {
-        let next = libraryVM.nextIncompleteGroup(after: vm.group)
+        let next = pendingNextGroup
         dismiss()
         guard let next else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
@@ -334,6 +336,7 @@ struct SifterView: View {
         switch vm.deletionOutcome {
         case .committed:
             SoundManager.shared.playSuccess()
+            pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
             let batch = CompletedBatch(
                 id: UUID(),
                 photoCount: vm.group.assets.count,
@@ -346,6 +349,7 @@ struct SifterView: View {
             await libraryVM.recordCompletedBatch(batch)
             libraryVM.markGroupComplete(vm.group)
         case .nothingToDelete:
+            pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
             await libraryVM.recordCompletedBatch(CompletedBatch(
                 id: UUID(),
                 photoCount: vm.group.assets.count,

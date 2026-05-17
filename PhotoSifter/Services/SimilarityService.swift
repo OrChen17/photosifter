@@ -52,7 +52,7 @@ actor SimilarityService: SimilarityProviding {
             // delivers a single, reliable callback.
             options.deliveryMode = .highQualityFormat
             options.resizeMode = .fast
-            options.isNetworkAccessAllowed = true
+            options.isNetworkAccessAllowed = AppSettings.cloudDownloadEnabled
             let targetSize = CGSize(width: 512, height: 512)
             PHImageManager.default().requestImage(
                 for: asset,

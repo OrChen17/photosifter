@@ -30,7 +30,7 @@ final class LibraryViewModel {
     var quickWins: [QuickWin] = []
     var selectedQuickWin: QuickWin?
     var selectedDuplicateSession: DuplicateSession?
-    var sortOrder: GroupSortOrder = .biggestFirst
+    var sortOrder: GroupSortOrder = .oldestBiggest
 
     var totalDeletedCount: Int { completedBatches.reduce(0) { $0 + $1.deletedCount } }
     var totalSavedBytes: Int64 { completedBatches.reduce(Int64(0)) { $0 + $1.savedBytes } }
@@ -64,24 +64,21 @@ final class LibraryViewModel {
         if let cached = await groupingService.loadCachedGroups(), !cached.isEmpty {
             baseGroups = await groupingService.hydrateDecisions(into: cached)
                 .filter { !completedGroupIDs.contains($0.id) }
+                .map { filledWithBytes($0) }
             groups = sorted(baseGroups)
         }
 
-        // Identify assets already in a cached group and the last scan cutoff so
-        // Vision skips photos it has already processed.
+        // Identify assets already in a cached group so Vision skips re-evaluating them.
         let knownIDs = Set(baseGroups.flatMap { $0.assets.map(\.localIdentifier) })
-        let cutoff = await groupingService.loadScanCutoff()
-        // Record now (before fetching) so photos added during a slow scan are
-        // caught on the next launch rather than permanently skipped.
         let scanStartDate = Date()
 
-        // Layer 2: Stream only new/changed groups; existing ones stay in the list
+        // Layer 2: Stream new groups; already-grouped assets are excluded via knownIDs.
         let assets = await photoService.fetchAllAssets()
         scanProgress = (0, assets.count)
 
         var allGroups = baseGroups
-        for await group in await groupingService.streamGroups(from: assets, excluding: knownIDs, since: cutoff) {
-            let hydrated = await groupingService.hydrateDecisions(into: [group]).first ?? group
+        for await group in await groupingService.streamGroups(from: assets, excluding: knownIDs) {
+            let hydrated = filledWithBytes(await groupingService.hydrateDecisions(into: [group]).first ?? group)
             guard !completedGroupIDs.contains(hydrated.id) else { continue }
             withAnimation(.spring(duration: 0.35)) {
                 allGroups.append(hydrated)
@@ -104,20 +101,37 @@ final class LibraryViewModel {
         groups = sorted(groups)
     }
 
+    private func filledWithBytes(_ group: PhotoGroup) -> PhotoGroup {
+        guard group.totalFileBytes == 0 else { return group }
+        var g = group
+        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
+        g.totalFileBytes = g.assets.reduce(Int64(0)) { sum, asset in
+            let resources = PHAssetResource.assetResources(for: asset)
+            guard let r = resources.first(where: { acceptable.contains($0.type) }),
+                  let bytes = r.value(forKey: "fileSize") as? Int64 else { return sum }
+            return sum + bytes
+        }
+        return g
+    }
+
     private func sorted(_ groups: [PhotoGroup]) -> [PhotoGroup] {
         switch sortOrder {
         case .oldestBiggest:
             return groups.sorted {
-                if $0.assets.count != $1.assets.count { return $0.assets.count > $1.assets.count }
-                return ($0.captureDate ?? .distantFuture) < ($1.captureDate ?? .distantFuture)
+                let d0 = $0.captureDate ?? .distantFuture
+                let d1 = $1.captureDate ?? .distantFuture
+                if d0 != d1 { return d0 < d1 }
+                return $0.assets.count > $1.assets.count
             }
         case .newestBiggest:
             return groups.sorted {
-                if $0.assets.count != $1.assets.count { return $0.assets.count > $1.assets.count }
-                return ($0.captureDate ?? .distantPast) > ($1.captureDate ?? .distantPast)
+                let d0 = $0.captureDate ?? .distantPast
+                let d1 = $1.captureDate ?? .distantPast
+                if d0 != d1 { return d0 > d1 }
+                return $0.assets.count > $1.assets.count
             }
         case .biggestFirst:
-            return groups.sorted { $0.assets.count > $1.assets.count }
+            return groups.sorted { $0.totalFileBytes > $1.totalFileBytes }
         case .random:
             return groups.shuffled()
         }
@@ -156,13 +170,10 @@ final class LibraryViewModel {
         quickWins.removeAll { $0.category == category }
     }
 
-    /// Returns the next incomplete group chronologically after `current` —
-    /// the one to suggest behind a "Continue" CTA. Pure lookup, no mutation,
-    /// so the caller can decide when to actually navigate.
+    /// Returns the next incomplete group in the current sort order after `current`.
+    /// Pure lookup, no mutation, so the caller can decide when to actually navigate.
     func nextIncompleteGroup(after current: PhotoGroup) -> PhotoGroup? {
-        let currentDate = current.captureDate ?? .distantPast
-        return groups
-            .filter { $0.id != current.id && !$0.isComplete && ($0.captureDate ?? .distantPast) > currentDate }
-            .min(by: { ($0.captureDate ?? .distantPast) < ($1.captureDate ?? .distantPast) })
+        guard let idx = groups.firstIndex(of: current) else { return nil }
+        return groups[(idx + 1)...].first { !$0.isComplete }
     }
 }

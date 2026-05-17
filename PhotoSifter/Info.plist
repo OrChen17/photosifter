@@ -11,7 +11,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleDisplayName</key>
-	<string>KickPic</string>
+	<string>FlickPic</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -23,9 +23,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>KickPic needs access to your photo library to find and help you delete near-duplicate photos.</string>
+	<string>FlickPic needs access to your photo library to find and help you delete near-duplicate photos.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>KickPic needs access to your photo library to manage your photos.</string>
+	<string>FlickPic needs access to your photo library to manage your photos.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

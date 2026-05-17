@@ -235,17 +235,17 @@ struct SwipeCardView: View {
     private func throwCard(direction: CGFloat, then action: @escaping () -> Void) {
         isThrown = true
         if direction > 0 { onThrowRight?() } else { onThrowLeft?() }
-        withAnimation(.spring(duration: 0.4, bounce: 0.1)) {
+        withAnimation(.spring(duration: 0.22, bounce: 0.08)) {
             offset = CGSize(width: direction * 600, height: -50)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { action() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { action() }
     }
 
     private func throwCardUp(then action: @escaping () -> Void) {
         isThrown = true
-        withAnimation(.spring(duration: 0.35, bounce: 0.05)) {
+        withAnimation(.spring(duration: 0.18, bounce: 0.0)) {
             offset = CGSize(width: 0, height: -700)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { action() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.13) { action() }
     }
 }

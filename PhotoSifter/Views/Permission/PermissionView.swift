@@ -22,7 +22,7 @@ struct PermissionView: View {
                         )
 
                     VStack(spacing: 12) {
-                        Text("KickPic")
+                        Text("FlickPic")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
 
@@ -48,7 +48,7 @@ struct PermissionView: View {
                 Button {
                     Task { await onRequest() }
                 } label: {
-                    Text("Allow Photo Access")
+                    Text("Allow Full Access")
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)

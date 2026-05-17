@@ -165,6 +165,108 @@ final class LibraryViewModelTests: XCTestCase {
         }
     }
 
+    func testApplySort_newestBiggest_dateIsPrimaryKey() throws {
+        let assets = try requirePhotoAssets(minimum: 4)
+        // requirePhotoAssets fetches sorted oldest-first, so prefix = older, suffix = newer
+        let olderGroup = PhotoGroup(id: UUID(), assets: Array(assets.prefix(2)))
+        let newerGroup = PhotoGroup(id: UUID(), assets: Array(assets.suffix(2)))
+        let vm = LibraryViewModel()
+        vm.groups = [olderGroup, newerGroup]
+        vm.sortOrder = .newestBiggest
+        vm.applySort()
+
+        XCTAssertEqual(vm.groups.count, 2)
+        let separationDate0 = assets[1].creationDate
+        let separationDate1 = assets[2].creationDate
+        guard let old = separationDate0, let new = separationDate1, old < new else { return }
+        XCTAssertEqual(vm.groups[0].id, newerGroup.id, "newestBiggest must put newer dates first")
+    }
+
+    func testApplySort_oldestBiggest_dateIsPrimaryKey() throws {
+        let assets = try requirePhotoAssets(minimum: 4)
+        let olderGroup = PhotoGroup(id: UUID(), assets: Array(assets.prefix(2)))
+        let newerGroup = PhotoGroup(id: UUID(), assets: Array(assets.suffix(2)))
+        let vm = LibraryViewModel()
+        vm.groups = [newerGroup, olderGroup]  // intentionally reversed
+        vm.sortOrder = .oldestBiggest
+        vm.applySort()
+
+        XCTAssertEqual(vm.groups.count, 2)
+        let separationDate0 = assets[1].creationDate
+        let separationDate1 = assets[2].creationDate
+        guard let old = separationDate0, let new = separationDate1, old < new else { return }
+        XCTAssertEqual(vm.groups[0].id, olderGroup.id, "oldestBiggest must put older dates first")
+    }
+
+    func testApplySort_newestBiggest_sizeBreaksTie() throws {
+        // When dates are equal, larger group wins
+        let assets = try requirePhotoAssets(minimum: 3)
+        let small = PhotoGroup(id: UUID(), assets: Array(assets.prefix(2)))
+        let large = PhotoGroup(id: UUID(), assets: assets)
+        let vm = LibraryViewModel()
+        vm.groups = [small, large]
+        vm.sortOrder = .newestBiggest
+        vm.applySort()
+
+        XCTAssertEqual(vm.groups.count, 2)
+        // Only assert size order when both groups share the same captureDate
+        guard let d0 = small.captureDate, let d1 = large.captureDate, d0 == d1 else { return }
+        XCTAssertEqual(vm.groups[0].id, large.id, "Same date: larger group must come first")
+    }
+
+    // MARK: - nextIncompleteGroup
+
+    func testNextIncompleteGroup_returnsNextInArrayOrder() throws {
+        let vm = LibraryViewModel()
+        let g1 = try requirePhotoGroup(assetCount: 2)
+        let g2 = try requirePhotoGroup(assetCount: 2)
+        let g3 = try requirePhotoGroup(assetCount: 2)
+        vm.groups = [g1, g2, g3]
+
+        XCTAssertEqual(vm.nextIncompleteGroup(after: g1)?.id, g2.id)
+        XCTAssertEqual(vm.nextIncompleteGroup(after: g2)?.id, g3.id)
+    }
+
+    func testNextIncompleteGroup_skipsCompleteGroups() throws {
+        let vm = LibraryViewModel()
+        let g1 = try requirePhotoGroup(assetCount: 2)
+        var g2 = try requirePhotoGroup(assetCount: 2)
+        let g3 = try requirePhotoGroup(assetCount: 2)
+        for asset in g2.assets { g2.decisions[asset.localIdentifier] = .keep }
+        vm.groups = [g1, g2, g3]
+
+        XCTAssertEqual(vm.nextIncompleteGroup(after: g1)?.id, g3.id,
+                       "Complete groups must be skipped")
+    }
+
+    func testNextIncompleteGroup_returnsNilAtEnd() throws {
+        let vm = LibraryViewModel()
+        let g1 = try requirePhotoGroup(assetCount: 2)
+        let g2 = try requirePhotoGroup(assetCount: 2)
+        vm.groups = [g1, g2]
+
+        XCTAssertNil(vm.nextIncompleteGroup(after: g2))
+    }
+
+    func testNextIncompleteGroup_returnsNilWhenAllRemainingComplete() throws {
+        let vm = LibraryViewModel()
+        let g1 = try requirePhotoGroup(assetCount: 2)
+        var g2 = try requirePhotoGroup(assetCount: 2)
+        for asset in g2.assets { g2.decisions[asset.localIdentifier] = .keep }
+        vm.groups = [g1, g2]
+
+        XCTAssertNil(vm.nextIncompleteGroup(after: g1))
+    }
+
+    func testNextIncompleteGroup_returnsNilWhenCurrentNotInList() throws {
+        let vm = LibraryViewModel()
+        let g1 = try requirePhotoGroup(assetCount: 2)
+        let outsider = PhotoGroup(id: UUID(), assets: [])
+        vm.groups = [g1]
+
+        XCTAssertNil(vm.nextIncompleteGroup(after: outsider))
+    }
+
     // MARK: - Helpers
 
     private func makeBatch(deleted: Int, bytes: Int64) -> CompletedBatch {

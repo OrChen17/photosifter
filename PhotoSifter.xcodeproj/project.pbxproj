@@ -26,6 +26,8 @@
 		A016 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B016 /* HapticManager.swift */; };
 		A017 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B017 /* SoundManager.swift */; };
 		A018 /* Color+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018 /* Color+App.swift */; };
+		A01A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01A /* AppSettings.swift */; };
+		A01B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01B /* SettingsView.swift */; };
 		A019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B019 /* Assets.xcassets */; };
 		X001 /* CompletedBatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX01 /* CompletedBatch.swift */; };
 		X002 /* CompletedBatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX02 /* CompletedBatchStore.swift */; };
@@ -93,6 +95,8 @@
 		B016 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		B017 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		B018 /* Color+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+App.swift"; sourceTree = "<group>"; };
+		B01A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		B01B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B019 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BX01 /* CompletedBatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatch.swift; sourceTree = "<group>"; };
 		BX02 /* CompletedBatchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchStore.swift; sourceTree = "<group>"; };
@@ -220,6 +224,7 @@
 				B016 /* HapticManager.swift */,
 				B017 /* SoundManager.swift */,
 				B018 /* Color+App.swift */,
+				B01A /* AppSettings.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -231,6 +236,7 @@
 				GRP_VLIB /* Library */,
 				GRP_VSIFT /* Sifter */,
 				GRP_VSUM /* Summary */,
+				GRP_VSET /* Settings */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -283,6 +289,14 @@
 				B015 /* SessionSummaryView.swift */,
 			);
 			path = Summary;
+			sourceTree = "<group>";
+		};
+		GRP_VSET /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				B01B /* SettingsView.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		MAIN /* PhotoSifter */ = {
@@ -453,6 +467,8 @@
 				A016 /* HapticManager.swift in Sources */,
 				A017 /* SoundManager.swift in Sources */,
 				A018 /* Color+App.swift in Sources */,
+				A01A /* AppSettings.swift in Sources */,
+				A01B /* SettingsView.swift in Sources */,
 				X001 /* CompletedBatch.swift in Sources */,
 				X002 /* CompletedBatchStore.swift in Sources */,
 				X003 /* QuickWin.swift in Sources */,
@@ -556,7 +572,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kickpic.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.flickpic.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -576,7 +592,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kickpic.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.flickpic.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -595,7 +611,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kickpic.app.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.flickpic.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -640,7 +656,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kickpic.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.flickpic.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -660,7 +676,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kickpic.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.flickpic.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -679,7 +695,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kickpic.app.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.flickpic.app.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

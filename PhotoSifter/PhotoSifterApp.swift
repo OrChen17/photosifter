@@ -3,17 +3,22 @@ import SwiftUI
 @main
 struct PhotoSifterApp: App {
     @State private var libraryViewModel = LibraryViewModel()
+    @State private var appSettings = AppSettings()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(libraryViewModel)
+                .environment(appSettings)
                 .preferredColorScheme(.dark)
                 .onAppear { applyUITestingOverrides() }
-                // Check (and if needed request) authorization automatically on
-                // every launch so returning users never see PermissionView
-                // when they've already granted access.
-                .task { await libraryViewModel.checkAuthorization() }
+                // If access was already granted, load immediately.
+                // If not determined, PermissionView shows and the button triggers the request.
+                .task {
+                    if libraryViewModel.authStatus == .authorized || libraryViewModel.authStatus == .limited {
+                        await libraryViewModel.load()
+                    }
+                }
         }
     }
 

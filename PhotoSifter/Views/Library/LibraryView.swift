@@ -8,8 +8,10 @@ private struct ScrollOffsetKey: PreferenceKey {
 
 struct LibraryView: View {
     @Environment(LibraryViewModel.self) private var vm
+    @Environment(AppSettings.self) private var appSettings
     @State private var stripCollapsed = false
     @State private var initialGridY: CGFloat? = nil
+    @State private var showingSettings = false
 
     var body: some View {
         @Bindable var vm = vm
@@ -28,7 +30,21 @@ struct LibraryView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
+                    .environment(appSettings)
+                    .presentationDetents([.medium])
+            }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.appTextSecondary)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         ForEach(GroupSortOrder.allCases, id: \.self) { order in

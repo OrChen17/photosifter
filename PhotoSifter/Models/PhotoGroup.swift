@@ -30,6 +30,9 @@ struct PhotoGroup: Identifiable, Sendable {
         decisions.values.filter { $0 == .delete }.count
     }
 
+    /// Populated once when a group enters the library list. Zero means not yet computed.
+    var totalFileBytes: Int64 = 0
+
     var captureDate: Date? {
         assets.first?.creationDate
     }

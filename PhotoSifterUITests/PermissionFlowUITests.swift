@@ -8,7 +8,7 @@ final class PermissionFlowUITests: PhotoSifterUITestCase {
         launchFresh()
 
         // The permission screen headline should be visible
-        let title = app.staticTexts["PhotoSifter"]
+        let title = app.staticTexts["FlickPic"]
         XCTAssertTrue(title.waitForExistence(timeout: 5), "App title should appear on the permission screen")
     }
 

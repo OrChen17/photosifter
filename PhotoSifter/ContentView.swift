@@ -49,7 +49,7 @@ private struct DeniedView: View {
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Open Settings → Privacy → Photos\nand allow access to KickPic.")
+                Text("Open Settings → Privacy → Photos\nand allow access to FlickPic.")
                     .font(.system(size: 16, design: .rounded))
                     .foregroundStyle(.appTextSecondary)
                     .multilineTextAlignment(.center)
