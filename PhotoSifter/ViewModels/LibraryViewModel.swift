@@ -60,17 +60,27 @@ final class LibraryViewModel {
         // Load stats immediately so counters are non-zero on first render
         completedBatches = await CompletedBatchStore.shared.loadAll()
 
+        let flickedIDs = await groupingService.loadFlickedIdentifiers()
+
         // Layer 1: Serve cached groups immediately (hydrated with saved decisions)
         var baseGroups: [PhotoGroup] = []
         if let cached = await groupingService.loadCachedGroups(), !cached.isEmpty {
             baseGroups = await groupingService.hydrateDecisions(into: cached)
                 .filter { !completedGroupIDs.contains($0.id) }
+                .compactMap { group -> PhotoGroup? in
+                    let unflicked = group.assets.filter { !flickedIDs.contains($0.localIdentifier) }
+                    guard unflicked.count >= 2 else { return nil }
+                    guard unflicked.count < group.assets.count else { return group }
+                    var copy = PhotoGroup(id: group.id, assets: unflicked)
+                    copy.decisions = group.decisions.filter { key, _ in unflicked.contains { $0.localIdentifier == key } }
+                    return copy
+                }
                 .map { filledWithBytes($0) }
             groups = sorted(baseGroups)
         }
 
-        // Identify assets already in a cached group so Vision skips re-evaluating them.
-        let knownIDs = Set(baseGroups.flatMap { $0.assets.map(\.localIdentifier) })
+        // Identify assets already in a cached group OR already flicked so Vision skips them.
+        let knownIDs = Set(baseGroups.flatMap { $0.assets.map(\.localIdentifier) }).union(flickedIDs)
         let scanStartDate = Date()
 
         // Layer 2: Stream new groups; already-grouped assets are excluded via knownIDs.
@@ -81,6 +91,9 @@ final class LibraryViewModel {
         for await group in await groupingService.streamGroups(from: assets, excluding: knownIDs) {
             let hydrated = filledWithBytes(await groupingService.hydrateDecisions(into: [group]).first ?? group)
             guard !completedGroupIDs.contains(hydrated.id) else { continue }
+            // knownIDs already excludes flicked assets from being scanned, but guard
+            // here too in case a burst group slipped through with flicked members.
+            guard hydrated.assets.filter({ !flickedIDs.contains($0.localIdentifier) }).count >= 2 else { continue }
             withAnimation(.spring(duration: 0.35)) {
                 allGroups.append(hydrated)
                 groups = sorted(allGroups)
@@ -143,7 +156,9 @@ final class LibraryViewModel {
         groups.removeAll { $0.id == group.id }
         quickWins.removeAll { $0.group.id == group.id }
         let remaining = groups
+        let assetIDs = group.assets.map(\.localIdentifier)
         Task {
+            await groupingService.addFlickedIdentifiers(assetIDs)
             await groupingService.saveDecisions(for: PhotoGroup(id: group.id, assets: group.assets, decisions: [:]))
             // Persist the updated group list immediately so a force-quit during an
             // active scan doesn't cause the completed group to reappear on next launch.

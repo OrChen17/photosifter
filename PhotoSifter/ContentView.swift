@@ -17,7 +17,7 @@ struct ContentView: View {
                 TabView {
                     LibraryView()
                         .tabItem {
-                            Label("Sift", systemImage: "photo.stack")
+                            Label("Flick", systemImage: "photo.stack")
                         }
                     HistoryView()
                         .tabItem {

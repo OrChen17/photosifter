@@ -134,11 +134,18 @@ struct SwipeCardView: View {
     private func cardPhoto(size: CGSize) -> some View {
         switch imageState {
         case .loaded(let image):
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(width: size.width, height: size.height)
-                .clipped()
+            ZStack {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size.width, height: size.height)
+                    .blur(radius: 28, opaque: true)
+                    .brightness(-0.08)
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size.width, height: size.height)
+            }
         case .iCloudOnly:
             Color.appCard.overlay {
                 VStack(spacing: 10) {

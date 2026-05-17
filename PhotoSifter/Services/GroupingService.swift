@@ -23,6 +23,10 @@ actor GroupingService {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return support.appendingPathComponent("scan_cutoff.json")
     }()
+    private let flickedURL: URL = {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return support.appendingPathComponent("flicked_identifiers.json")
+    }()
 
     init(similarity: any SimilarityProviding = SimilarityService.shared) {
         self.similarity = similarity
@@ -145,6 +149,20 @@ actor GroupingService {
     func saveScanCutoff(_ date: Date) {
         guard let data = try? JSONEncoder().encode(date) else { return }
         try? data.write(to: scanCutoffURL, options: .atomic)
+    }
+
+    func loadFlickedIdentifiers() -> Set<String> {
+        guard let data = try? Data(contentsOf: flickedURL),
+              let ids = try? JSONDecoder().decode([String].self, from: data)
+        else { return [] }
+        return Set(ids)
+    }
+
+    func addFlickedIdentifiers(_ ids: [String]) {
+        var current = loadFlickedIdentifiers()
+        current.formUnion(ids)
+        guard let data = try? JSONEncoder().encode(Array(current)) else { return }
+        try? data.write(to: flickedURL, options: .atomic)
     }
 
     func invalidateCache() {
