@@ -6,10 +6,13 @@ struct SessionSummaryView: View {
     let nextGroup: PhotoGroup?
     let outcome: DeletionOutcome?
     let deletedBytes: Int64
+    var onDismiss: (() -> Void)? = nil
     var onContinue: (() -> Void)? = nil
     var onRetry: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+
+    private func doDissmiss() { onDismiss != nil ? onDismiss!() : dismiss() }
     @State private var animatedCount: Int = 0
     @State private var animatedBytes: Int64 = 0
     @State private var totalBytes: Int64 = 0
@@ -67,7 +70,7 @@ struct SessionSummaryView: View {
             .padding(.top, 32)
             .padding(.bottom, 32)
 
-            Button { dismiss() } label: {
+            Button { doDissmiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 28))
                     .foregroundStyle(Color.white.opacity(0.25))
@@ -118,7 +121,7 @@ struct SessionSummaryView: View {
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
             }
-            dismiss()
+            doDissmiss()
             onContinue?()
         }
     }
@@ -196,7 +199,7 @@ struct SessionSummaryView: View {
                 Button {
                     HapticManager.shared.playNavigate()
                     autoTask?.cancel()
-                    dismiss()
+                    doDissmiss()
                     onContinue?()
                 } label: {
                     nextBatchCard(next: next, countdown: countdown)
@@ -205,7 +208,7 @@ struct SessionSummaryView: View {
             } else {
                 Button {
                     HapticManager.shared.playNavigate()
-                    dismiss()
+                    doDissmiss()
                     onContinue?()
                 } label: {
                     Text("Back to Library")
@@ -356,14 +359,14 @@ struct SessionSummaryView: View {
 
             if let next = nextGroup {
                 Button {
-                    dismiss()
+                    doDissmiss()
                     onContinue?()
                 } label: {
                     nextBatchCard(next: next)
                 }
             } else {
                 Button {
-                    dismiss()
+                    doDissmiss()
                     onContinue?()
                 } label: {
                     Text("Back to Library")

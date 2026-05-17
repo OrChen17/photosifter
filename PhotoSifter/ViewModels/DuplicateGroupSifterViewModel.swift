@@ -9,6 +9,7 @@ final class DuplicateGroupSifterViewModel {
     private(set) var isCommitting: Bool = false
     private(set) var deletedCount: Int = 0
     private(set) var deletedBytes: Int64 = 0
+    private(set) var commitOutcome: DeletionOutcome?
 
     var currentGroup: PhotoGroup? {
         currentIndex < groups.count ? groups[currentIndex] : nil
@@ -46,11 +47,25 @@ final class DuplicateGroupSifterViewModel {
             for asset in toDelete {
                 if let sz = fileSize(for: asset) { totalBytes += sz }
             }
-            try? await PhotoLibraryService.shared.deleteAssets(toDelete)
-            totalDeleted += toDelete.count
+            do {
+                try await PhotoLibraryService.shared.deleteAssets(toDelete)
+                totalDeleted += toDelete.count
+            } catch {
+                let ns = error as NSError
+                if (error as? PHPhotosError)?.code == .userCancelled
+                    || ns.code == NSUserCancelledError {
+                    commitOutcome = .cancelledByUser
+                } else {
+                    commitOutcome = .failed(error.localizedDescription)
+                }
+                deletedCount = totalDeleted
+                deletedBytes = totalBytes
+                return
+            }
         }
         deletedCount = totalDeleted
         deletedBytes = totalBytes
+        commitOutcome = mergedGroupIDs.isEmpty ? .nothingToDelete : .committed
     }
 
     func assetsToDelete(in group: PhotoGroup) -> [PHAsset] {

@@ -9,9 +9,9 @@ enum GroupSortOrder: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .oldestBiggest: return "Oldest first"
-        case .newestBiggest: return "Newest first"
-        case .biggestFirst: return "Largest groups"
+        case .oldestBiggest: return "Oldest"
+        case .newestBiggest: return "Newest"
+        case .biggestFirst: return "Largest"
         case .random: return "Random"
         }
     }
@@ -53,6 +53,7 @@ final class LibraryViewModel {
     }
 
     func load() async {
+        guard !isScanning else { return }
         error = nil
         isScanning = true
 
@@ -141,7 +142,13 @@ final class LibraryViewModel {
         completedGroupIDs.insert(group.id)
         groups.removeAll { $0.id == group.id }
         quickWins.removeAll { $0.group.id == group.id }
-        Task { await groupingService.saveDecisions(for: PhotoGroup(id: group.id, assets: group.assets, decisions: [:])) }
+        let remaining = groups
+        Task {
+            await groupingService.saveDecisions(for: PhotoGroup(id: group.id, assets: group.assets, decisions: [:]))
+            // Persist the updated group list immediately so a force-quit during an
+            // active scan doesn't cause the completed group to reappear on next launch.
+            await groupingService.persistGroups(remaining)
+        }
     }
 
     func recordCompletedBatch(_ batch: CompletedBatch) async {

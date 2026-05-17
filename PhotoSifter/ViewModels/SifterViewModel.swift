@@ -17,7 +17,6 @@ enum DeletionOutcome: Equatable {
 @MainActor
 final class SifterViewModel {
     var group: PhotoGroup
-    // Mutable display order — skip moves an asset to the end
     var displayOrder: [PHAsset]
     var currentIndex: Int = 0
     var isComplete: Bool = false
@@ -70,22 +69,21 @@ final class SifterViewModel {
 
     var progress: Double {
         guard !displayOrder.isEmpty else { return 1 }
-        return Double(currentIndex) / Double(displayOrder.count)
+        return Double(group.decisions.count) / Double(displayOrder.count)
     }
 
     var canUndo: Bool { !decisionHistory.isEmpty }
 
     var canSkipCurrent: Bool {
         guard let asset = currentAsset else { return false }
-        return !skippedIdentifiers.contains(asset.localIdentifier)
+        if skippedIdentifiers.contains(asset.localIdentifier) { return false }
+        return nextUndecidedIndex(after: currentIndex) != nil
     }
 
     /// True when this is the last undecided photo and nothing has been kept yet.
     var isLastUndecidedWithNoKept: Bool {
-        let undecidedAhead = displayOrder[currentIndex...].filter {
-            group.decisions[$0.localIdentifier] == nil
-        }
-        return undecidedAhead.count == 1 && group.keptAssets.isEmpty
+        let undecidedCount = displayOrder.filter { group.decisions[$0.localIdentifier] == nil }.count
+        return undecidedCount == 1 && group.keptAssets.isEmpty
     }
 
     // MARK: - Swipe actions
@@ -110,12 +108,10 @@ final class SifterViewModel {
         guard let asset = currentAsset,
               !skippedIdentifiers.contains(asset.localIdentifier) else { return }
         skippedIdentifiers.insert(asset.localIdentifier)
-        displayOrder.remove(at: currentIndex)
-        displayOrder.append(asset)
-        // currentIndex stays — the next asset slides in automatically
-        // Edge case: if this was the last asset, we're done
-        if currentIndex >= displayOrder.count {
-            finishGroup()
+        // Advance circularly — skipped photo stays in its original position and
+        // will be revisited when the circular scan wraps back around to it.
+        if let next = nextUndecidedIndex(after: currentIndex) {
+            currentIndex = next
         }
     }
 
@@ -287,14 +283,52 @@ final class SifterViewModel {
         group.decisions[asset.localIdentifier] = decision
     }
 
+    /// Next undecided asset for the preview card behind the current one.
+    var nextAsset: PHAsset? {
+        guard let idx = nextUndecidedIndex(after: currentIndex) else { return nil }
+        return displayOrder[idx]
+    }
+
+    /// Returns the next `count` undecided assets in circular order, for preloading.
+    func upcomingAssets(count: Int) -> [PHAsset] {
+        var result: [PHAsset] = []
+        var searchFrom = currentIndex
+        for _ in 0..<count {
+            guard let next = nextUndecidedIndex(after: searchFrom) else { break }
+            result.append(displayOrder[next])
+            searchFrom = next
+        }
+        return result
+    }
+
+    private func nextUndecidedIndex(after index: Int) -> Int? {
+        let count = displayOrder.count
+        guard count > 0 else { return nil }
+        for offset in 1..<count {
+            let i = (index + offset) % count
+            if group.decisions[displayOrder[i].localIdentifier] == nil {
+                return i
+            }
+        }
+        return nil
+    }
+
     private func advance() {
-        currentIndex += 1
-        if currentIndex >= displayOrder.count {
+        if let next = nextUndecidedIndex(after: currentIndex) {
+            currentIndex = next
+        } else {
             finishGroup()
         }
     }
 
     private func finishGroup() {
+        // Don't finish if any asset still has no decision — loop back to it.
+        if let firstUndecided = displayOrder.indices.first(where: {
+            group.decisions[displayOrder[$0].localIdentifier] == nil
+        }) {
+            currentIndex = firstUndecided
+            return
+        }
         currentIndex = displayOrder.count
         isComplete = true
         haptics.playBatchComplete()

@@ -185,6 +185,7 @@ struct LibraryView: View {
 
 struct MemoryCardView: View {
     let group: PhotoGroup
+    @Environment(\.displayScale) private var displayScale
     @State private var thumbnails: [UIImage?] = []
     @State private var groupBytes: Int64 = 0
 
@@ -269,7 +270,7 @@ struct MemoryCardView: View {
     private func loadThumbnails() async {
         // targetSize is in pixels. Scale by screen density so thumbnails aren't
         // upscaled and blurry on 2x/3x devices.
-        let px = 200.0 * UIScreen.main.scale
+        let px = 200.0 * displayScale
         let size = CGSize(width: px, height: px)
         let indices = displayIndices
         thumbnails = Array(repeating: nil, count: indices.count)

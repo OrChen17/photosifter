@@ -1,6 +1,12 @@
 import Photos
 import UIKit
 
+enum FullImageResult {
+    case loaded(UIImage)
+    case iCloudOnly   // asset exists only in iCloud; cloud download is disabled
+    case failed
+}
+
 actor PhotoLibraryService {
     static let shared = PhotoLibraryService()
 
@@ -37,36 +43,79 @@ actor PhotoLibraryService {
             options.resizeMode = .fast
             options.isNetworkAccessAllowed = AppSettings.cloudDownloadEnabled
             // .opportunistic fires twice: degraded first (OS thumbnail cache — fast),
-            // then full quality. Accept the first result so we return immediately from
-            // cache rather than waiting for a full re-decode.
+            // then full quality. Wait for the non-degraded result so the grid never
+            // shows a blurry thumbnail that never updates.
             var resumed = false
             imageManager.requestImage(
                 for: asset,
                 targetSize: size,
                 contentMode: .aspectFill,
                 options: options
-            ) { image, _ in
-                guard !resumed else { return }
+            ) { image, info in
+                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                guard !isDegraded, !resumed else { return }
                 resumed = true
                 continuation.resume(returning: image)
             }
         }
     }
 
-    func loadFullImage(for asset: PHAsset) async -> UIImage? {
+    func loadFullImage(for asset: PHAsset) async -> FullImageResult {
         await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
             options.deliveryMode = .highQualityFormat
             options.isNetworkAccessAllowed = AppSettings.cloudDownloadEnabled
+            var resumed = false
             imageManager.requestImage(
                 for: asset,
                 targetSize: PHImageManagerMaximumSize,
                 contentMode: .aspectFit,
                 options: options
             ) { image, info in
+                guard !resumed else { return }
                 let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-                if !isDegraded { continuation.resume(returning: image) }
+                guard !isDegraded else { return }
+                resumed = true
+                if let image {
+                    continuation.resume(returning: .loaded(image))
+                } else if (info?[PHImageResultIsInCloudKey] as? Bool) == true {
+                    continuation.resume(returning: .iCloudOnly)
+                } else {
+                    continuation.resume(returning: .failed)
+                }
             }
+        }
+    }
+
+    /// Returns true if the primary image resource is stored on this device.
+    /// Uses PHAssetResourceManager with network disabled — cancels after the
+    /// first data chunk so we never read the full file, just confirm it exists locally.
+    func isLocallyAvailable(_ asset: PHAsset) async -> Bool {
+        let types: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
+        guard let resource = PHAssetResource.assetResources(for: asset)
+            .first(where: { types.contains($0.type) }) else { return false }
+
+        let options = PHAssetResourceRequestOptions()
+        options.isNetworkAccessAllowed = false
+
+        return await withCheckedContinuation { continuation in
+            var requestID: PHAssetResourceDataRequestID = 0
+            var resumed = false
+            requestID = PHAssetResourceManager.default().requestData(
+                for: resource,
+                options: options,
+                dataReceivedHandler: { _ in
+                    guard !resumed else { return }
+                    resumed = true
+                    PHAssetResourceManager.default().cancelDataRequest(requestID)
+                    continuation.resume(returning: true)
+                },
+                completionHandler: { error in
+                    guard !resumed else { return }
+                    resumed = true
+                    continuation.resume(returning: error == nil)
+                }
+            )
         }
     }
 

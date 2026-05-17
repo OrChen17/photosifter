@@ -3,6 +3,16 @@ import Photos
 import CoreLocation
 import Contacts
 
+/// Reverse-geocode cache keyed by ~1km-rounded coords so nearby photos
+/// don't each hit the geocoder. Actor-isolated to prevent data races when
+/// multiple cards load concurrently.
+private actor GeoCache {
+    static let shared = GeoCache()
+    private var store: [String: String] = [:]
+    func get(_ key: String) -> String? { store[key] }
+    func set(_ key: String, _ value: String) { store[key] = value }
+}
+
 struct SwipeCardView: View {
     let asset: PHAsset
     let preloadedImage: UIImage?
@@ -19,9 +29,16 @@ struct SwipeCardView: View {
     var rightBadgeLabel: String? = nil
     var leftBadgeLabel: String? = nil
 
+    private enum CardImageState {
+        case loading
+        case loaded(UIImage)
+        case iCloudOnly
+        case failed
+    }
+
     @State private var offset: CGSize = .zero
     @State private var isThrown: Bool = false
-    @State private var image: UIImage?
+    @State private var imageState: CardImageState = .loading
     @State private var locationLabel: String?
     @State private var hasCrossedBadgeThreshold: Bool = false
 
@@ -96,9 +113,13 @@ struct SwipeCardView: View {
         }
         .task {
             if let preloaded = preloadedImage {
-                image = preloaded
+                imageState = .loaded(preloaded)
             } else {
-                image = await PhotoLibraryService.shared.loadFullImage(for: asset)
+                switch await PhotoLibraryService.shared.loadFullImage(for: asset) {
+                case .loaded(let img): imageState = .loaded(img)
+                case .iCloudOnly:      imageState = .iCloudOnly
+                case .failed:          imageState = .failed
+                }
             }
             await loadLocationLabel()
         }
@@ -111,18 +132,41 @@ struct SwipeCardView: View {
 
     @ViewBuilder
     private func cardPhoto(size: CGSize) -> some View {
-        if let image {
+        switch imageState {
+        case .loaded(let image):
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
                 .frame(width: size.width, height: size.height)
                 .clipped()
-        } else {
-            Color.appCard
-                .overlay {
-                    ProgressView()
-                        .tint(.appTextSecondary)
+        case .iCloudOnly:
+            Color.appCard.overlay {
+                VStack(spacing: 10) {
+                    Image(systemName: "icloud.slash")
+                        .font(.system(size: 36))
+                    Text("Not on device")
+                        .font(.system(size: 13, design: .rounded))
+                    Text("Enable iCloud downloads in Settings")
+                        .font(.system(size: 11, design: .rounded))
+                        .multilineTextAlignment(.center)
                 }
+                .foregroundStyle(.appTextSecondary)
+                .padding()
+            }
+        case .failed:
+            Color.appCard.overlay {
+                VStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 36))
+                    Text("Couldn't load photo")
+                        .font(.system(size: 13, design: .rounded))
+                }
+                .foregroundStyle(.appTextSecondary)
+            }
+        case .loading:
+            Color.appCard.overlay {
+                ProgressView().tint(.appTextSecondary)
+            }
         }
     }
 
@@ -162,27 +206,24 @@ struct SwipeCardView: View {
 
     private func loadLocationLabel() async {
         guard let loc = asset.location else { return }
-        if let cached = SwipeCardView.locationCache[Self.cacheKey(loc)] {
+        let key = Self.cacheKey(loc)
+        if let cached = await GeoCache.shared.get(key) {
             locationLabel = cached
             return
         }
         let geocoder = CLGeocoder()
         if let placemark = try? await geocoder.reverseGeocodeLocation(loc).first {
-            // Prefer city; fall back to admin area, then country
             let label = placemark.locality
                 ?? placemark.subAdministrativeArea
                 ?? placemark.administrativeArea
                 ?? placemark.country
             if let label {
-                SwipeCardView.locationCache[Self.cacheKey(loc)] = label
+                await GeoCache.shared.set(key, label)
                 locationLabel = label
             }
         }
     }
 
-    /// Reverse-geocode cache keyed by ~1km-rounded coords so nearby photos
-    /// don't each hit the geocoder. Static so it survives card recreation.
-    nonisolated(unsafe) static var locationCache: [String: String] = [:]
     private static func cacheKey(_ l: CLLocation) -> String {
         String(format: "%.2f,%.2f", l.coordinate.latitude, l.coordinate.longitude)
     }

@@ -52,6 +52,8 @@
 		T011 /* GroupingServiceMockedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S011 /* GroupingServiceMockedTests.swift */; };
 		T012 /* CompletedBatchStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S012 /* CompletedBatchStoreTests.swift */; };
 		T013 /* QuickWinsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S013 /* QuickWinsServiceTests.swift */; };
+		T014 /* DuplicateGroupSifterViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S014 /* DuplicateGroupSifterViewModelTests.swift */; };
+		T015 /* AppSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S015 /* AppSettingsTests.swift */; };
 		U001 /* PhotoSifterUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R001 /* PhotoSifterUITests.swift */; };
 		U002 /* PermissionFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R002 /* PermissionFlowUITests.swift */; };
 		U003 /* LibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R003 /* LibraryUITests.swift */; };
@@ -127,6 +129,8 @@
 		S011 /* GroupingServiceMockedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupingServiceMockedTests.swift; sourceTree = "<group>"; };
 		S012 /* CompletedBatchStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchStoreTests.swift; sourceTree = "<group>"; };
 		S013 /* QuickWinsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsServiceTests.swift; sourceTree = "<group>"; };
+		S014 /* DuplicateGroupSifterViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterViewModelTests.swift; sourceTree = "<group>"; };
+		S015 /* AppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
 		TPROD /* PhotoSifterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		UPROD /* PhotoSifterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -202,6 +206,8 @@
 				S011 /* GroupingServiceMockedTests.swift */,
 				S012 /* CompletedBatchStoreTests.swift */,
 				S013 /* QuickWinsServiceTests.swift */,
+				S014 /* DuplicateGroupSifterViewModelTests.swift */,
+				S015 /* AppSettingsTests.swift */,
 				GRP_MOCKS /* Mocks */,
 			);
 			path = PhotoSifterTests;
@@ -499,6 +505,8 @@
 				T011 /* GroupingServiceMockedTests.swift in Sources */,
 				T012 /* CompletedBatchStoreTests.swift in Sources */,
 				T013 /* QuickWinsServiceTests.swift in Sources */,
+				T014 /* DuplicateGroupSifterViewModelTests.swift in Sources */,
+				T015 /* AppSettingsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -48,9 +48,16 @@ struct DuplicateGroupSifterView: View {
             guard complete else { return }
             Task {
                 await vm.commitDecisions()
-                libraryVM.removeQuickWins(ofCategory: .duplicates)
-                try? await Task.sleep(for: .milliseconds(400))
-                isDone = true
+                switch vm.commitOutcome {
+                case .committed, .nothingToDelete:
+                    libraryVM.removeQuickWins(ofCategory: .duplicates)
+                    try? await Task.sleep(for: .milliseconds(400))
+                    isDone = true
+                default:
+                    // cancelledByUser or failed — stay on the swipe screen so the
+                    // user can retry via the back button or try again later.
+                    SoundManager.shared.playFailure()
+                }
             }
         }
         .onChange(of: vm.currentIndex) { _, _ in
@@ -270,7 +277,7 @@ struct DuplicateGroupSifterView: View {
             for asset in group.assets {
                 let id = asset.localIdentifier
                 guard imageCache[id] == nil else { continue }
-                if let img = await PhotoLibraryService.shared.loadFullImage(for: asset) {
+                if case .loaded(let img) = await PhotoLibraryService.shared.loadFullImage(for: asset) {
                     imageCache[id] = img
                 }
             }

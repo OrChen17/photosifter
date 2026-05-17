@@ -52,9 +52,9 @@ actor GroupingService {
         let toScan = assets.filter { !knownIDs.contains($0.localIdentifier) }
 
         return AsyncStream { continuation in
-            Task(priority: .background) {
+            let task = Task(priority: .background) {
                 // Phase 1: Burst groups — skip representatives already grouped
-                let burstGroups = Self.fetchBurstGroups(excluding: knownIDs)
+                let burstGroups = await Self.fetchBurstGroups(excluding: knownIDs)
                 let burstIDs = Set(burstGroups.flatMap { $0.assets.map { $0.localIdentifier } })
                 for g in burstGroups { continuation.yield(g) }
 
@@ -63,11 +63,15 @@ actor GroupingService {
                 let buckets = Self.splitIntoBuckets(nonBurst)
 
                 for bucket in buckets {
+                    guard !Task.isCancelled else { break }
                     let groups = (try? await self.clusterBucket(bucket)) ?? []
                     for g in groups { continuation.yield(g) }
                 }
                 continuation.finish()
             }
+            // Cancel the background task when the consumer abandons the stream
+            // (e.g. LibraryViewModel navigates away or starts a new load()).
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
@@ -152,8 +156,8 @@ actor GroupingService {
     // MARK: - Burst groups (#16)
 
     /// Returns photo groups formed from iOS burst captures — no Vision needed.
-    /// Skips burst representatives already in `knownIDs` or older than `cutoff`.
-    private static func fetchBurstGroups(excluding knownIDs: Set<String> = []) -> [PhotoGroup] {
+    /// When cloud download is disabled, filters out any burst assets not stored on device.
+    private static func fetchBurstGroups(excluding knownIDs: Set<String> = []) async -> [PhotoGroup] {
         let options = PHFetchOptions()
         // `representsBurst` isn't accepted by PHQuery's predicate parser, so
         // filter by mediaType at the DB level and check representsBurst in code.
@@ -163,23 +167,45 @@ actor GroupingService {
         let allImages = PHAsset.fetchAssets(with: options)
         guard allImages.count > 0 else { return [] }
 
-        var groups: [PhotoGroup] = []
+        let filterForLocal = !AppSettings.cloudDownloadEnabled
+        var representatives: [(PHAsset, String)] = []
         allImages.enumerateObjects { representative, _, _ in
             guard representative.representsBurst,
-                  let burstID = representative.burstIdentifier else { return }
-            // Skip if this burst is already grouped
-            guard !knownIDs.contains(representative.localIdentifier) else { return }
+                  let burstID = representative.burstIdentifier,
+                  !knownIDs.contains(representative.localIdentifier) else { return }
+            representatives.append((representative, burstID))
+        }
+
+        var groups: [PhotoGroup] = []
+        for (representative, burstID) in representatives {
+            // Burst shots are milliseconds apart — if the representative isn't on device,
+            // the rest almost certainly aren't either. Skip the whole burst early.
+            if filterForLocal, await !PhotoLibraryService.shared.isLocallyAvailable(representative) {
+                continue
+            }
 
             let burstOptions = PHFetchOptions()
             burstOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
-            // Fetch all photos in this burst (including non-representative ones)
             burstOptions.includeAllBurstAssets = true
 
             let burstResult = PHAsset.fetchAssets(withBurstIdentifier: burstID, options: burstOptions)
-            guard burstResult.count >= 2 else { return }
-
             var burstAssets: [PHAsset] = []
             burstResult.enumerateObjects { asset, _, _ in burstAssets.append(asset) }
+
+            if filterForLocal {
+                // Some burst members may be in cloud even when the representative is local
+                // (e.g. only the starred photo was kept on device). Check each member.
+                burstAssets = await withTaskGroup(of: (PHAsset, Bool).self) { group in
+                    for asset in burstAssets {
+                        group.addTask { (asset, await PhotoLibraryService.shared.isLocallyAvailable(asset)) }
+                    }
+                    var local: [PHAsset] = []
+                    for await (asset, available) in group where available { local.append(asset) }
+                    return local.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+                }
+            }
+
+            guard burstAssets.count >= 2 else { continue }
             groups.append(PhotoGroup(id: UUID(), assets: burstAssets))
         }
         return groups

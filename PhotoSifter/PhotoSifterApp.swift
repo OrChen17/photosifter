@@ -1,7 +1,9 @@
 import SwiftUI
+import Photos
 
 @main
 struct PhotoSifterApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var libraryViewModel = LibraryViewModel()
     @State private var appSettings = AppSettings()
 
@@ -17,6 +19,17 @@ struct PhotoSifterApp: App {
                 .task {
                     if libraryViewModel.authStatus == .authorized || libraryViewModel.authStatus == .limited {
                         await libraryViewModel.load()
+                    }
+                }
+                // Re-check auth when returning from Settings so the denied→re-grant
+                // warm-return flow works without a full relaunch.
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active else { return }
+                    let current = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+                    guard current != libraryViewModel.authStatus else { return }
+                    libraryViewModel.authStatus = current
+                    if current == .authorized || current == .limited {
+                        Task { await libraryViewModel.load() }
                     }
                 }
         }

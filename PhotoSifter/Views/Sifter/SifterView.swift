@@ -18,6 +18,7 @@ struct SifterView: View {
     @State private var cardAppearWobble: Double = 1.5
     @AppStorage("skipUsageCount") private var skipUsageCount: Int = 0
     @State private var pendingNextGroup: PhotoGroup? = nil
+    @State private var isHandlingCompletion: Bool = false
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
 
@@ -42,6 +43,20 @@ struct SifterView: View {
             // gradient: fully clear at center, tint at the screen edges.
             swipeVignette
                 .allowsHitTesting(false)
+
+            if showSummary {
+                SessionSummaryView(
+                    group: vm.group,
+                    nextGroup: pendingNextGroup,
+                    outcome: vm.deletionOutcome,
+                    deletedBytes: vm.deletedBytes,
+                    onDismiss: { withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSummary = false } },
+                    onContinue: { handleContinue() },
+                    onRetry: { Task { await vm.retryCommitDeletes() } }
+                )
+                .transition(.scale(scale: 0.88, anchor: .center).combined(with: .opacity))
+                .zIndex(10)
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
@@ -51,26 +66,20 @@ struct SifterView: View {
         .toolbar {
             backButton
         }
-        .fullScreenCover(isPresented: $showSummary) {
-            SessionSummaryView(
-                group: vm.group,
-                nextGroup: pendingNextGroup,
-                outcome: vm.deletionOutcome,
-                deletedBytes: vm.deletedBytes,
-                onContinue: { handleContinue() },
-                onRetry: { Task { await vm.retryCommitDeletes() } }
-            )
-        }
         .onChange(of: vm.isComplete) { _, complete in
             guard complete else { return }
             Task { await runCompletionFlow() }
         }
         .onChange(of: vm.deletionOutcome) { _, newOutcome in
-            // Retry path: once commitDeletes finishes on retry, play sound and
-            // refresh the group's completion state in the library.
+            // Only active on the retry path — runCompletionFlow owns the initial commit.
+            // Without this guard, both handlers fire after the first commitDeletes() call
+            // because setting deletionOutcome during an await suspension triggers onChange.
+            guard !isHandlingCompletion else { return }
             switch newOutcome {
             case .committed:
-                pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
+                if pendingNextGroup == nil {
+                    pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
+                }
                 SoundManager.shared.playSuccess()
                 libraryVM.markGroupComplete(vm.group)
             case .cancelledByUser, .failed:
@@ -105,8 +114,8 @@ struct SifterView: View {
 
     private var navigationTitle: String {
         let total = vm.displayOrder.count
-        let current = min(vm.currentIndex + 1, total)
-        return "\(current) of \(total)"
+        let decided = vm.group.decisions.count
+        return "\(decided) of \(total)"
     }
 
     // MARK: - Main content
@@ -332,6 +341,8 @@ struct SifterView: View {
     // Shared completion logic called both from onChange(of: vm.isComplete) and
     // from .task when isComplete is already true at view load (re-entry after cancel).
     private func runCompletionFlow() async {
+        isHandlingCompletion = true
+        defer { isHandlingCompletion = false }
         await vm.commitDeletes()
         switch vm.deletionOutcome {
         case .committed:
@@ -367,7 +378,7 @@ struct SifterView: View {
             await libraryVM.saveGroupProgress(vm.group)
         }
         try? await Task.sleep(for: .milliseconds(50))
-        showSummary = true
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSummary = true }
     }
 
     // MARK: - Swipe vignette
@@ -423,21 +434,15 @@ struct SifterView: View {
     // MARK: - Preloading
 
     private var nextPreviewAsset: PHAsset? {
-        let idx = vm.currentIndex + 1
-        return idx < vm.displayOrder.count ? vm.displayOrder[idx] : nil
+        vm.nextAsset
     }
 
     private func preloadUpcomingCards() {
-        let assets = vm.displayOrder
-        let start = vm.currentIndex + 1
-        let end = min(start + preloadAhead, assets.count)
-        guard start < end else { return }
-        for i in start..<end {
-            let asset = assets[i]
+        for asset in vm.upcomingAssets(count: preloadAhead) {
             let id = asset.localIdentifier
             guard imageCache[id] == nil else { continue }
             Task(priority: .utility) {
-                if let img = await PhotoLibraryService.shared.loadFullImage(for: asset) {
+                if case .loaded(let img) = await PhotoLibraryService.shared.loadFullImage(for: asset) {
                     imageCache[id] = img
                 }
             }

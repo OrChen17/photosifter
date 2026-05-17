@@ -12,7 +12,7 @@ final class MockSimilarityService: SimilarityProviding, @unchecked Sendable {
     var similarPairs: [Set<String>] = []
 
     /// Distance returned for pairs declared similar. Must be < the threshold
-    /// in GroupingService (0.65) for clustering to fire.
+    /// in GroupingService for clustering to fire.
     var similarDistance: Float = 0.1
 
     /// Distance returned for everything else.

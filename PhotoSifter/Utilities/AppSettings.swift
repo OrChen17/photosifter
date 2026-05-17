@@ -17,6 +17,8 @@ final class AppSettings {
     }
 
     static var cloudDownloadEnabled: Bool {
-        UserDefaults.standard.bool(forKey: cloudKey)
+        // Match the instance's default-true behaviour when the key has never been written.
+        guard UserDefaults.standard.object(forKey: cloudKey) != nil else { return true }
+        return UserDefaults.standard.bool(forKey: cloudKey)
     }
 }
