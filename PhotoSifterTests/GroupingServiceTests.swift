@@ -34,22 +34,77 @@ final class GroupingServiceTests: XCTestCase {
         XCTAssertEqual(buckets[0].count, 2)
     }
 
-    func testSplitIntoBuckets_assetsSpreadOverTime_multipleBuckets() throws {
-        // We need at least 4 assets spread more than 5 minutes apart
-        // We'll test the algorithm using known dates by creating a date-based scenario
-        // Note: this verifies the algorithm logic via the actual library assets
-        let assets = try requirePhotoAssets(minimum: 4)
+    // MARK: - splitIntoBuckets(byDates:) — pure, library-independent
 
-        // Find assets that are far apart
-        let dates = assets.compactMap { $0.creationDate }
-        guard let first = dates.first, let last = dates.last,
-              abs(last.timeIntervalSince(first)) > 5 * 60
-        else {
-            throw XCTSkip("Simulator photos are all within 5 minutes; cannot test multi-bucket split")
-        }
+    func testSplitIntoBucketsByDates_emptyInput() {
+        XCTAssertTrue(GroupingService.splitIntoBuckets(byDates: []).isEmpty)
+    }
 
-        let buckets = GroupingService.splitIntoBuckets(assets)
-        XCTAssertGreaterThan(buckets.count, 1, "Assets spread > 5 min should produce multiple buckets")
+    func testSplitIntoBucketsByDates_singleDate_droppedAsSingleton() {
+        let buckets = GroupingService.splitIntoBuckets(byDates: [Date()])
+        XCTAssertTrue(buckets.isEmpty, "Single-date input cannot form a bucket (count < 2)")
+    }
+
+    func testSplitIntoBucketsByDates_twoClosePairs_separatedByLargeGap_yieldsTwoBuckets() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        let dates: [Date] = [
+            base,
+            base.addingTimeInterval(60),
+            base.addingTimeInterval(120),
+            // gap > 5 minutes
+            base.addingTimeInterval(60 * 60),
+            base.addingTimeInterval(60 * 60 + 30),
+        ]
+        let buckets = GroupingService.splitIntoBuckets(byDates: dates)
+        XCTAssertEqual(buckets, [[0, 1, 2], [3, 4]])
+    }
+
+    func testSplitIntoBucketsByDates_singletonsBetweenClusters_areDropped() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        let dates: [Date] = [
+            base,
+            base.addingTimeInterval(30),
+            // gap > 5 min → orphan
+            base.addingTimeInterval(10 * 60),
+            // gap > 5 min → next cluster
+            base.addingTimeInterval(60 * 60),
+            base.addingTimeInterval(60 * 60 + 30),
+        ]
+        let buckets = GroupingService.splitIntoBuckets(byDates: dates)
+        XCTAssertEqual(
+            buckets, [[0, 1], [3, 4]],
+            "Lone index 2 is more than 5 min from both neighbours; must be dropped"
+        )
+    }
+
+    func testSplitIntoBucketsByDates_allWidelySeparated_yieldsZeroBuckets() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        let dates = (0..<4).map { base.addingTimeInterval(Double($0) * 3600) }
+        let buckets = GroupingService.splitIntoBuckets(byDates: dates)
+        XCTAssertTrue(
+            buckets.isEmpty,
+            "Four widely-separated singletons must produce 0 buckets (regression: previously asserted >1)"
+        )
+    }
+
+    func testSplitIntoBucketsByDates_gapExactlyFiveMinutes_keepsBucketTogether() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        let dates: [Date] = [base, base.addingTimeInterval(5 * 60)]
+        let buckets = GroupingService.splitIntoBuckets(byDates: dates)
+        XCTAssertEqual(buckets, [[0, 1]], "Boundary: gap == 5 min must NOT split (split requires > gap)")
+    }
+
+    func testSplitIntoBuckets_assetVariantDelegatesToDateVariant() throws {
+        let assets = try requirePhotoAssets(minimum: 2)
+        let bucketsFromAssets = GroupingService.splitIntoBuckets(assets)
+        let bucketsFromDates = GroupingService.splitIntoBuckets(
+            byDates: assets.map { $0.creationDate ?? .distantPast }
+        )
+        XCTAssertEqual(
+            bucketsFromAssets.map { $0.map { $0.localIdentifier } },
+            bucketsFromDates.map { indices in indices.map { assets[$0].localIdentifier } },
+            "Asset variant must produce the same partition as the date variant"
+        )
     }
 
     func testSplitIntoBuckets_allBucketsHaveAtLeastTwoAssets() throws {
@@ -128,5 +183,41 @@ final class GroupingServiceTests: XCTestCase {
 
         let loaded = await service.loadCachedGroups()
         XCTAssertNil(loaded, "After invalidation, cache should return nil")
+    }
+
+    // MARK: - In-group asset ordering
+
+    /// Regression: PHAsset.fetchAssets(withLocalIdentifiers:options:) does not
+    /// preserve input order, and `options: nil` provides no sort descriptor —
+    /// so cached groups would come back with photos in arbitrary order.
+    /// Newly-scanned groups (burst + Vision) are sorted by creationDate ascending,
+    /// so cached groups must match for consistency in the sifter strip.
+    func testLoadCachedGroups_sortsAssetsByCreationDateAscending() async throws {
+        let assets = try requirePhotoAssets(minimum: 3)
+        let dates = assets.compactMap { $0.creationDate }
+        try XCTSkipIf(
+            Set(dates).count < 2,
+            "Need assets with distinct creation dates to verify ordering"
+        )
+
+        let service = GroupingService.shared
+        await service.invalidateCache()
+
+        // requirePhotoAssets returns ascending; persist in reverse so the cached
+        // identifier list is deliberately non-chronological. Loading must still
+        // return assets in ascending creationDate order.
+        let reversed = Array(assets.reversed())
+        let group = PhotoGroup(id: UUID(), assets: reversed)
+        await service.persistGroups([group])
+
+        let loaded = await service.loadCachedGroups()
+        await service.invalidateCache()
+
+        XCTAssertEqual(loaded?.count, 1)
+        let loadedDates = loaded?[0].assets.compactMap { $0.creationDate } ?? []
+        XCTAssertEqual(
+            loadedDates, loadedDates.sorted(),
+            "Cached group assets must be sorted by creationDate ascending, got: \(loadedDates)"
+        )
     }
 }

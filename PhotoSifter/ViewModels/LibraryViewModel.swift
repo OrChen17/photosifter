@@ -30,7 +30,11 @@ final class LibraryViewModel {
     var quickWins: [QuickWin] = []
     var selectedQuickWin: QuickWin?
     var selectedDuplicateSession: DuplicateSession?
-    var sortOrder: GroupSortOrder = .oldestBiggest
+    var sortOrder: GroupSortOrder {
+        didSet { UserDefaults.standard.set(sortOrder.rawValue, forKey: Self.sortOrderKey) }
+    }
+
+    private static let sortOrderKey = "library.groupSortOrder"
 
     var totalDeletedCount: Int { completedBatches.reduce(0) { $0 + $1.deletedCount } }
     var totalSavedBytes: Int64 { completedBatches.reduce(Int64(0)) { $0 + $1.savedBytes } }
@@ -43,6 +47,12 @@ final class LibraryViewModel {
         // Read current status synchronously so ContentView shows the correct
         // screen on first render without waiting for any user interaction.
         authStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        if let raw = UserDefaults.standard.string(forKey: Self.sortOrderKey),
+           let saved = GroupSortOrder(rawValue: raw) {
+            sortOrder = saved
+        } else {
+            sortOrder = .biggestFirst
+        }
     }
 
     func checkAuthorization() async {

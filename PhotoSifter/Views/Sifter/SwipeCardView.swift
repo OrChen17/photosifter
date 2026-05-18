@@ -44,6 +44,10 @@ struct SwipeCardView: View {
 
     private let snapThreshold: CGFloat = 120
     private let badgeThreshold: CGFloat = 60
+    /// Predicted-end translation that counts as a "flick" even when the actual drag is short.
+    private let flickPredictedThreshold: CGFloat = 300
+    /// Minimum actual drag distance for a flick to be considered intentional (filters jitter).
+    private let flickMinTranslation: CGFloat = 30
 
     private var keepOpacity: Double { max(0, min(1, Double(offset.width / badgeThreshold))) }
     private var deleteOpacity: Double { max(0, min(1, Double(-offset.width / badgeThreshold))) }
@@ -265,11 +269,21 @@ struct SwipeCardView: View {
                 guard !isThrown else { return }
                 hasCrossedBadgeThreshold = false
 
-                if value.translation.width > snapThreshold {
-                    throwCard(direction: 1, then: onSwipeRight)
-                } else if value.translation.width < -snapThreshold {
-                    throwCard(direction: -1, then: onSwipeLeft)
-                } else if value.translation.height < -80, let onSkip {
+                let dx = value.translation.width
+                let predictedDx = value.predictedEndTranslation.width
+                let dy = value.translation.height
+                let predictedDy = value.predictedEndTranslation.height
+
+                let crossedDistance = abs(dx) > snapThreshold
+                let flickedHorizontal = abs(predictedDx) > flickPredictedThreshold
+                    && abs(dx) > flickMinTranslation
+                    && (dx == 0 || dx.sign == predictedDx.sign)
+
+                if crossedDistance || flickedHorizontal {
+                    let direction: CGFloat = (crossedDistance ? dx : predictedDx) > 0 ? 1 : -1
+                    throwCard(direction: direction, then: direction > 0 ? onSwipeRight : onSwipeLeft)
+                } else if let onSkip,
+                          (dy < -80 || (predictedDy < -flickPredictedThreshold && dy < -flickMinTranslation)) {
                     // Upward flick = skip
                     throwCardUp(then: onSkip)
                 } else {

@@ -43,7 +43,7 @@ actor GroupingService {
         try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
     }
 
-    private static let similarityThreshold: Float = 0.55
+    private static let similarityThreshold: Float = 0.5
     private static let timeBucketGap: TimeInterval = 5 * 60   // 5 minutes
 
     // MARK: - Public API
@@ -124,7 +124,10 @@ actor GroupingService {
             var assets: [PHAsset] = []
             result.enumerateObjects { a, _, _ in assets.append(a) }
             guard assets.count >= 2 else { return nil }
-            return byteFilled(PhotoGroup(id: UUID(), assets: assets))
+            // fetchAssets(withLocalIdentifiers:) returns assets in undefined order;
+            // sort by creationDate to match freshly-scanned groups (burst + Vision).
+            let sorted = assets.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+            return byteFilled(PhotoGroup(id: UUID(), assets: sorted))
         }
         saveFileSizeCache()
         return groups
@@ -312,18 +315,23 @@ actor GroupingService {
     // MARK: - Time bucket splitting
 
     static func splitIntoBuckets(_ assets: [PHAsset]) -> [[PHAsset]] {
-        guard !assets.isEmpty else { return [] }
-        var buckets: [[PHAsset]] = []
-        var current: [PHAsset] = [assets[0]]
+        let dates = assets.map { $0.creationDate ?? .distantPast }
+        return splitIntoBuckets(byDates: dates).map { indices in indices.map { assets[$0] } }
+    }
 
-        for i in 1..<assets.count {
-            let prev = assets[i - 1].creationDate ?? .distantPast
-            let curr = assets[i].creationDate ?? .distantPast
-            if curr.timeIntervalSince(prev) > timeBucketGap {
+    /// Pure, library-independent partition used by `splitIntoBuckets(_:[PHAsset])`.
+    /// Returns index buckets so callers can map back to whichever asset type they hold.
+    static func splitIntoBuckets(byDates dates: [Date]) -> [[Int]] {
+        guard !dates.isEmpty else { return [] }
+        var buckets: [[Int]] = []
+        var current: [Int] = [0]
+
+        for i in 1..<dates.count {
+            if dates[i].timeIntervalSince(dates[i - 1]) > timeBucketGap {
                 if current.count >= 2 { buckets.append(current) }
-                current = [assets[i]]
+                current = [i]
             } else {
-                current.append(assets[i])
+                current.append(i)
             }
         }
         if current.count >= 2 { buckets.append(current) }

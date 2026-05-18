@@ -22,11 +22,11 @@ struct SifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
 
-    private let mode: QuickWinMode
+    @State private var mode: QuickWinMode
 
     init(group: PhotoGroup, mode: QuickWinMode = .none) {
         _vm = State(initialValue: SifterViewModel(group: group))
-        self.mode = mode
+        _mode = State(initialValue: mode)
     }
 
     var body: some View {
@@ -92,23 +92,7 @@ struct SifterView: View {
             preloadUpcomingCards()
         }
         .task {
-            // Re-hydrate from disk on appear so the resume point is correct
-            // even if in-memory propagation through the navigation binding
-            // missed the latest decisions.
-            let hydrated = await GroupingService.shared.hydrateDecisions(into: [vm.group]).first
-            if let hydrated, hydrated.decisions.count > vm.group.decisions.count {
-                vm.applyHydratedGroup(hydrated)
-            }
-            preloadUpcomingCards()
-            // If the group was already complete before this view appeared (e.g.,
-            // re-entering after a cancelled deletion prompt), isComplete is true
-            // from init and onChange never fires. Reset all decisions so the user
-            // can reconsider from scratch rather than being sent straight to commit.
-            if vm.isComplete && !showSummary {
-                vm.resetAllDecisions()
-                // Clear the stale persisted decisions so re-entry next time is clean.
-                await libraryVM.saveGroupProgress(vm.group)
-            }
+            await hydrateAndPreload()
         }
     }
 
@@ -313,17 +297,43 @@ struct SifterView: View {
         }
     }
 
-    /// Pop the current SifterView back to the library, then — after the
-    /// pop animation — push the next chronological batch (if any).
-    /// Doing it in two beats is more reliable than swapping `selectedGroup`
-    /// to a new value while the destination is still mounted, which
-    /// NavigationStack tends to ignore.
+    /// If there's a next batch, swap the view model in place so the user
+    /// stays on the same screen — popping to the library and re-pushing
+    /// would briefly reveal the grid behind the summary.
     private func handleContinue() {
-        let next = pendingNextGroup
-        dismiss()
-        guard let next else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-            libraryVM.selectedGroup = next
+        guard let next = pendingNextGroup else {
+            dismiss()
+            return
+        }
+        vm = SifterViewModel(group: next)
+        mode = .none
+        pendingNextGroup = nil
+        showSummary = false
+        isHandlingCompletion = false
+        cardKey = UUID()
+        swipeProgress = 0
+        flashIntensity = 0
+        isTopCardThrown = false
+        cardAppearWobble = 1.5
+        imageCache.removeAll()
+        Task { await hydrateAndPreload() }
+    }
+
+    private func hydrateAndPreload() async {
+        // Re-hydrate from disk so the resume point is correct even if
+        // in-memory propagation through the navigation binding missed
+        // the latest decisions.
+        let hydrated = await GroupingService.shared.hydrateDecisions(into: [vm.group]).first
+        if let hydrated, hydrated.decisions.count > vm.group.decisions.count {
+            vm.applyHydratedGroup(hydrated)
+        }
+        preloadUpcomingCards()
+        // If the group was already complete on load (e.g., re-entering after a
+        // cancelled deletion prompt), reset decisions so the user can reconsider
+        // from scratch rather than being sent straight to commit.
+        if vm.isComplete && !showSummary {
+            vm.resetAllDecisions()
+            await libraryVM.saveGroupProgress(vm.group)
         }
     }
 
