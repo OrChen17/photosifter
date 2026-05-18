@@ -57,15 +57,25 @@ final class LibraryViewModel {
         error = nil
         isScanning = true
 
+        let t0 = Date()
+        func elapsed(_ label: String) {
+            let ms = Int(Date().timeIntervalSince(t0) * 1000)
+            print("[PhotoSifter] \(ms)ms — \(label)")
+        }
+
         // Load stats immediately so counters are non-zero on first render
         completedBatches = await CompletedBatchStore.shared.loadAll()
+        elapsed("stats loaded")
 
         let flickedIDs = await groupingService.loadFlickedIdentifiers()
+        let rawDecisions = await groupingService.loadRawDecisions()
+        elapsed("flicked+decisions loaded")
 
         // Layer 1: Serve cached groups immediately (hydrated with saved decisions)
         var baseGroups: [PhotoGroup] = []
         if let cached = await groupingService.loadCachedGroups(), !cached.isEmpty {
-            baseGroups = await groupingService.hydrateDecisions(into: cached)
+            baseGroups = cached
+                .map { GroupingService.hydrateGroup($0, using: rawDecisions) }
                 .filter { !completedGroupIDs.contains($0.id) }
                 .compactMap { group -> PhotoGroup? in
                     let unflicked = group.assets.filter { !flickedIDs.contains($0.localIdentifier) }
@@ -75,9 +85,9 @@ final class LibraryViewModel {
                     copy.decisions = group.decisions.filter { key, _ in unflicked.contains { $0.localIdentifier == key } }
                     return copy
                 }
-                .map { filledWithBytes($0) }
             groups = sorted(baseGroups)
         }
+        elapsed("layer1 done — \(baseGroups.count) cached groups")
 
         // Identify assets already in a cached group OR already flicked so Vision skips them.
         let knownIDs = Set(baseGroups.flatMap { $0.assets.map(\.localIdentifier) }).union(flickedIDs)
@@ -85,20 +95,42 @@ final class LibraryViewModel {
 
         // Layer 2: Stream new groups; already-grouped assets are excluded via knownIDs.
         let assets = await photoService.fetchAllAssets()
+        elapsed("fetchAllAssets done — \(assets.count) assets, \(knownIDs.count) already known")
         scanProgress = (0, assets.count)
 
         var allGroups = baseGroups
-        for await group in await groupingService.streamGroups(from: assets, excluding: knownIDs) {
-            let hydrated = filledWithBytes(await groupingService.hydrateDecisions(into: [group]).first ?? group)
-            guard !completedGroupIDs.contains(hydrated.id) else { continue }
-            // knownIDs already excludes flicked assets from being scanned, but guard
-            // here too in case a burst group slipped through with flicked members.
-            guard hydrated.assets.filter({ !flickedIDs.contains($0.localIdentifier) }).count >= 2 else { continue }
+        var batchBuffer: [PhotoGroup] = []
+        var lastFlushDate = Date()
+        var streamedGroupCount = 0
+
+        func flushBatch() {
+            guard !batchBuffer.isEmpty else { return }
+            let batch = batchBuffer
+            batchBuffer = []
+            lastFlushDate = Date()
             withAnimation(.spring(duration: 0.35)) {
-                allGroups.append(hydrated)
-                groups = sorted(allGroups)
+                if sortOrder == .random {
+                    groups.append(contentsOf: batch)
+                } else {
+                    groups = sorted(allGroups)
+                }
             }
         }
+
+        for await group in await groupingService.streamGroups(from: assets, excluding: knownIDs) {
+            let hydrated = GroupingService.hydrateGroup(group, using: rawDecisions)
+            guard !completedGroupIDs.contains(hydrated.id) else { continue }
+            guard hydrated.assets.filter({ !flickedIDs.contains($0.localIdentifier) }).count >= 2 else { continue }
+            allGroups.append(hydrated)
+            batchBuffer.append(hydrated)
+            streamedGroupCount += 1
+            if batchBuffer.count >= 8 || Date().timeIntervalSince(lastFlushDate) >= 0.4 {
+                elapsed("  flush #\(streamedGroupCount) groups so far")
+                flushBatch()
+            }
+        }
+        flushBatch()
+        elapsed("scan complete — \(streamedGroupCount) new groups found")
 
         isScanning = false
         await groupingService.saveScanCutoff(scanStartDate)
@@ -113,19 +145,6 @@ final class LibraryViewModel {
 
     func applySort() {
         groups = sorted(groups)
-    }
-
-    private func filledWithBytes(_ group: PhotoGroup) -> PhotoGroup {
-        guard group.totalFileBytes == 0 else { return group }
-        var g = group
-        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
-        g.totalFileBytes = g.assets.reduce(Int64(0)) { sum, asset in
-            let resources = PHAssetResource.assetResources(for: asset)
-            guard let r = resources.first(where: { acceptable.contains($0.type) }),
-                  let bytes = r.value(forKey: "fileSize") as? Int64 else { return sum }
-            return sum + bytes
-        }
-        return g
     }
 
     private func sorted(_ groups: [PhotoGroup]) -> [PhotoGroup] {

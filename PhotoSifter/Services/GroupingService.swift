@@ -27,6 +27,12 @@ actor GroupingService {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return support.appendingPathComponent("flicked_identifiers.json")
     }()
+    private let fileSizesURL: URL = {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return support.appendingPathComponent("file_sizes.json")
+    }()
+
+    private var fileSizeCache: [String: Int64]? = nil
 
     init(similarity: any SimilarityProviding = SimilarityService.shared) {
         self.similarity = similarity
@@ -57,20 +63,49 @@ actor GroupingService {
 
         return AsyncStream { continuation in
             let task = Task(priority: .background) {
+                let t0 = Date()
+                func log(_ msg: String) {
+                    let ms = Int(Date().timeIntervalSince(t0) * 1000)
+                    print("[GroupingService] \(ms)ms — \(msg)")
+                }
+
                 // Phase 1: Burst groups — skip representatives already grouped
                 let burstGroups = await Self.fetchBurstGroups(excluding: knownIDs)
                 let burstIDs = Set(burstGroups.flatMap { $0.assets.map { $0.localIdentifier } })
-                for g in burstGroups { continuation.yield(g) }
+                for g in burstGroups { continuation.yield(self.byteFilled(g)) }
+                log("burst done — \(burstGroups.count) groups")
 
                 // Phase 2: Vision clustering on new non-burst assets only
                 let nonBurst = toScan.filter { !burstIDs.contains($0.localIdentifier) }
-                let buckets = Self.splitIntoBuckets(nonBurst)
-
-                for bucket in buckets {
-                    guard !Task.isCancelled else { break }
-                    let groups = (try? await self.clusterBucket(bucket)) ?? []
-                    for g in groups { continuation.yield(g) }
+                let toCluster: [PHAsset]
+                if !AppSettings.cloudDownloadEnabled {
+                    toCluster = await withTaskGroup(of: (PHAsset, Bool).self) { group in
+                        for asset in nonBurst {
+                            group.addTask { (asset, await PhotoLibraryService.shared.isLocallyAvailable(asset)) }
+                        }
+                        var local: [PHAsset] = []
+                        for await (asset, available) in group where available { local.append(asset) }
+                        return local.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+                    }
+                    log("iCloud pre-filter: \(nonBurst.count - toCluster.count) cloud-only assets skipped")
+                } else {
+                    toCluster = nonBurst
                 }
+                let buckets = Self.splitIntoBuckets(toCluster)
+                log("buckets: \(buckets.count), sizes: \(buckets.map(\.count).sorted(by: >).prefix(10))")
+
+                for (i, bucket) in buckets.enumerated() {
+                    guard !Task.isCancelled else { break }
+                    let bt = Date()
+                    let groups = (try? await self.clusterBucket(bucket)) ?? []
+                    let bucketMs = Int(Date().timeIntervalSince(bt) * 1000)
+                    if bucketMs > 200 {
+                        log("  bucket[\(i)] \(bucket.count) assets → \(groups.count) groups (\(bucketMs)ms)")
+                    }
+                    for g in groups { continuation.yield(self.byteFilled(g)) }
+                }
+                log("Vision scan complete")
+                self.saveFileSizeCache()
                 continuation.finish()
             }
             // Cancel the background task when the consumer abandons the stream
@@ -84,13 +119,46 @@ actor GroupingService {
               let identifierGroups = try? JSONDecoder().decode([[String]].self, from: data)
         else { return nil }
 
-        return identifierGroups.compactMap { ids -> PhotoGroup? in
+        let groups = identifierGroups.compactMap { ids -> PhotoGroup? in
             let result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)
             var assets: [PHAsset] = []
             result.enumerateObjects { a, _, _ in assets.append(a) }
             guard assets.count >= 2 else { return nil }
-            return PhotoGroup(id: UUID(), assets: assets)
+            return byteFilled(PhotoGroup(id: UUID(), assets: assets))
         }
+        saveFileSizeCache()
+        return groups
+    }
+
+    private func ensureFileSizeCacheLoaded() {
+        guard fileSizeCache == nil else { return }
+        guard let data = try? Data(contentsOf: fileSizesURL),
+              let dict = try? JSONDecoder().decode([String: Int64].self, from: data)
+        else { fileSizeCache = [:]; return }
+        fileSizeCache = dict
+    }
+
+    private func saveFileSizeCache() {
+        guard let cache = fileSizeCache,
+              let data = try? JSONEncoder().encode(cache) else { return }
+        try? data.write(to: fileSizesURL, options: .atomic)
+    }
+
+    private func byteFilled(_ group: PhotoGroup) -> PhotoGroup {
+        guard group.totalFileBytes == 0 else { return group }
+        ensureFileSizeCacheLoaded()
+        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
+        var g = group
+        g.totalFileBytes = g.assets.reduce(Int64(0)) { sum, asset in
+            let id = asset.localIdentifier
+            if let cached = fileSizeCache?[id] { return sum + cached }
+            let resources = PHAssetResource.assetResources(for: asset)
+            guard let r = resources.first(where: { acceptable.contains($0.type) }),
+                  let bytes = r.value(forKey: "fileSize") as? Int64 else { return sum }
+            fileSizeCache?[id] = bytes
+            return sum + bytes
+        }
+        return g
     }
 
     func persistGroups(_ groups: [PhotoGroup]) async {
@@ -128,11 +196,23 @@ actor GroupingService {
         }
     }
 
-    private func loadAllDecisionsRaw() -> [String: [String: String]] {
+    /// Loads the raw decisions dict once. Call this before a streaming loop and
+    /// pass the result to `hydrateGroup(_:using:)` to avoid per-group file reads.
+    func loadRawDecisions() -> [String: [String: String]] {
         guard let data = try? Data(contentsOf: decisionsURL),
               let dict = try? JSONDecoder().decode([String: [String: String]].self, from: data)
         else { return [:] }
         return dict
+    }
+
+    private func loadAllDecisionsRaw() -> [String: [String: String]] { loadRawDecisions() }
+
+    /// Hydrates a single group from a pre-loaded decisions dict — no actor crossing needed.
+    static func hydrateGroup(_ group: PhotoGroup, using raw: [String: [String: String]]) -> PhotoGroup {
+        guard let rawDecisions = raw[persistenceKey(for: group)] else { return group }
+        var copy = group
+        copy.decisions = rawDecisions.compactMapValues { Decision(rawValue: $0) }
+        return copy
     }
 
     static func persistenceKey(for group: PhotoGroup) -> String {

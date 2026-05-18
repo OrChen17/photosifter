@@ -158,7 +158,7 @@ struct LibraryView: View {
                 .scaleEffect(1.4)
                 .tint(.appAccent)
 
-            Text("Scanning library…")
+            Text("Loading Photos...")
                 .font(.system(size: 17, weight: .medium, design: .rounded))
                 .foregroundStyle(.appTextSecondary)
         }
