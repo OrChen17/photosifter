@@ -121,6 +121,7 @@ struct SessionSummaryView: View {
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
             }
+            guard !Task.isCancelled else { return }
             doDissmiss()
             onContinue?()
         }

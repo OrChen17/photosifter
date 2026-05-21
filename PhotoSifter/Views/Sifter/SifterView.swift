@@ -19,6 +19,11 @@ struct SifterView: View {
     @AppStorage("skipUsageCount") private var skipUsageCount: Int = 0
     @State private var pendingNextGroup: PhotoGroup? = nil
     @State private var isHandlingCompletion: Bool = false
+    // Set true on the first handleContinue() per completion event. Guards against
+    // a race where the summary's auto-countdown task and the user's tap both fire
+    // onContinue — the second call would otherwise see pendingNextGroup as nil
+    // and pop the user back to the grid.
+    @State private var hasHandledContinue: Bool = false
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
 
@@ -301,6 +306,8 @@ struct SifterView: View {
     /// stays on the same screen — popping to the library and re-pushing
     /// would briefly reveal the grid behind the summary.
     private func handleContinue() {
+        guard !hasHandledContinue else { return }
+        hasHandledContinue = true
         guard let next = pendingNextGroup else {
             dismiss()
             return
@@ -351,6 +358,7 @@ struct SifterView: View {
     // Shared completion logic called both from onChange(of: vm.isComplete) and
     // from .task when isComplete is already true at view load (re-entry after cancel).
     private func runCompletionFlow() async {
+        hasHandledContinue = false
         isHandlingCompletion = true
         defer { isHandlingCompletion = false }
         await vm.commitDeletes()
