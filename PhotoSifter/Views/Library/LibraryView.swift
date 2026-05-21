@@ -161,9 +161,7 @@ struct LibraryView: View {
         .task(id: vm.groups.prefix(Self.prefetchGroupCap).map(\.id)) {
             let px = 200.0 * displayScale
             let size = CGSize(width: px, height: px)
-            let assets = vm.groups.prefix(Self.prefetchGroupCap).flatMap { g -> [PHAsset] in
-                [g.assets.first, g.assets.last].compactMap { $0 }
-            }
+            let assets = vm.groups.prefix(Self.prefetchGroupCap).compactMap { $0.assets.first }
             guard !assets.isEmpty else { return }
             await PhotoLibraryService.shared.startCachingThumbnails(for: assets, size: size)
         }
@@ -203,39 +201,43 @@ struct LibraryView: View {
 struct MemoryCardView: View {
     let group: PhotoGroup
     @Environment(\.displayScale) private var displayScale
-    @State private var thumbnails: [UIImage?] = []
+    @State private var thumbnail: UIImage? = nil
     @State private var groupBytes: Int64 = 0
 
     var body: some View {
         VStack(spacing: 0) {
-            thumbnailGrid
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            thumbnailStack
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(group.assets.count) photos")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
-                if groupBytes > 0 {
-                    Text(formattedBytes(groupBytes))
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(.appTextSecondary)
-                        .lineLimit(1)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text("\(group.assets.count) photos")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                    if groupBytes > 0 {
+                        Text("·").foregroundStyle(.appTextSecondary)
+                        Text(formattedBytes(groupBytes))
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundStyle(.appTextSecondary)
+                    }
                 }
+                .lineLimit(1)
 
-                if let date = group.captureDate {
-                    Text(Self.relativeDateFormatter.localizedString(for: date, relativeTo: .now))
-                        .font(.system(size: 12, design: .rounded))
-                        .foregroundStyle(.appTextSecondary)
-                        .lineLimit(1)
+                HStack(spacing: 6) {
+                    if let date = group.captureDate {
+                        Text(Self.relativeDateFormatter.localizedString(for: date, relativeTo: .now))
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundStyle(.appTextSecondary)
+                    }
+                    if group.deleteCount > 0 {
+                        if group.captureDate != nil {
+                            Text("·").foregroundStyle(.appTextSecondary)
+                        }
+                        Text("\(group.deleteCount) marked")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.appDelete)
+                    }
                 }
-
-                if group.deleteCount > 0 {
-                    Text("\(group.deleteCount) marked")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(.appDelete)
-                }
+                .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10)
@@ -251,37 +253,42 @@ struct MemoryCardView: View {
         return f
     }()
 
-    private var displayIndices: [Int] {
-        let last = group.assets.count - 1
-        return last > 0 ? [0, last] : [0]
-    }
-
-    private var thumbnailGrid: some View {
-        Color.clear
-            .aspectRatio(1, contentMode: .fit)
-            .overlay(
-                GeometryReader { geo in
-                    let indices = displayIndices
-                    let slotWidth = geo.size.width / CGFloat(indices.count)
-                    HStack(spacing: 2) {
-                        ForEach(Array(indices.enumerated()), id: \.offset) { slot, _ in
-                            Group {
-                                if slot < thumbnails.count, let img = thumbnails[slot] {
-                                    Image(uiImage: img)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: slotWidth, height: geo.size.height)
-                                        .clipped()
-                                } else {
-                                    Color.appBackground
-                                        .frame(width: slotWidth, height: geo.size.height)
-                                }
-                            }
-                        }
-                    }
-                    .frame(width: geo.size.width, height: geo.size.height)
+    /// One hero thumbnail with 1–2 thin card-edge strips peeking from the top to
+    /// suggest a stack of photos. All layers stay inside the square cell bounds so
+    /// the grid layout doesn't shift between cells with different group sizes.
+    private var thumbnailStack: some View {
+        GeometryReader { geo in
+            let peek: CGFloat = 8
+            let numBackLayers = min(group.assets.count - 1, 2)
+            let frontHeight = geo.size.height - CGFloat(numBackLayers) * peek
+            ZStack(alignment: .bottom) {
+                ForEach(0..<numBackLayers, id: \.self) { idx in
+                    // idx 0 is the back-most layer (drawn first → bottom of ZStack).
+                    let fromFront = numBackLayers - idx
+                    let inset = CGFloat(fromFront) * 6
+                    let opacity = 0.20 + Double(numBackLayers - fromFront) * 0.16
+                    RoundedRectangle(cornerRadius: 14 - CGFloat(fromFront), style: .continuous)
+                        .fill(Color.white.opacity(opacity))
+                        .frame(
+                            width: geo.size.width - inset * 2,
+                            height: frontHeight + CGFloat(fromFront) * peek
+                        )
                 }
-            )
+                Group {
+                    if let img = thumbnail {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Color.appBackground
+                    }
+                }
+                .frame(width: geo.size.width, height: frontHeight)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
+        }
+        .aspectRatio(1, contentMode: .fit)
     }
 
     private func loadThumbnails() async {
@@ -289,22 +296,16 @@ struct MemoryCardView: View {
         // upscaled and blurry on 2x/3x devices.
         let px = 200.0 * displayScale
         let size = CGSize(width: px, height: px)
-        let indices = displayIndices
-        thumbnails = Array(repeating: nil, count: indices.count)
         // The group already has its byte total computed by GroupingService.byteFilled;
         // recomputing here would mean N more PHAssetResource calls per cell.
         groupBytes = group.totalFileBytes
 
-        // Each slot streams progressively: the OS thumbnail cache yields a degraded
-        // image first (instant), then the HQ image upgrades the same slot when ready.
-        // Sequential per slot is fine — each grid cell's .task already runs in parallel.
-        for (slot, assetIndex) in indices.enumerated() {
-            let stream = await PhotoLibraryService.shared.loadThumbnailStream(
-                for: group.assets[assetIndex], size: size
-            )
-            for await img in stream {
-                thumbnails[slot] = img
-            }
+        guard let hero = group.assets.first else { return }
+        // The OS thumbnail cache yields a degraded image first (instant), then
+        // the HQ image upgrades the same slot when ready.
+        let stream = await PhotoLibraryService.shared.loadThumbnailStream(for: hero, size: size)
+        for await img in stream {
+            thumbnail = img
         }
     }
 
