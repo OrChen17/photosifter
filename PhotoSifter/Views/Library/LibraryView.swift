@@ -90,11 +90,32 @@ struct LibraryView: View {
             .navigationDestination(item: $vm.selectedDuplicateSession) { session in
                 DuplicateGroupSifterView(groups: session.groups)
             }
+            .navigationDestination(item: $vm.selectedSweepSession) { session in
+                SweepSifterView(groups: session.groups)
+            }
         }
     }
 
     private var groupList: some View {
         ScrollView {
+            // Sweep entrypoint — collapses alongside Quick Wins on scroll
+            if vm.groups.count >= 2 {
+                SweepBannerView(
+                    memoryCount: vm.groups.count,
+                    photoCount: vm.groups.reduce(0) { $0 + $1.assets.count },
+                    action: {
+                        HapticManager.shared.playNavigate()
+                        vm.startSweepSession()
+                    }
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .frame(height: stripCollapsed ? 0 : nil)
+                .opacity(stripCollapsed ? 0 : 1)
+                .clipped()
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: stripCollapsed)
+            }
+
             // Quick wins strip — collapses when user scrolls down
             if !vm.quickWins.isEmpty {
                 QuickWinsStripView(quickWins: vm.quickWins) { win in
@@ -213,8 +234,8 @@ struct MemoryCardView: View {
                     Text("\(group.assets.count) photos")
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
+                    Spacer(minLength: 4)
                     if groupBytes > 0 {
-                        Text("·").foregroundStyle(.appTextSecondary)
                         Text(formattedBytes(groupBytes))
                             .font(.system(size: 12, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
@@ -228,10 +249,8 @@ struct MemoryCardView: View {
                             .font(.system(size: 12, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
                     }
+                    Spacer(minLength: 4)
                     if group.deleteCount > 0 {
-                        if group.captureDate != nil {
-                            Text("·").foregroundStyle(.appTextSecondary)
-                        }
                         Text("\(group.deleteCount) marked")
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundStyle(.appDelete)
@@ -258,7 +277,7 @@ struct MemoryCardView: View {
     /// the grid layout doesn't shift between cells with different group sizes.
     private var thumbnailStack: some View {
         GeometryReader { geo in
-            let peek: CGFloat = 8
+            let peek: CGFloat = 7
             let numBackLayers = min(group.assets.count - 1, 2)
             let frontHeight = geo.size.height - CGFloat(numBackLayers) * peek
             ZStack(alignment: .bottom) {

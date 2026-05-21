@@ -26,6 +26,22 @@ actor CompletedBatchStore {
         return result
     }
 
+    /// Replaces the stored batch matching `batch.id`. Used by the Revisit flow to
+    /// mutate a batch in place (zeroing kept-side fields) while preserving its
+    /// `deletedCount`/`savedBytes` so totals stay stable.
+    func replace(_ batch: CompletedBatch) {
+        var all = cache ?? load()
+        guard let idx = all.firstIndex(where: { $0.id == batch.id }) else { return }
+        all[idx] = batch
+        cache = all
+        try? JSONEncoder().encode(all).write(to: url, options: .atomic)
+    }
+
+    /// Test hook — drops the in-memory cache so the next `loadAll()` re-reads disk.
+    func invalidateCache() {
+        cache = nil
+    }
+
     private func load() -> [CompletedBatch] {
         guard let data = try? Data(contentsOf: url) else { return [] }
         return (try? JSONDecoder().decode([CompletedBatch].self, from: data)) ?? []

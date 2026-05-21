@@ -45,3 +45,17 @@ struct DuplicateSession: Identifiable, Hashable, Sendable {
         self.groups = groups
     }
 }
+
+/// Carries the kept-photo group from a Revisited completed batch into a fresh
+/// SifterView. The originating batch has already been mutated (kept-side zeroed)
+/// before this is set, so totals stay stable regardless of what the user does
+/// in the new session.
+struct RestoreSession: Identifiable, Hashable, Sendable {
+    let id: UUID
+    let group: PhotoGroup
+
+    init(group: PhotoGroup) {
+        self.id = UUID()
+        self.group = group
+    }
+}

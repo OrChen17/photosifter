@@ -39,6 +39,14 @@
 		X008 /* DuplicateGroupSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX08 /* DuplicateGroupSifterViewModel.swift */; };
 		X009 /* DuplicateGroupSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX09 /* DuplicateGroupSifterView.swift */; };
 		X010 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX10 /* HistoryView.swift */; };
+		X020 /* SweepSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX20 /* SweepSession.swift */; };
+		X021 /* SweepSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX21 /* SweepSifterViewModel.swift */; };
+		X022 /* SweepStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX22 /* SweepStripView.swift */; };
+		X023 /* SweepSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX23 /* SweepSifterView.swift */; };
+		X024 /* SweepBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX24 /* SweepBannerView.swift */; };
+		X030 /* CoverageBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX30 /* CoverageBarView.swift */; };
+		X031 /* HistoryRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX31 /* HistoryRowView.swift */; };
+		T030 /* CompletedBatchRestoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX32 /* CompletedBatchRestoreTests.swift */; };
 		T001 /* PhotoGroupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S001 /* PhotoGroupTests.swift */; };
 		T002 /* SifterViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S002 /* SifterViewModelTests.swift */; };
 		T003 /* LibraryViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S003 /* LibraryViewModelTests.swift */; };
@@ -111,6 +119,14 @@
 		BX08 /* DuplicateGroupSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterViewModel.swift; sourceTree = "<group>"; };
 		BX09 /* DuplicateGroupSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterView.swift; sourceTree = "<group>"; };
 		BX10 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		BX20 /* SweepSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSession.swift; sourceTree = "<group>"; };
+		BX21 /* SweepSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterViewModel.swift; sourceTree = "<group>"; };
+		BX22 /* SweepStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepStripView.swift; sourceTree = "<group>"; };
+		BX23 /* SweepSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterView.swift; sourceTree = "<group>"; };
+		BX24 /* SweepBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepBannerView.swift; sourceTree = "<group>"; };
+		BX30 /* CoverageBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageBarView.swift; sourceTree = "<group>"; };
+		BX31 /* HistoryRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryRowView.swift; sourceTree = "<group>"; };
+		BX32 /* CompletedBatchRestoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchRestoreTests.swift; sourceTree = "<group>"; };
 		C001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		PROD /* PhotoSifter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoSifter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		R001 /* PhotoSifterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSifterUITests.swift; sourceTree = "<group>"; };
@@ -178,6 +194,7 @@
 				B003 /* PhotoGroup.swift */,
 				BX01 /* CompletedBatch.swift */,
 				BX03 /* QuickWin.swift */,
+				BX20 /* SweepSession.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -211,6 +228,7 @@
 				S014 /* DuplicateGroupSifterViewModelTests.swift */,
 				S015 /* AppSettingsTests.swift */,
 				S016 /* PhotoLibraryServiceTests.swift */,
+				BX32 /* CompletedBatchRestoreTests.swift */,
 				GRP_MOCKS /* Mocks */,
 			);
 			path = PhotoSifterTests;
@@ -258,6 +276,9 @@
 				BX06 /* CompletedSectionView.swift */,
 				BX07 /* QuickWinsStripView.swift */,
 				BX10 /* HistoryView.swift */,
+				BX24 /* SweepBannerView.swift */,
+				BX30 /* CoverageBarView.swift */,
+				BX31 /* HistoryRowView.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -268,6 +289,7 @@
 				B007 /* LibraryViewModel.swift */,
 				B008 /* SifterViewModel.swift */,
 				BX08 /* DuplicateGroupSifterViewModel.swift */,
+				BX21 /* SweepSifterViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -288,6 +310,8 @@
 				B013 /* BatchStripView.swift */,
 				B014 /* DecisionBadgeView.swift */,
 				BX09 /* DuplicateGroupSifterView.swift */,
+				BX22 /* SweepStripView.swift */,
+				BX23 /* SweepSifterView.swift */,
 			);
 			path = Sifter;
 			sourceTree = "<group>";
@@ -488,6 +512,13 @@
 				X008 /* DuplicateGroupSifterViewModel.swift in Sources */,
 				X009 /* DuplicateGroupSifterView.swift in Sources */,
 				X010 /* HistoryView.swift in Sources */,
+				X020 /* SweepSession.swift in Sources */,
+				X021 /* SweepSifterViewModel.swift in Sources */,
+				X022 /* SweepStripView.swift in Sources */,
+				X023 /* SweepSifterView.swift in Sources */,
+				X024 /* SweepBannerView.swift in Sources */,
+				X030 /* CoverageBarView.swift in Sources */,
+				X031 /* HistoryRowView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -511,6 +542,7 @@
 				T014 /* DuplicateGroupSifterViewModelTests.swift in Sources */,
 				T015 /* AppSettingsTests.swift in Sources */,
 				T016 /* PhotoLibraryServiceTests.swift in Sources */,
+				T030 /* CompletedBatchRestoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

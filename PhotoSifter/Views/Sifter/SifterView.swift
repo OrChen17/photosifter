@@ -366,6 +366,12 @@ struct SifterView: View {
         case .committed:
             SoundManager.shared.playSuccess()
             pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
+            let keptIDs = vm.group.assets
+                .filter { vm.group.decisions[$0.localIdentifier] != .delete }
+                .map { $0.localIdentifier }
+            // group.totalFileBytes is populated by GroupingService.byteFilled, so
+            // kept bytes = total - deleted without another PHAssetResource pass.
+            let keptBytes = max(0, vm.group.totalFileBytes - vm.deletedBytes)
             let batch = CompletedBatch(
                 id: UUID(),
                 photoCount: vm.group.assets.count,
@@ -373,12 +379,16 @@ struct SifterView: View {
                 savedBytes: vm.deletedBytes,
                 completedAt: Date(),
                 captureDate: vm.group.captureDate,
-                previewAssetIdentifiers: vm.group.assets.prefix(4).map { $0.localIdentifier }
+                previewAssetIdentifiers: vm.group.assets.prefix(4).map { $0.localIdentifier },
+                keptAssetIdentifiers: keptIDs,
+                keptBytes: keptBytes,
+                sourceGroupID: vm.group.id
             )
             await libraryVM.recordCompletedBatch(batch)
             libraryVM.markGroupComplete(vm.group)
         case .nothingToDelete:
             pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
+            let keptIDs = vm.group.assets.map { $0.localIdentifier }
             await libraryVM.recordCompletedBatch(CompletedBatch(
                 id: UUID(),
                 photoCount: vm.group.assets.count,
@@ -386,7 +396,10 @@ struct SifterView: View {
                 savedBytes: 0,
                 completedAt: Date(),
                 captureDate: vm.group.captureDate,
-                previewAssetIdentifiers: vm.group.assets.prefix(4).map { $0.localIdentifier }
+                previewAssetIdentifiers: vm.group.assets.prefix(4).map { $0.localIdentifier },
+                keptAssetIdentifiers: keptIDs,
+                keptBytes: vm.group.totalFileBytes,
+                sourceGroupID: vm.group.id
             ))
             libraryVM.markGroupComplete(vm.group)
         case .cancelledByUser, .failed:

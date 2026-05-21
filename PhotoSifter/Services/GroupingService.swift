@@ -255,6 +255,16 @@ actor GroupingService {
         try? data.write(to: flickedURL, options: .atomic)
     }
 
+    /// Removes the given IDs from the flicked set so a future scan can re-evaluate
+    /// them. Used by the Revisit flow: restored photos must be eligible for
+    /// grouping again.
+    func removeFlickedIdentifiers(_ ids: [String]) {
+        var current = loadFlickedIdentifiers()
+        current.subtract(ids)
+        guard let data = try? JSONEncoder().encode(Array(current)) else { return }
+        try? data.write(to: flickedURL, options: .atomic)
+    }
+
     func invalidateCache() {
         try? FileManager.default.removeItem(at: cacheURL)
         try? FileManager.default.removeItem(at: decisionsURL)
