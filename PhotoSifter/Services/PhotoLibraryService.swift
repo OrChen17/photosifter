@@ -20,12 +20,23 @@ actor PhotoLibraryService {
         PHPhotoLibrary.authorizationStatus(for: .readWrite)
     }
 
-    func fetchAllAssets() -> [PHAsset] {
+    /// When `cutoff` is provided, only assets with `creationDate > cutoff` are returned.
+    /// Trade-off: pre-cutoff singletons that didn't form a group on a previous scan
+    /// won't be re-evaluated — callers should pass `cutoff - bucketGap` so any straddling
+    /// pairs near the boundary are still considered.
+    func fetchAllAssets(since cutoff: Date? = nil) -> [PHAsset] {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         // Only filter by mediaType in the DB predicate — PHQuery doesn't support
         // bitwise operators (&), so screenshot/cloud filtering is done in-memory below.
-        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
+        if let cutoff {
+            options.predicate = NSPredicate(
+                format: "mediaType == %d AND creationDate > %@",
+                PHAssetMediaType.image.rawValue, cutoff as NSDate
+            )
+        } else {
+            options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
+        }
         let result = PHAsset.fetchAssets(with: options)
         var assets: [PHAsset] = []
         assets.reserveCapacity(result.count)
@@ -56,6 +67,33 @@ actor PhotoLibraryService {
                 guard !isDegraded, !resumed else { return }
                 resumed = true
                 continuation.resume(returning: image)
+            }
+        }
+    }
+
+    /// Progressive thumbnail loader: yields the OS-cached degraded image first
+    /// (instant) and then the full-quality image (slower). Consumers that want a
+    /// snappy grid should drive a `@State` image off the latest yielded value.
+    func loadThumbnailStream(for asset: PHAsset, size: CGSize) -> AsyncStream<UIImage> {
+        let options = PHImageRequestOptions()
+        options.deliveryMode = .opportunistic
+        options.resizeMode = .fast
+        options.isNetworkAccessAllowed = AppSettings.cloudDownloadEnabled
+        let manager = imageManager
+        return AsyncStream { continuation in
+            let requestID = manager.requestImage(
+                for: asset,
+                targetSize: size,
+                contentMode: .aspectFill,
+                options: options
+            ) { image, info in
+                if let image { continuation.yield(image) }
+                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+                if !isDegraded || cancelled { continuation.finish() }
+            }
+            continuation.onTermination = { _ in
+                manager.cancelImageRequest(requestID)
             }
         }
     }

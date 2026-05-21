@@ -44,7 +44,7 @@ actor GroupingService {
     }
 
     private static let similarityThreshold: Float = 0.5
-    private static let timeBucketGap: TimeInterval = 5 * 60   // 5 minutes
+    static let timeBucketGap: TimeInterval = 5 * 60   // 5 minutes
 
     // MARK: - Public API
 
@@ -119,10 +119,17 @@ actor GroupingService {
               let identifierGroups = try? JSONDecoder().decode([[String]].self, from: data)
         else { return nil }
 
+        // Single bulk fetch instead of one Photos DB call per cached group.
+        // For libraries with hundreds of cached groups this collapses N XPC
+        // round-trips into 1 — the dominant cost on warm-cache app launch.
+        let allIDs = Array(Set(identifierGroups.flatMap { $0 }))
+        let result = PHAsset.fetchAssets(withLocalIdentifiers: allIDs, options: nil)
+        var byID: [String: PHAsset] = [:]
+        byID.reserveCapacity(result.count)
+        result.enumerateObjects { asset, _, _ in byID[asset.localIdentifier] = asset }
+
         let groups = identifierGroups.compactMap { ids -> PhotoGroup? in
-            let result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)
-            var assets: [PHAsset] = []
-            result.enumerateObjects { a, _, _ in assets.append(a) }
+            let assets = ids.compactMap { byID[$0] }
             guard assets.count >= 2 else { return nil }
             // fetchAssets(withLocalIdentifiers:) returns assets in undefined order;
             // sort by creationDate to match freshly-scanned groups (burst + Vision).

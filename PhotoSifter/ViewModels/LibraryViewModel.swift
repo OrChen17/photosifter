@@ -104,7 +104,14 @@ final class LibraryViewModel {
         let scanStartDate = Date()
 
         // Layer 2: Stream new groups; already-grouped assets are excluded via knownIDs.
-        let assets = await photoService.fetchAllAssets()
+        // If we have a prior scan cutoff, fetch only photos newer than `cutoff - bucketGap`.
+        // The carry-back window ensures any new photo close to the cutoff can still bucket
+        // with an old photo near the boundary; old singletons far from the cutoff won't
+        // be re-evaluated, but by definition they can't pair with new photos (creationDate
+        // gap > bucketGap = no shared bucket).
+        let cutoff = await groupingService.loadScanCutoff()
+        let fetchSince = cutoff.map { $0.addingTimeInterval(-GroupingService.timeBucketGap) }
+        let assets = await photoService.fetchAllAssets(since: fetchSince)
         elapsed("fetchAllAssets done — \(assets.count) assets, \(knownIDs.count) already known")
         scanProgress = (0, assets.count)
 

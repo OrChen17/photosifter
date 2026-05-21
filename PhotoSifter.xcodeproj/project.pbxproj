@@ -54,6 +54,7 @@
 		T013 /* QuickWinsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S013 /* QuickWinsServiceTests.swift */; };
 		T014 /* DuplicateGroupSifterViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S014 /* DuplicateGroupSifterViewModelTests.swift */; };
 		T015 /* AppSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S015 /* AppSettingsTests.swift */; };
+		T016 /* PhotoLibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S016 /* PhotoLibraryServiceTests.swift */; };
 		U001 /* PhotoSifterUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R001 /* PhotoSifterUITests.swift */; };
 		U002 /* PermissionFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R002 /* PermissionFlowUITests.swift */; };
 		U003 /* LibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R003 /* LibraryUITests.swift */; };
@@ -131,6 +132,7 @@
 		S013 /* QuickWinsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsServiceTests.swift; sourceTree = "<group>"; };
 		S014 /* DuplicateGroupSifterViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterViewModelTests.swift; sourceTree = "<group>"; };
 		S015 /* AppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
+		S016 /* PhotoLibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryServiceTests.swift; sourceTree = "<group>"; };
 		TPROD /* PhotoSifterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		UPROD /* PhotoSifterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhotoSifterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -208,6 +210,7 @@
 				S013 /* QuickWinsServiceTests.swift */,
 				S014 /* DuplicateGroupSifterViewModelTests.swift */,
 				S015 /* AppSettingsTests.swift */,
+				S016 /* PhotoLibraryServiceTests.swift */,
 				GRP_MOCKS /* Mocks */,
 			);
 			path = PhotoSifterTests;
@@ -507,6 +510,7 @@
 				T013 /* QuickWinsServiceTests.swift in Sources */,
 				T014 /* DuplicateGroupSifterViewModelTests.swift in Sources */,
 				T015 /* AppSettingsTests.swift in Sources */,
+				T016 /* PhotoLibraryServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

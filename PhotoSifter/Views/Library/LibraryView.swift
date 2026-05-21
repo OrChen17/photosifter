@@ -9,9 +9,15 @@ private struct ScrollOffsetKey: PreferenceKey {
 struct LibraryView: View {
     @Environment(LibraryViewModel.self) private var vm
     @Environment(AppSettings.self) private var appSettings
+    @Environment(\.displayScale) private var displayScale
     @State private var stripCollapsed = false
     @State private var initialGridY: CGFloat? = nil
     @State private var showingSettings = false
+
+    /// Cap the prefetch window so we don't try to warm thousands of thumbnails at once.
+    /// 30 groups × 2 representatives = 60 thumbnails, plenty for the visible window
+    /// plus generous lookahead on a 2-column grid.
+    private static let prefetchGroupCap = 30
 
     var body: some View {
         @Bindable var vm = vm
@@ -150,6 +156,17 @@ struct LibraryView: View {
 
             Spacer().frame(height: 32)
         }
+        // Warm PHCachingImageManager for the top-of-grid window so thumbnails are
+        // already decoded by the time MemoryCardView.task fires its request.
+        .task(id: vm.groups.prefix(Self.prefetchGroupCap).map(\.id)) {
+            let px = 200.0 * displayScale
+            let size = CGSize(width: px, height: px)
+            let assets = vm.groups.prefix(Self.prefetchGroupCap).flatMap { g -> [PHAsset] in
+                [g.assets.first, g.assets.last].compactMap { $0 }
+            }
+            guard !assets.isEmpty else { return }
+            await PhotoLibraryService.shared.startCachingThumbnails(for: assets, size: size)
+        }
     }
 
     private var scanningState: some View {
@@ -274,21 +291,21 @@ struct MemoryCardView: View {
         let size = CGSize(width: px, height: px)
         let indices = displayIndices
         thumbnails = Array(repeating: nil, count: indices.count)
-        for (slot, assetIndex) in indices.enumerated() {
-            let img = await PhotoLibraryService.shared.loadThumbnail(for: group.assets[assetIndex], size: size)
-            thumbnails[slot] = img
-        }
+        // The group already has its byte total computed by GroupingService.byteFilled;
+        // recomputing here would mean N more PHAssetResource calls per cell.
+        groupBytes = group.totalFileBytes
 
-        var total: Int64 = 0
-        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
-        for asset in group.assets {
-            let resources = PHAssetResource.assetResources(for: asset)
-            if let r = resources.first(where: { acceptable.contains($0.type) }),
-               let bytes = r.value(forKey: "fileSize") as? Int64 {
-                total += bytes
+        // Each slot streams progressively: the OS thumbnail cache yields a degraded
+        // image first (instant), then the HQ image upgrades the same slot when ready.
+        // Sequential per slot is fine — each grid cell's .task already runs in parallel.
+        for (slot, assetIndex) in indices.enumerated() {
+            let stream = await PhotoLibraryService.shared.loadThumbnailStream(
+                for: group.assets[assetIndex], size: size
+            )
+            for await img in stream {
+                thumbnails[slot] = img
             }
         }
-        groupBytes = total
     }
 
     private func formattedBytes(_ bytes: Int64) -> String {
