@@ -1,142 +1,114 @@
-# PhotoSifter
+# CLAUDE.md
 
-iOS app for culling near-duplicate photos. Tinder-style swipe interface: right = keep, left = delete. Makes photo management feel like a game rather than a chore.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Platform:** iOS 17+, SwiftUI, `@Observable` macro, no external dependencies.
+## Project
 
----
+iOS app **FlickPic** (Xcode scheme `PhotoSifter`, bundle id `com.flickpic.app`). Tinder-style swipe UI for culling near-duplicate photos. iOS 17+, SwiftUI, `@Observable` macro, no external dependencies.
 
-## What It Does
+## Build / Run / Test
 
-1. Scans the photo library for near-duplicate groups (burst captures + Vision ML similarity).
-2. Shows groups in a library grid. Each group is a cluster of 2+ near-identical photos taken close together in time.
-3. User sifts through a group by swiping cards. Decisions are queued, then committed in one batch PHPhotoLibrary change when the group is complete.
-4. Summary screen shows photos deleted, space saved, and a "Continue" card to the next group.
+Three pre-wired devices live in [.vscode/tasks.json](.vscode/tasks.json). Use these IDs (don't invent destinations):
 
----
+- Orr's iPhone: `00008120-001261E402A0C01E`
+- Ofir's iPhone: `00008120-0004598E0132201E` (needs `-allowProvisioningUpdates`)
+- Simulator: `4902F1E6-4F1C-40A8-8C57-F1D91073F8F1`
 
-## Architecture
+Typical commands:
 
-MVVM. All state in `@Observable` classes. No Combine. No external packages.
+```sh
+# Build + install + launch on a physical device
+xcodebuild -scheme PhotoSifter -destination 'id=<DEVICE_UDID>' -derivedDataPath build build
+xcrun devicectl device install app --device <DEVICE_UDID> build/Build/Products/Debug-iphoneos/PhotoSifter.app
+xcrun devicectl device process launch --device <DEVICE_UDID> com.flickpic.app
 
-```
-PhotoSifter/
-├── ContentView.swift              — root router: permission → LibraryView
-├── Models/
-│   └── PhotoGroup.swift           — struct: [PHAsset] + decisions dict + computed helpers
-├── Services/
-│   ├── PhotoLibraryService.swift  — actor: PHPhotoLibrary fetch/delete/thumbnail
-│   ├── SimilarityService.swift    — actor: Vision VNFeaturePrintObservation, cached by localIdentifier
-│   ├── GroupingService.swift      — actor: burst groups + Vision clustering + disk persistence
-│   └── DebugSimilarityService.swift — stub for simulator (Vision/CoreML broken there)
-├── ViewModels/
-│   ├── LibraryViewModel.swift     — @Observable @MainActor: groups list, scan state, group lifecycle
-│   └── SifterViewModel.swift      — @Observable @MainActor: per-session swipe state, undo, commit
-├── Views/
-│   ├── Permission/PermissionView.swift
-│   ├── Library/LibraryView.swift  — 2-col grid of MemoryCardView; ScanningBadge in toolbar
-│   ├── Sifter/
-│   │   ├── SifterView.swift       — orchestrates card + strip + progress bar + vignette
-│   │   ├── SwipeCardView.swift    — draggable card with badges, metadata overlay, skip gesture
-│   │   ├── BatchStripView.swift   — horizontal thumbnail strip at top showing decisions
-│   │   └── DecisionBadgeView.swift — KEEP/DELETE badges
-│   └── Summary/SessionSummaryView.swift — animated stats, next-batch card, retry path
-└── Utilities/
-    ├── Color+App.swift            — app palette (appBackground, appCard, appKeep, appDelete, appAccent)
-    ├── HapticManager.swift        — CoreHaptics wrapper (keep/delete/undo/tick/batch-complete)
-    └── SoundManager.swift         — AVFoundation SFX (keep/delete/complete)
+# Run unit tests on simulator
+xcodebuild test -scheme PhotoSifter \
+  -destination 'id=4902F1E6-4F1C-40A8-8C57-F1D91073F8F1' \
+  -only-testing:PhotoSifterTests -derivedDataPath build
+
+# Run a single test class or method
+xcodebuild test -scheme PhotoSifter \
+  -destination 'id=4902F1E6-4F1C-40A8-8C57-F1D91073F8F1' \
+  -only-testing:PhotoSifterTests/SifterViewModelTests \
+  -only-testing:PhotoSifterTests/SifterViewModelTests/testSwipeLeftQueuesDelete \
+  -derivedDataPath build
 ```
 
----
+Build output goes to `build/` (gitignored). Tests use `TEST_HOST` of the host app, so they have full access to `PHPhotoLibrary` — see [PhotoSifterTests/Mocks/TestAssetHelpers.swift](PhotoSifterTests/Mocks/TestAssetHelpers.swift) for `requirePhotoAssets`/`requirePhotoGroup` which `XCTSkipIf` when no photos are present.
 
-## Grouping Pipeline
+## Testing constraints
 
-`GroupingService.streamGroups()` runs two phases in sequence:
+- **Simulator cannot run real Vision similarity.** `VNGenerateImageFeaturePrintRequest` fails to load its CoreML model on the simulator. `GroupingService.shared` swaps in `DebugTimeProximitySimilarity` (treats photos within 30s as duplicates) under `#if DEBUG && targetEnvironment(simulator)` so the UI is still exercisable. Tests that depend on real similarity must run on device or use `MockSimilarityService`.
+- Most behaviour-level tests use the helpers in [PhotoSifterTests/Mocks/](PhotoSifterTests/Mocks/): `MockDeletionService` (records deletes without hitting Photos), `MockSimilarityService`, and `TestAssetHelpers`.
+- UI tests pass process-arg flags read by [PhotoSifter/PhotoSifterApp.swift](PhotoSifter/PhotoSifterApp.swift) and [PhotoSifter/ContentView.swift](PhotoSifter/ContentView.swift) — `UI_TESTING`, `FORCE_EMPTY_LIBRARY`, `FORCE_DENIED`.
 
-1. **Burst groups** — `PHAsset.fetchAssets(withBurstIdentifier:)` for iOS burst captures. No Vision needed, fast.
-2. **Vision clustering** — remaining photos split into time-proximity buckets (gap > 5 min = new bucket). Each bucket processed concurrently via `withTaskGroup`. Within a bucket: pairwise `VNFeaturePrintObservation` distances, union-find merge when `distance < 0.65`. Groups sorted chronologically before emitting.
+## Architecture (the parts that span files)
 
-Results stream into `LibraryViewModel` via `AsyncStream`, animating each new group into the grid as it arrives.
+MVVM with `@Observable` + `@MainActor` view models and `actor` services. No Combine, no SPM dependencies.
 
-**Persistence (two files in Application Support):**
-- `grouped_identifiers.json` — `[[String]]` of localIdentifier arrays. Loaded on cold launch to show groups instantly before the Vision scan completes.
-- `group_decisions.json` — `[String: [String: String]]`. Key = sorted localIdentifiers joined by `|` (stable across launches since UUID is regenerated). Value = `{localIdentifier: "keep"|"delete"}`. Written on mid-batch exit; hydrated on re-enter.
+### Three-layer load pipeline ([LibraryViewModel.load()](PhotoSifter/ViewModels/LibraryViewModel.swift#L65))
 
-**Simulator:** `GroupingService.shared` substitutes `DebugTimeProximitySimilarity` because `VNFeaturePrintObservation` can't load the model on the simulator.
+1. **Stats** — `CompletedBatchStore.shared.loadAll()` so history counters render non-zero on first frame.
+2. **Layer 1 (cached)** — `GroupingService.loadCachedGroups()` reads `grouped_identifiers.json` and renders the grid instantly. Cached groups are hydrated with saved decisions and filtered against the `flicked_identifiers.json` set.
+3. **Layer 2 (streaming)** — `GroupingService.streamGroups(from:excluding:)` emits new `PhotoGroup`s via `AsyncStream`. Assets already in cached groups or in `flickedIDs` are excluded. Groups are buffered into batches of 8 (or 0.4s) and flushed with a spring animation into `groups`.
+4. **Quick wins** — `QuickWinsService.fetchAll()` runs at `.utility` priority after the scan finishes, so it never blocks the grid.
 
----
+### Grouping pipeline ([GroupingService](PhotoSifter/Services/GroupingService.swift))
 
-## SifterViewModel — Key Invariants
+Two phases per `streamGroups` call:
 
-- **Deletes are deferred.** `swipeLeft()` appends to `pendingDeletes`; no PHPhotoLibrary call until `commitDeletes()`.
-- **Commit is called once** by `SifterView.onChange(of: vm.isComplete)`. It re-derives `toDelete` from `group.decisions` (not `pendingDeletes`) so a retry after user cancellation still works.
-- **Skip** moves an asset to the end of `displayOrder` (once per asset only, tracked via `skippedIdentifiers`).
-- **Strip tap = undo affordance.** `jumpTo(asset:)` clears that asset's decision and moves the cursor there. Replaces the old undo-only button.
-- **Resume mid-batch.** On init, `currentIndex` is set to the first undecided asset index. `applyHydratedGroup(_:)` called on appear for belt-and-suspenders correctness.
-- **Last photo guard.** `isLastUndecidedWithNoKept` triggers a warning alert before allowing deletion of the last photo when nothing has been kept.
-- **`keepOnlyCurrentAndDeleteRest()`** — shortcut to mark current as keep and queue all others for deletion in one action.
+1. **Burst groups** — `PHAsset.fetchAssets(withBurstIdentifier:)`. Fast, no ML.
+2. **Vision clustering** — assets split into time-proximity buckets (`timeBucketGap = 5 min`). Within a bucket, pairwise `VNFeaturePrintObservation` distances, union-find merge when `distance < 0.5` (`similarityThreshold`). Groups are sorted chronologically.
 
----
+iCloud handling: when `AppSettings.cloudDownloadEnabled == false`, both burst and Vision phases pre-filter via `PhotoLibraryService.isLocallyAvailable` (which uses `PHAssetResourceManager` with network disabled and cancels after the first byte).
 
-## Deletion Flow
+### Persistence (Application Support, all JSON)
 
-```
-swipeLeft() → pendingDeletes.append(asset)
-                ↓ (when all swiped)
-isComplete = true
-                ↓ onChange in SifterView
-commitDeletes()  → PHAssetChangeRequest.deleteAssets(_:)
-                ↓
-DeletionOutcome:
-  .committed      → libraryVM.markGroupComplete (removes from list, clears persisted decisions)
-  .nothingToDelete → same
-  .cancelledByUser → libraryVM.saveGroupProgress (decisions preserved for retry)
-  .failed(msg)    → same as cancelled
-```
+`GroupingService` writes these files. The directory is created in its `init` because iOS won't auto-create it — without that, `try?` writes silently fail and mid-batch progress doesn't survive.
 
-iOS cannot permanently delete from Recently Deleted via API. The "View Recently Deleted" button deep-links to `photos-redirect://` (fallback: `photos-library://`).
+| File | Shape | Purpose |
+|---|---|---|
+| `grouped_identifiers.json` | `[[String]]` | Cached group → localIdentifier arrays, served on cold launch. |
+| `group_decisions.json` | `[String: [String: String]]` | Per-group decisions. **Outer key** = sorted localIdentifiers joined by `\|` (stable across launches because `PhotoGroup.id` UUID is regenerated each scan — see `persistenceKey(for:)`). |
+| `flicked_identifiers.json` | `[String]` | LocalIdentifiers of photos in completed groups. Vision skips these on rescan. |
+| `scan_cutoff.json` | `Date` | Last full-scan timestamp. |
+| `file_sizes.json` | `[String: Int64]` | `PHAssetResource.fileSize` cache. |
+| `completed_batches.json` | `[CompletedBatch]` | History tab data (owned by [CompletedBatchStore](PhotoSifter/Services/CompletedBatchStore.swift)). |
 
----
+### Deletion flow
 
-## LibraryViewModel Responsibilities
+Deletes are **deferred and batched**. `SifterViewModel.swipeLeft` only appends to `pendingDeletes`. No `PHPhotoLibrary` call happens until `SifterView.onChange(of: vm.isComplete)` fires `commitDeletes()`. `commitDeletes` re-derives `toDelete` from `group.decisions` (not `pendingDeletes`) so a retry after iOS-prompt cancellation still works.
 
-- Owns `groups: [PhotoGroup]` and `selectedGroup: PhotoGroup?` (drives `NavigationStack` destination).
-- `load()`: serve cache immediately, then stream fresh groups, sort by (group size desc, date desc), persist when done.
-- `markGroupComplete(_:)`: removes group from list + clears its persisted decisions.
-- `saveGroupProgress(_:)`: updates in-memory copy + writes decisions to disk.
-- `nextIncompleteGroup(after:)`: pure lookup for the summary screen's "Continue" CTA.
+`DeletionOutcome` (Equatable): `.committed` / `.nothingToDelete` → `LibraryViewModel.markGroupComplete`; `.cancelledByUser` / `.failed` → `saveGroupProgress` so the user can retry. Both `PHPhotosError.userCancelled` and `NSUserCancelledError` map to `.cancelledByUser`.
 
----
+`markGroupComplete`: removes from in-memory list, writes `flickedIDs`, clears that group's decisions, and **immediately re-persists** `grouped_identifiers.json` so a force-quit during a scan doesn't resurrect the completed group.
 
-## UI / Design
+### Sifter view-model invariants ([SifterViewModel](PhotoSifter/ViewModels/SifterViewModel.swift))
 
-**Color palette** (`Color+App.swift`):
-- `appBackground`: `#0A0A0F` near-black
-- `appCard`: `#1C1C24`
-- `appKeep`: `#34C759` (iOS system green)
-- `appDelete`: `#FF3B30` (iOS system red)
-- `appAccent`: `#6C63FF` purple
+- **Resume mid-batch.** Init scans `group.decisions` to set `currentIndex` to the first undecided asset and re-queues already-marked deletes. `applyHydratedGroup(_:)` is called again on `SifterView.task` as belt-and-suspenders.
+- **Skip is one-shot per asset** (`skippedIdentifiers`), advances circularly via `nextUndecidedIndex`.
+- **Strip-tap replaces undo.** `jumpTo(asset:)` clears that asset's decision, removes it from `pendingDeletes`, and moves the cursor there.
+- **Last-photo guard.** `isLastUndecidedWithNoKept` triggers a confirm before allowing the user to delete the final photo when nothing's been kept.
+- Bulk actions (`deleteAll`, `keepOnlyCurrentAndDeleteRest`, `keepOldestAndDeleteRest`) intentionally bypass the guard — callers confirm first.
 
-**Swipe mechanics** (`SwipeCardView`):
-- Badge threshold: 60pt (haptic tick fires on first crossing, once per direction change)
-- Snap threshold: 120pt (card thrown off-screen, action fires after 0.35s)
-- Upward flick (`translation.height < -80`) = skip
-- Screen-wide radial vignette in `SifterView` driven by `swipeProgress: Double` (reported by card via closure)
+### Quick Wins ([QuickWinsService](PhotoSifter/Services/QuickWinsService.swift))
 
-**Typography:** SF Pro with `.fontDesign(.rounded)` throughout. No custom fonts.
+Separate from the main grouping pipeline. Two categories:
 
-**Card preloading:** `SifterView` preloads the next 3 full-res images into `imageCache: [String: UIImage]` ahead of the current index.
+- **Screenshots** — `PHAssetMediaSubtype.photoScreenshot` (also filtered out of the main scan in `PhotoLibraryService.fetchAllAssets`), chunked into batches of 20.
+- **Exact duplicates** — size-prefilter (`sizePrefilterIdentifiers`) → SHA-256 of `PHAssetResource` data in batches of 4 (memory-bounded streaming hash via `CryptoKit`) → group by digest. Duplicates use a dedicated [DuplicateGroupSifterViewModel](PhotoSifter/ViewModels/DuplicateGroupSifterViewModel.swift) (merge-vs-keep-all, not per-photo decisions).
 
----
+### Concurrency model
 
-## Testing
+- All view models are `@Observable @MainActor`. They never touch `PHPhotoLibrary` directly — they go through actors.
+- `PhotoLibraryService`, `GroupingService`, `SimilarityService`, `CompletedBatchStore`, `QuickWinsService` are all `actor`s with `static let shared`.
+- `DeletionService` protocol exists solely so `SifterViewModel` can be injected with `MockDeletionService` in tests; `PhotoLibraryService` conforms via extension.
 
-Must run on a **physical device** — simulator has no photo library and Vision ML can't load the feature-print model. Use the `DebugSimilarityService` path only for UI layout testing.
+## Conventions
 
-Key flows to verify after any change:
-- Swipe through full group → summary appears → photos in Recently Deleted
-- Mid-batch exit → re-enter → decisions restored at correct position
-- Strip tap → clears decision → re-swipe works
-- Skip → asset moves to end → can only skip once
-- Deletion cancelled at system prompt → retry from summary succeeds
-- `keepOnlyCurrentAndDeleteRest` → all others queued → summary shows correct count
+- File references in commits/PRs use `path:line`. Keep the same convention in code comments when explaining cross-file behaviour.
+- The user-facing app name is **FlickPic** (`CFBundleDisplayName`); the Xcode target / scheme / source folders are still `PhotoSifter`. Don't rename the target.
+- The "Sift" tab was renamed to **"Flick"** — UI strings use "Flick"/"flicked", code still uses `Sifter*` for types.
+- Color palette in [Color+App.swift](PhotoSifter/Utilities/Color+App.swift): `appBackground`, `appCard`, `appKeep`, `appDelete`, `appAccent`, `appTextSecondary`. Use these, not raw hex.
+- Typography: SF Pro with `.fontDesign(.rounded)` throughout. No custom fonts.
