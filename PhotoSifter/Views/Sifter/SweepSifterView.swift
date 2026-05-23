@@ -7,8 +7,10 @@ struct SweepSifterView: View {
     @State private var vm: SweepSifterViewModel
     @State private var imageCache = ImagePreloadCache()
     @State private var showDiscardConfirm: Bool = false
-    @State private var applyMessage: String?
-    @State private var showFinishedSheet: Bool = false
+    @State private var showSweepSummary: Bool = false
+    @State private var summaryOutcome: DeletionOutcome? = nil
+    @State private var summaryDeletedCount: Int = 0
+    @State private var summaryDeletedBytes: Int64 = 0
 
     init(groups: [PhotoGroup]) {
         _vm = State(initialValue: SweepSifterViewModel(groups: groups))
@@ -24,6 +26,28 @@ struct SweepSifterView: View {
                 finishedContent
             } else {
                 mainContent
+            }
+
+            if showSweepSummary {
+                SessionSummaryView(
+                    group: nil,
+                    nextGroup: nil,
+                    outcome: summaryOutcome,
+                    deletedBytes: summaryDeletedBytes,
+                    onDismiss: { withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSweepSummary = false } },
+                    onContinue: {
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSweepSummary = false }
+                        if vm.isQueueExhausted { dismiss() }
+                    },
+                    onRetry: {
+                        showSweepSummary = false
+                        Task { await runApply() }
+                    },
+                    overrideDeletedCount: summaryDeletedCount,
+                    continueLabel: vm.isQueueExhausted ? "Back to Library" : "Continue Swiping"
+                )
+                .transition(.scale(scale: 0.88, anchor: .center).combined(with: .opacity))
+                .zIndex(10)
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -124,17 +148,7 @@ struct SweepSifterView: View {
     // MARK: - Bottom bar
 
     private var bottomBar: some View {
-        VStack(spacing: 12) {
-            applyButton
-
-            if let msg = applyMessage {
-                Text(msg)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.appTextSecondary)
-                    .lineLimit(1)
-                    .transition(.opacity)
-            }
-        }
+        applyButton
     }
 
     private var applyButton: some View {
@@ -255,7 +269,6 @@ struct SweepSifterView: View {
 
     private func runApply() async {
         guard vm.hasPendingDecisions else { return }
-        applyMessage = nil
         let snapshot = await vm.apply()
         switch snapshot.outcome {
         case .committed:
@@ -269,12 +282,14 @@ struct SweepSifterView: View {
             if !snapshot.keptIDs.isEmpty {
                 await libraryVM.applySweepResult(snapshot: snapshot)
             }
-        case .cancelledByUser:
-            applyMessage = "Cancelled — try again"
+        case .cancelledByUser, .failed:
             SoundManager.shared.playFailure()
-        case .failed(let msg):
-            applyMessage = "Apply failed: \(msg)"
-            SoundManager.shared.playFailure()
+        }
+        summaryOutcome = snapshot.outcome
+        summaryDeletedCount = snapshot.deletedIDs.count
+        summaryDeletedBytes = snapshot.deletedBytes
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
+            showSweepSummary = true
         }
     }
 

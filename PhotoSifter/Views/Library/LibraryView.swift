@@ -379,6 +379,7 @@ struct ScanningBadge: View {
                 .frame(width: 8, height: 8)
                 .scaleEffect(isAnimating ? 1.3 : 0.8)
                 .animation(.easeInOut(duration: 0.7).repeatForever(), value: isAnimating)
+                .padding(.leading, 2)
 
             Text("Scanning")
                 .font(.system(size: 13, weight: .medium, design: .rounded))

@@ -2,13 +2,15 @@ import SwiftUI
 import Photos
 
 struct SessionSummaryView: View {
-    let group: PhotoGroup
+    let group: PhotoGroup?
     let nextGroup: PhotoGroup?
     let outcome: DeletionOutcome?
     let deletedBytes: Int64
     var onDismiss: (() -> Void)? = nil
     var onContinue: (() -> Void)? = nil
     var onRetry: (() -> Void)? = nil
+    var overrideDeletedCount: Int? = nil
+    var continueLabel: String = "Back to Library"
 
     @Environment(\.dismiss) private var dismiss
 
@@ -21,7 +23,7 @@ struct SessionSummaryView: View {
     @State private var countdown: Int = 5
     @State private var autoTask: Task<Void, Never>?
 
-    private var deletedCount: Int { group.deletedAssets.count }
+    private var deletedCount: Int { overrideDeletedCount ?? group?.deletedAssets.count ?? 0 }
     private var isCancelledOrFailed: Bool {
         if case .cancelledByUser = outcome { return true }
         if case .failed = outcome { return true }
@@ -205,7 +207,7 @@ struct SessionSummaryView: View {
                     doDissmiss()
                     onContinue?()
                 } label: {
-                    Text("Back to Library")
+                    Text(continueLabel)
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -363,7 +365,7 @@ struct SessionSummaryView: View {
                     doDissmiss()
                     onContinue?()
                 } label: {
-                    Text("Back to Library")
+                    Text(continueLabel)
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundStyle(.appTextSecondary)
                         .frame(maxWidth: .infinity)
