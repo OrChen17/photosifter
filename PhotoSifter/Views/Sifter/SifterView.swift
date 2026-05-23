@@ -7,7 +7,7 @@ private let preloadAhead = 3
 struct SifterView: View {
     @State private var vm: SifterViewModel
     @State private var showSummary: Bool = false
-    @State private var imageCache: [String: UIImage] = [:]
+    @State private var imageCache = ImagePreloadCache()
     @State private var pendingNextGroup: PhotoGroup? = nil
     @State private var isHandlingCompletion: Bool = false
     // Set true on the first handleContinue() per completion event. Guards against
@@ -351,13 +351,21 @@ struct SifterView: View {
     // MARK: - Preloading
 
     private func preloadUpcomingCards() {
-        for asset in vm.upcomingAssets(count: preloadAhead) {
+        let upcoming = vm.upcomingAssets(count: preloadAhead)
+        for asset in upcoming {
             let id = asset.localIdentifier
-            guard imageCache[id] == nil else { continue }
+            guard imageCache.image(for: id) == nil else { continue }
             Task(priority: .utility) {
-                if case .loaded(let img) = await PhotoLibraryService.shared.loadFullImage(for: asset) {
-                    imageCache[id] = img
+                if case .loaded(let img) = await PhotoLibraryService.shared.loadDisplayImage(for: asset) {
+                    imageCache.set(img, for: id)
                 }
+            }
+        }
+        Task.detached(priority: .background) {
+            for asset in upcoming {
+                _ = asset.creationDate
+                _ = asset.location
+                _ = PHAssetResource.assetResources(for: asset)
             }
         }
     }

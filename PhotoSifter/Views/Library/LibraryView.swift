@@ -347,7 +347,7 @@ private struct EndlessModeButton: View {
 
                 Circle()
                     .fill(LinearGradient(
-                        colors: [Color(red: 0.62, green: 0.60, blue: 1.0), Color.appAccent],
+                        colors: [Color.appAccent, Color(hex: "C91E6D")],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ))

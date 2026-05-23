@@ -1,6 +1,29 @@
 import SwiftUI
 import Photos
 
+/// Reference-type image cache shared between SifterView/SweepSifterView and their cards.
+/// Being a class means writes don't trigger SwiftUI view re-evaluations, so preloading
+/// a new image won't interrupt an in-progress drag gesture.
+final class ImagePreloadCache {
+    private let store = NSCache<NSString, UIImage>()
+
+    func image(for id: String) -> UIImage? {
+        store.object(forKey: id as NSString)
+    }
+
+    func set(_ image: UIImage, for id: String) {
+        store.setObject(image, forKey: id as NSString)
+    }
+
+    func removeImage(for id: String) {
+        store.removeObject(forKey: id as NSString)
+    }
+
+    func removeAll() {
+        store.removeAllObjects()
+    }
+}
+
 /// Shared card-swiping container used by SifterView (single memory) and
 /// SweepSifterView (multi-memory queue).
 ///
@@ -11,7 +34,7 @@ import Photos
 struct FlickCardArea<Strip: View, BottomBar: View>: View {
     let currentAsset: PHAsset?
     let nextAsset: PHAsset?
-    let imageCache: [String: UIImage]
+    let imageCache: ImagePreloadCache
     /// Changing this value resets the card-entrance wobble — pass the current
     /// group's id so the wobble fires again when the user moves to a new memory.
     let groupID: AnyHashable
@@ -22,7 +45,7 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
     @ViewBuilder let bottomBar: () -> BottomBar
 
     @State private var flashTint: Color = .appKeep
-    @State private var flashIntensity: Double = 0
+    @State private var flashCounter: Int = 0
     @State private var isTopCardThrown: Bool = false
     @State private var cardAppearWobble: Double = 1.5
 
@@ -36,7 +59,7 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
                         if let next = nextAsset {
                             SwipeCardView(
                                 asset: next,
-                                preloadedImage: imageCache[next.localIdentifier],
+                                preloadedImage: imageCache.image(for: next.localIdentifier),
                                 onSwipeRight: {},
                                 onSwipeLeft: {}
                             )
@@ -49,7 +72,7 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
 
                         SwipeCardView(
                             asset: asset,
-                            preloadedImage: imageCache[asset.localIdentifier],
+                            preloadedImage: imageCache.image(for: asset.localIdentifier),
                             onSwipeRight: {
                                 isTopCardThrown = false
                                 onSwipeRight()
@@ -94,27 +117,33 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
                 bottomBar()
             }
 
-            swipeVignette.allowsHitTesting(false)
+            FlashVignetteView(tint: flashTint, counter: flashCounter).allowsHitTesting(false)
         }
         .onChange(of: groupID) { _, _ in cardAppearWobble = 1.5 }
     }
 
-    private var currentIntensity: Double { flashIntensity }
+    private func triggerFlash() { flashCounter += 1 }
+}
 
-    private var swipeVignette: some View {
+private struct FlashVignetteView: View {
+    let tint: Color
+    let counter: Int
+    @State private var intensity: Double = 0
+
+    var body: some View {
         GeometryReader { geo in
             let radius = hypot(geo.size.width, geo.size.height) * 0.6
             RadialGradient(
                 gradient: Gradient(stops: [
-                    .init(color: .clear,                                      location: 0.00),
-                    .init(color: .clear,                                      location: 0.32),
-                    .init(color: flashTint.opacity(currentIntensity * 0.04),  location: 0.46),
-                    .init(color: flashTint.opacity(currentIntensity * 0.09),  location: 0.58),
-                    .init(color: flashTint.opacity(currentIntensity * 0.16),  location: 0.69),
-                    .init(color: flashTint.opacity(currentIntensity * 0.26),  location: 0.79),
-                    .init(color: flashTint.opacity(currentIntensity * 0.38),  location: 0.88),
-                    .init(color: flashTint.opacity(currentIntensity * 0.52),  location: 0.95),
-                    .init(color: flashTint.opacity(currentIntensity * 0.68),  location: 1.00),
+                    .init(color: .clear,                       location: 0.00),
+                    .init(color: .clear,                       location: 0.32),
+                    .init(color: tint.opacity(intensity * 0.04),  location: 0.46),
+                    .init(color: tint.opacity(intensity * 0.09),  location: 0.58),
+                    .init(color: tint.opacity(intensity * 0.16),  location: 0.69),
+                    .init(color: tint.opacity(intensity * 0.26),  location: 0.79),
+                    .init(color: tint.opacity(intensity * 0.38),  location: 0.88),
+                    .init(color: tint.opacity(intensity * 0.52),  location: 0.95),
+                    .init(color: tint.opacity(intensity * 0.68),  location: 1.00),
                 ]),
                 center: .center,
                 startRadius: 0,
@@ -122,10 +151,9 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
             )
             .ignoresSafeArea()
         }
-    }
-
-    private func triggerFlash() {
-        withAnimation(.easeOut(duration: 0.08)) { flashIntensity = 1.0 }
-        withAnimation(.easeOut(duration: 0.35).delay(0.08)) { flashIntensity = 0 }
+        .onChange(of: counter) { _, _ in
+            withAnimation(.easeOut(duration: 0.08)) { intensity = 1.0 }
+            withAnimation(.easeOut(duration: 0.35).delay(0.08)) { intensity = 0 }
+        }
     }
 }

@@ -131,7 +131,18 @@ actor PhotoLibraryService {
         }
     }
 
+    /// Load an image sized for on-screen display (≤2048px on the long edge).
+    /// Much faster to decode than full resolution; quality is indistinguishable
+    /// on any iPhone screen. Use this for swipe cards.
+    func loadDisplayImage(for asset: PHAsset) async -> FullImageResult {
+        await loadFullImage(for: asset, targetSize: CGSize(width: 2048, height: 2048))
+    }
+
     func loadFullImage(for asset: PHAsset) async -> FullImageResult {
+        await loadFullImage(for: asset, targetSize: PHImageManagerMaximumSize)
+    }
+
+    private func loadFullImage(for asset: PHAsset, targetSize: CGSize) async -> FullImageResult {
         await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
             options.deliveryMode = .highQualityFormat
@@ -139,7 +150,7 @@ actor PhotoLibraryService {
             var resumed = false
             imageManager.requestImage(
                 for: asset,
-                targetSize: PHImageManagerMaximumSize,
+                targetSize: targetSize,
                 contentMode: .aspectFit,
                 options: options
             ) { image, info in

@@ -136,7 +136,11 @@ final class SweepSifterViewModel {
     }
 
     private func advanceCursor() {
-        currentIndex = min(currentIndex + 1, queue.count)
+        var next = currentIndex + 1
+        while next < queue.count && decisions[queue[next].localIdentifier] != nil {
+            next += 1
+        }
+        currentIndex = min(next, queue.count)
     }
 
     // MARK: - Apply

@@ -40,7 +40,7 @@ struct SweepBannerView: View {
             .padding(.vertical, 14)
             .background(
                 LinearGradient(
-                    colors: [.appAccent, Color(hex: "9B59B6")],
+                    colors: [.appAccent, Color(hex: "C91E6D")],
                     startPoint: .leading, endPoint: .trailing
                 ),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)

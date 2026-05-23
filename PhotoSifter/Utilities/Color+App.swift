@@ -4,8 +4,8 @@ extension Color {
     static let appBackground   = Color(hex: "0A0A0F")
     static let appCard         = Color(hex: "1C1C24")
     static let appKeep         = Color(hex: "22D3EE")
-    static let appDelete       = Color(hex: "6C63FF")
-    static let appAccent       = Color(hex: "6C63FF")
+    static let appDelete       = Color(hex: "FF2D78")
+    static let appAccent       = Color(hex: "FF2D78")
     static let appTextSecondary = Color(white: 0.55)
 
     init(hex: String) {

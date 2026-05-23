@@ -5,7 +5,7 @@ struct SweepSifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
     @State private var vm: SweepSifterViewModel
-    @State private var imageCache: [String: UIImage] = [:]
+    @State private var imageCache = ImagePreloadCache()
     @State private var showDiscardConfirm: Bool = false
     @State private var applyMessage: String?
     @State private var showFinishedSheet: Bool = false
@@ -40,6 +40,26 @@ struct SweepSifterView: View {
                         Text("Library").font(.system(size: 17))
                     }
                     .foregroundStyle(.white)
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 10) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.appDelete)
+                        Text("\(vm.sessionDeletedCount)")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.appKeep)
+                        Text("\(vm.sessionKeptCount)")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
                 }
             }
         }
@@ -78,7 +98,7 @@ struct SweepSifterView: View {
             imageCache: imageCache,
             groupID: AnyHashable("sweep"),
             onSwipeRight: { vm.swipeRight() },
-            onSwipeLeft: { vm.swipeLeft() },
+            onSwipeLeft:  { vm.swipeLeft() },
             onSkip: {
                 vm.skip()
                 preloadUpcomingImages()
@@ -107,17 +127,12 @@ struct SweepSifterView: View {
         VStack(spacing: 12) {
             applyButton
 
-            HStack(spacing: 12) {
-                deletedCounterPill
-                if let msg = applyMessage {
-                    Text(msg)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.appTextSecondary)
-                        .lineLimit(1)
-                        .transition(.opacity)
-                }
-                Spacer()
-                keptCounterPill
+            if let msg = applyMessage {
+                Text(msg)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.appTextSecondary)
+                    .lineLimit(1)
+                    .transition(.opacity)
             }
         }
     }
@@ -136,7 +151,7 @@ struct SweepSifterView: View {
             .background(
                 vm.hasPendingDecisions
                     ? AnyShapeStyle(LinearGradient(
-                        colors: [.appAccent, Color(hex: "9B59B6")],
+                        colors: [.appAccent, Color(hex: "C91E6D")],
                         startPoint: .leading, endPoint: .trailing
                       ))
                     : AnyShapeStyle(Color.white.opacity(0.08)),
@@ -157,34 +172,6 @@ struct SweepSifterView: View {
         case (let d, 0): return "Apply · \(d) to delete"
         default:         return "Apply · \(d) delete · \(k) keep"
         }
-    }
-
-    private var deletedCounterPill: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "trash.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.appDelete)
-            Text("\(vm.sessionDeletedCount) deleted")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.white.opacity(0.06), in: Capsule())
-    }
-
-    private var keptCounterPill: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.appKeep)
-            Text("\(vm.sessionKeptCount) kept")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.white.opacity(0.06), in: Capsule())
     }
 
     // MARK: - States
@@ -253,7 +240,7 @@ struct SweepSifterView: View {
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [.appAccent, Color(hex: "9B59B6")],
+                            colors: [.appAccent, Color(hex: "C91E6D")],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -308,11 +295,19 @@ struct SweepSifterView: View {
         Task(priority: .utility) {
             for asset in upcoming {
                 let id = asset.localIdentifier
-                if imageCache[id] != nil { continue }
-                if case .loaded(let img) = await PhotoLibraryService.shared.loadFullImage(for: asset) {
-                    imageCache[id] = img
+                if imageCache.image(for: id) != nil { continue }
+                if case .loaded(let img) = await PhotoLibraryService.shared.loadDisplayImage(for: asset) {
+                    imageCache.set(img, for: id)
                 }
             }
         }
+        Task.detached(priority: .background) {
+            for asset in upcoming {
+                _ = asset.creationDate
+                _ = asset.location
+                _ = PHAssetResource.assetResources(for: asset)
+            }
+        }
     }
+
 }

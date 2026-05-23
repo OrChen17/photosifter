@@ -41,6 +41,8 @@ struct SwipeCardView: View {
     @State private var imageState: CardImageState = .loading
     @State private var locationLabel: String?
     @State private var hasCrossedBadgeThreshold: Bool = false
+    @State private var captureDate: Date? = nil
+    @State private var fileSizeLabel: String? = nil
 
     private let snapThreshold: CGFloat = 120
     private let badgeThreshold: CGFloat = 60
@@ -54,11 +56,20 @@ struct SwipeCardView: View {
     private var horizontalProgress: Double {
         max(-1, min(1, Double(offset.width) / Double(snapThreshold)))
     }
+    private var dragFillProgress: Double {
+        min(0.8, abs(Double(offset.width)) / Double(snapThreshold))
+    }
+    private var dragFillColor: Color {
+        offset.width >= 0 ? .appKeep : .appDelete
+    }
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 cardPhoto(size: geo.size)
+
+                // Drag-direction color fill, capped at 80% opacity
+                dragFillColor.opacity(dragFillProgress)
 
                 // KEEP badge — top left when dragging right
                 VStack {
@@ -119,13 +130,36 @@ struct SwipeCardView: View {
             if let preloaded = preloadedImage {
                 imageState = .loaded(preloaded)
             } else {
-                switch await PhotoLibraryService.shared.loadFullImage(for: asset) {
+                switch await PhotoLibraryService.shared.loadDisplayImage(for: asset) {
                 case .loaded(let img): imageState = .loaded(img)
                 case .iCloudOnly:      imageState = .iCloudOnly
                 case .failed:          imageState = .failed
                 }
             }
-            await loadLocationLabel()
+
+            // PHAsset property access can trigger a synchronous Photos DB fetch
+            // on the main thread if the asset's metadata isn't cached. Run it
+            // detached so it can't block swipe transitions.
+            let meta = await Task.detached(priority: .utility) { [asset] in
+                let date = asset.creationDate
+                let location = asset.location
+                let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
+                let resources = PHAssetResource.assetResources(for: asset)
+                let resource = resources.first { acceptable.contains($0.type) }
+                var size: String? = nil
+                if let bytes = resource?.value(forKey: "fileSize") as? Int64, bytes > 0 {
+                    size = bytes < 1_000_000
+                        ? "\(bytes / 1024) KB"
+                        : String(format: "%.1f MB", Double(bytes) / 1_000_000)
+                }
+                return (date: date, location: location, size: size)
+            }.value
+
+            captureDate = meta.date
+            fileSizeLabel = meta.size
+            if let loc = meta.location {
+                await resolveLocationLabel(loc)
+            }
         }
         .onChange(of: offset) { _, _ in
             onProgressChange?(horizontalProgress)
@@ -187,7 +221,7 @@ struct SwipeCardView: View {
         VStack {
             Spacer()
             HStack(spacing: 10) {
-                if let date = asset.creationDate {
+                if let date = captureDate {
                     Text(date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().second()))
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .monospacedDigit()
@@ -201,7 +235,7 @@ struct SwipeCardView: View {
                         Text(loc)
                             .lineLimit(1)
                     }
-                    if let size = fileSize {
+                    if let size = fileSizeLabel {
                         if locationLabel != nil { Text("·") }
                         Text(size)
                     }
@@ -215,8 +249,7 @@ struct SwipeCardView: View {
         }
     }
 
-    private func loadLocationLabel() async {
-        guard let loc = asset.location else { return }
+    private func resolveLocationLabel(_ loc: CLLocation) async {
         let key = Self.cacheKey(loc)
         if let cached = await GeoCache.shared.get(key) {
             locationLabel = cached
@@ -237,15 +270,6 @@ struct SwipeCardView: View {
 
     private static func cacheKey(_ l: CLLocation) -> String {
         String(format: "%.2f,%.2f", l.coordinate.latitude, l.coordinate.longitude)
-    }
-
-    private var fileSize: String? {
-        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
-        let resources = PHAssetResource.assetResources(for: asset)
-        let resource = resources.first { acceptable.contains($0.type) }
-        guard let bytes = resource?.value(forKey: "fileSize") as? Int64, bytes > 0 else { return nil }
-        if bytes < 1_000_000 { return "\(bytes / 1024) KB" }
-        return String(format: "%.1f MB", Double(bytes) / 1_000_000)
     }
 
     // MARK: - Gesture
