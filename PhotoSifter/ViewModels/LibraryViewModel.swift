@@ -5,6 +5,7 @@ enum GroupSortOrder: String, CaseIterable {
     case oldestBiggest
     case newestBiggest
     case biggestFirst
+    case smallestFirst
     case random
 
     var label: String {
@@ -12,6 +13,7 @@ enum GroupSortOrder: String, CaseIterable {
         case .oldestBiggest: return "Oldest"
         case .newestBiggest: return "Newest"
         case .biggestFirst: return "Largest"
+        case .smallestFirst: return "Smallest"
         case .random: return "Random"
         }
     }
@@ -47,11 +49,11 @@ final class LibraryViewModel {
     /// for the History coverage graph. Refreshed on `load()` and after restores.
     var totalLibraryCount: Int = 0
     /// Total bytes across every image asset still in the library. Drives the
-    /// "Untouched" stat tile (Untouched = total − Kept). Computed asynchronously
+    /// "Unflicked" stat tile (Unflicked = total − Kept). Computed asynchronously
     /// in `load()` because PHAssetResource iteration is O(N) over assets.
     var totalLibraryBytes: Int64 = 0
     /// True while the off-actor byte-walk is in flight. HistoryView shows a
-    /// spinner on the Untouched tile so users understand the value will land soon.
+    /// spinner on the Unflicked tile so users understand the value will land soon.
     var isComputingTotalLibraryBytes: Bool = false
     var sortOrder: GroupSortOrder {
         didSet { UserDefaults.standard.set(sortOrder.rawValue, forKey: Self.sortOrderKey) }
@@ -74,15 +76,15 @@ final class LibraryViewModel {
     var totalKeptBytes: Int64 {
         completedBatches.reduce(Int64(0)) { $0 + ($1.keptBytes ?? 0) }
     }
-    /// Photos in the library that have never been flicked. The graph's third slice.
+    /// Photos in the library that haven't been flicked yet. The graph's third slice.
     /// Clamped at 0 because a library mutation between scans could push this negative.
-    var untouchedCount: Int {
+    var unflickedCount: Int {
         max(0, totalLibraryCount - totalKeptCount)
     }
-    /// Bytes still in the library that the user has never explicitly kept or deleted.
+    /// Bytes still in the library that the user hasn't explicitly kept or deleted.
     /// Total library bytes minus the kept bytes (deleted bytes are no longer on disk).
     /// Clamped at 0 against any race between scans.
-    var untouchedBytes: Int64 {
+    var unflickedBytes: Int64 {
         max(0, totalLibraryBytes - totalKeptBytes)
     }
     /// Source-group ids whose memory is still in the main grid (partially
@@ -124,7 +126,7 @@ final class LibraryViewModel {
            let saved = GroupSortOrder(rawValue: raw) {
             sortOrder = saved
         } else {
-            sortOrder = .biggestFirst
+            sortOrder = .random
         }
     }
 
@@ -151,7 +153,7 @@ final class LibraryViewModel {
         totalLibraryCount = await photoService.totalImageAssetCount()
         elapsed("stats loaded")
 
-        // Total library bytes (untouched-tile denominator) is O(N) over assets.
+        // Total library bytes (unflicked-tile denominator) is O(N) over assets.
         // CRITICAL: must run via `Task.detached`, not a structured Task that hops
         // onto PhotoLibraryService's actor. Otherwise the byte-walk serializes
         // against `loadThumbnailStream` and the library grid won't paint until
@@ -193,11 +195,9 @@ final class LibraryViewModel {
         let scanStartDate = Date()
 
         // Layer 2: Stream new groups; already-grouped assets are excluded via knownIDs.
-        // If we have a prior scan cutoff, fetch only photos newer than `cutoff - bucketGap`.
-        // The carry-back window ensures any new photo close to the cutoff can still bucket
-        // with an old photo near the boundary; old singletons far from the cutoff won't
-        // be re-evaluated, but by definition they can't pair with new photos (creationDate
-        // gap > bucketGap = no shared bucket).
+        // Fetch by modificationDate so edits and restorations from Recently Deleted are
+        // picked up. The small carry-back window (bucketGap) provides a safety buffer
+        // around the cutoff boundary.
         let cutoff = await groupingService.loadScanCutoff()
         let fetchSince = cutoff.map { $0.addingTimeInterval(-GroupingService.timeBucketGap) }
         let assets = await photoService.fetchAllAssets(since: fetchSince)
@@ -271,6 +271,8 @@ final class LibraryViewModel {
             }
         case .biggestFirst:
             return groups.sorted { $0.totalFileBytes > $1.totalFileBytes }
+        case .smallestFirst:
+            return groups.sorted { $0.totalFileBytes < $1.totalFileBytes }
         case .random:
             return groups.shuffled()
         }
@@ -281,9 +283,13 @@ final class LibraryViewModel {
         groups.removeAll { $0.id == group.id }
         quickWins.removeAll { $0.group.id == group.id }
         let remaining = groups
-        let assetIDs = group.assets.map(\.localIdentifier)
+        // Only flick kept assets — deleted ones are gone from the library, and if
+        // ever restored from Recently Deleted they should re-enter the scan.
+        let keptIDs = group.assets
+            .filter { group.decisions[$0.localIdentifier] != .delete }
+            .map(\.localIdentifier)
         Task {
-            await groupingService.addFlickedIdentifiers(assetIDs)
+            await groupingService.addFlickedIdentifiers(keptIDs)
             await groupingService.saveDecisions(for: PhotoGroup(id: group.id, assets: group.assets, decisions: [:]))
             // Persist the updated group list immediately so a force-quit during an
             // active scan doesn't cause the completed group to reappear on next launch.
@@ -438,7 +444,10 @@ final class LibraryViewModel {
 
     func startSweepSession() {
         guard groups.count >= 1 else { return }
-        selectedSweepSession = SweepSession(groups: groups)
+        selectedSweepSession = nil
+        Task { @MainActor in
+            selectedSweepSession = SweepSession(groups: groups)
+        }
     }
 
     /// Commit the result of a Sweep `Apply`, fanned out per source group.
@@ -556,7 +565,7 @@ final class LibraryViewModel {
             groups = updated
         }
 
-        await groupingService.addFlickedIdentifiers(Array(touched))
+        await groupingService.addFlickedIdentifiers(Array(keptIDs))
         await groupingService.persistGroups(groups)
         for batch in batchesToEmit {
             await recordCompletedBatch(batch)

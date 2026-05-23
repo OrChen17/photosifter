@@ -57,7 +57,7 @@ struct SessionSummaryView: View {
     ]
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             Color.appBackground.ignoresSafeArea()
             VStack(spacing: 28) {
                 if isCancelledOrFailed {
@@ -70,13 +70,6 @@ struct SessionSummaryView: View {
             .padding(.top, 32)
             .padding(.bottom, 32)
 
-            Button { doDissmiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(Color.white.opacity(0.25))
-                    .padding(16)
-            }
-            .padding(.top, 8)
         }
         .task {
             await loadNextThumbnails()

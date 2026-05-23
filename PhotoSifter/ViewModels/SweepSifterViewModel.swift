@@ -29,17 +29,9 @@ final class SweepSifterViewModel {
 
     init(groups: [PhotoGroup]) {
         self.sourceGroups = groups
-        let sorted = groups.sorted { lhs, rhs in
-            if lhs.assets.count != rhs.assets.count {
-                return lhs.assets.count < rhs.assets.count
-            }
-            let dl = lhs.captureDate ?? .distantPast
-            let dr = rhs.captureDate ?? .distantPast
-            return dl > dr
-        }
         var flatQueue: [PHAsset] = []
         var lookup: [String: UUID] = [:]
-        for group in sorted {
+        for group in groups {
             for asset in group.assets {
                 flatQueue.append(asset)
                 lookup[asset.localIdentifier] = group.id
@@ -54,6 +46,21 @@ final class SweepSifterViewModel {
     var currentAsset: PHAsset? {
         guard currentIndex >= 0, currentIndex < queue.count else { return nil }
         return queue[currentIndex]
+    }
+
+    /// Pre-render candidate for the behind-card in FlickCardArea.
+    var nextAsset: PHAsset? {
+        let next = currentIndex + 1
+        guard next < queue.count else { return nil }
+        return queue[next]
+    }
+
+    /// Returns the next `count` assets for image preloading.
+    func upcomingAssets(count: Int) -> [PHAsset] {
+        let start = currentIndex
+        let end = min(queue.count, start + count)
+        guard start < end else { return [] }
+        return Array(queue[start..<end])
     }
 
     var isQueueExhausted: Bool { currentIndex >= queue.count }

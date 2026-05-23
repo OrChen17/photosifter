@@ -5,9 +5,6 @@ struct SweepSifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
     @State private var vm: SweepSifterViewModel
-    @State private var cardKey: UUID = UUID()
-    @State private var flashTint: Color = .appKeep
-    @State private var flashIntensity: Double = 0
     @State private var imageCache: [String: UIImage] = [:]
     @State private var showDiscardConfirm: Bool = false
     @State private var applyMessage: String?
@@ -28,8 +25,6 @@ struct SweepSifterView: View {
             } else {
                 mainContent
             }
-
-            swipeVignette.allowsHitTesting(false)
         }
         .navigationBarBackButtonHidden(true)
         .navigationTitle(navTitle)
@@ -63,7 +58,6 @@ struct SweepSifterView: View {
         }
         .task { preloadUpcomingImages() }
         .onChange(of: vm.currentIndex) { _, _ in
-            cardKey = UUID()
             preloadUpcomingImages()
         }
     }
@@ -78,53 +72,33 @@ struct SweepSifterView: View {
     // MARK: - Main content
 
     private var mainContent: some View {
-        VStack(spacing: 0) {
-            SweepStripView(
-                assets: vm.queue,
-                currentAssetID: vm.currentAsset?.localIdentifier,
-                decisions: vm.decisions,
-                groupID: { vm.groupID(for: $0) },
-                onTap: { vm.jumpTo(asset: $0) }
-            )
-            .padding(.top, 4)
-
-            if let asset = vm.currentAsset {
-                SwipeCardView(
-                    asset: asset,
-                    preloadedImage: imageCache[asset.localIdentifier],
-                    onSwipeRight: {
-                        vm.swipeRight()
-                        cardKey = UUID()
-                    },
-                    onSwipeLeft: {
-                        vm.swipeLeft()
-                        cardKey = UUID()
-                    },
-                    onSkip: {
-                        vm.skip()
-                        cardKey = UUID()
-                    },
-                    onThrowRight: {
-                        triggerFlash(tint: .appKeep)
-                        HapticManager.shared.playKeep()
-                        SoundManager.shared.playKeep()
-                    },
-                    onThrowLeft: {
-                        triggerFlash(tint: .appDelete)
-                        HapticManager.shared.playDelete()
-                        SoundManager.shared.playDelete()
-                    }
+        FlickCardArea(
+            currentAsset: vm.currentAsset,
+            nextAsset: vm.nextAsset,
+            imageCache: imageCache,
+            groupID: AnyHashable("sweep"),
+            onSwipeRight: { vm.swipeRight() },
+            onSwipeLeft: { vm.swipeLeft() },
+            onSkip: {
+                vm.skip()
+                preloadUpcomingImages()
+            },
+            strip: {
+                SweepStripView(
+                    assets: vm.queue,
+                    currentAssetID: vm.currentAsset?.localIdentifier,
+                    decisions: vm.decisions,
+                    groupID: { vm.groupID(for: $0) },
+                    onTap: { vm.jumpTo(asset: $0) }
                 )
-                .id(cardKey)
-                .accessibilityIdentifier("photoCard")
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.top, 4)
+            },
+            bottomBar: {
+                bottomBar
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 14)
             }
-
-            bottomBar
-                .padding(.horizontal, 20)
-                .padding(.bottom, 14)
-        }
+        )
     }
 
     // MARK: - Bottom bar
@@ -330,7 +304,7 @@ struct SweepSifterView: View {
     // MARK: - Preloading
 
     private func preloadUpcomingImages() {
-        let upcoming = upcomingAssets(limit: 3)
+        let upcoming = vm.upcomingAssets(count: 3)
         Task(priority: .utility) {
             for asset in upcoming {
                 let id = asset.localIdentifier
@@ -339,48 +313,6 @@ struct SweepSifterView: View {
                     imageCache[id] = img
                 }
             }
-        }
-    }
-
-    private func upcomingAssets(limit: Int) -> [PHAsset] {
-        let start = vm.currentIndex
-        let end = min(vm.queue.count, start + limit)
-        guard start < end else { return [] }
-        return Array(vm.queue[start..<end])
-    }
-
-    // MARK: - Vignette (post-flick flash, matches SifterView)
-
-    private var swipeVignette: some View {
-        GeometryReader { geo in
-            let radius = hypot(geo.size.width, geo.size.height) * 0.6
-            RadialGradient(
-                gradient: Gradient(stops: [
-                    .init(color: .clear,                                     location: 0.00),
-                    .init(color: .clear,                                     location: 0.32),
-                    .init(color: flashTint.opacity(flashIntensity * 0.04),   location: 0.46),
-                    .init(color: flashTint.opacity(flashIntensity * 0.09),   location: 0.58),
-                    .init(color: flashTint.opacity(flashIntensity * 0.16),   location: 0.69),
-                    .init(color: flashTint.opacity(flashIntensity * 0.26),   location: 0.79),
-                    .init(color: flashTint.opacity(flashIntensity * 0.38),   location: 0.88),
-                    .init(color: flashTint.opacity(flashIntensity * 0.52),   location: 0.95),
-                    .init(color: flashTint.opacity(flashIntensity * 0.68),   location: 1.00),
-                ]),
-                center: .center,
-                startRadius: 0,
-                endRadius: radius
-            )
-            .ignoresSafeArea()
-        }
-    }
-
-    private func triggerFlash(tint: Color) {
-        flashTint = tint
-        withAnimation(.easeOut(duration: 0.08)) {
-            flashIntensity = 1.0
-        }
-        withAnimation(.easeOut(duration: 0.35).delay(0.08)) {
-            flashIntensity = 0
         }
     }
 }

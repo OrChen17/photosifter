@@ -20,7 +20,7 @@ struct SweepBannerView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Sweep through everything")
+                    Text("Flick Forever")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)

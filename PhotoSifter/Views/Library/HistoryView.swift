@@ -57,8 +57,8 @@ struct HistoryView: View {
                     color: .appDelete
                 )
                 statTile(
-                    value: ByteCountFormatter.string(fromByteCount: vm.untouchedBytes, countStyle: .file),
-                    label: "Untouched",
+                    value: ByteCountFormatter.string(fromByteCount: vm.unflickedBytes, countStyle: .file),
+                    label: "Unflicked",
                     color: .white,
                     isLoading: vm.isComputingTotalLibraryBytes
                 )
@@ -72,7 +72,7 @@ struct HistoryView: View {
             CoverageBarView(
                 keptCount: vm.totalKeptCount,
                 deletedCount: vm.totalDeletedCount,
-                untouchedCount: vm.untouchedCount
+                unflickedCount: vm.unflickedCount
             )
         }
         .padding(16)

@@ -7,16 +7,7 @@ private let preloadAhead = 3
 struct SifterView: View {
     @State private var vm: SifterViewModel
     @State private var showSummary: Bool = false
-    @State private var cardKey: UUID = UUID()
     @State private var imageCache: [String: UIImage] = [:]
-    // Horizontal swipe progress reported by SwipeCardView in [-1, +1].
-    // Drives the screen-wide vignette: + = keep (green), - = delete (red).
-    @State private var swipeProgress: Double = 0
-    @State private var flashTint: Color = .appKeep
-    @State private var flashIntensity: Double = 0
-    @State private var isTopCardThrown: Bool = false
-    @State private var cardAppearWobble: Double = 1.5
-    @AppStorage("skipUsageCount") private var skipUsageCount: Int = 0
     @State private var pendingNextGroup: PhotoGroup? = nil
     @State private var isHandlingCompletion: Bool = false
     // Set true on the first handleContinue() per completion event. Guards against
@@ -28,6 +19,7 @@ struct SifterView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var mode: QuickWinMode
+    @AppStorage("skipUsageCount") private var skipUsageCount: Int = 0
 
     init(group: PhotoGroup, mode: QuickWinMode = .none) {
         _vm = State(initialValue: SifterViewModel(group: group))
@@ -43,11 +35,6 @@ struct SifterView: View {
             } else {
                 mainContent
             }
-
-            // Screen-wide vignette overlay driven by drag progress. Multi-stop
-            // gradient: fully clear at center, tint at the screen edges.
-            swipeVignette
-                .allowsHitTesting(false)
 
             if showSummary {
                 SessionSummaryView(
@@ -110,112 +97,57 @@ struct SifterView: View {
     // MARK: - Main content
 
     private var mainContent: some View {
-        VStack(spacing: 0) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.white.opacity(0.12))
-                        .frame(height: 4)
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: geo.size.width * vm.progress, height: 4)
-                        .animation(.spring(duration: 0.4), value: vm.progress)
-                }
-            }
-            .frame(height: 4)
-            .padding(.horizontal, 16)
-            .padding(.top, 6)
-            .padding(.bottom, 2)
-
-            BatchStripView(
-                group: vm.group,
-                currentAssetID: vm.currentAsset?.localIdentifier,
-                onTap: { asset in
-                    vm.jumpTo(asset: asset)
-                    cardKey = UUID()
-                    isTopCardThrown = false
-                    swipeProgress = 0
-                    preloadUpcomingCards()
-                }
-            )
-            .padding(.top, 8)
-
-            if let asset = vm.currentAsset {
-                ZStack {
-                    // Next card pre-rendered behind the current one — already
-                    // visible so there's no pop-in when the top card flies away.
-                    if let next = nextPreviewAsset {
-                        SwipeCardView(
-                            asset: next,
-                            preloadedImage: imageCache[next.localIdentifier],
-                            onSwipeRight: {},
-                            onSwipeLeft: {}
-                        )
-                        .scaleEffect(isTopCardThrown ? 1.0 : 0.95)
-                        .offset(y: isTopCardThrown ? 0 : 10)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isTopCardThrown)
-                        .allowsHitTesting(false)
-                        .id(next.localIdentifier)
+        FlickCardArea(
+            currentAsset: vm.currentAsset,
+            nextAsset: vm.nextAsset,
+            imageCache: imageCache,
+            groupID: vm.group.id,
+            onSwipeRight: {
+                vm.swipeRight()
+                preloadUpcomingCards()
+            },
+            onSwipeLeft: {
+                vm.swipeLeft()
+                preloadUpcomingCards()
+            },
+            onSkip: vm.canSkipCurrent ? {
+                skipUsageCount += 1
+                vm.skipCurrent()
+                preloadUpcomingCards()
+            } : nil,
+            strip: {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.white.opacity(0.12))
+                            .frame(height: 4)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
+                            .frame(width: geo.size.width * vm.progress, height: 4)
+                            .animation(.spring(duration: 0.4), value: vm.progress)
                     }
-
-                    SwipeCardView(
-                        asset: asset,
-                        preloadedImage: imageCache[asset.localIdentifier],
-                        onSwipeRight: {
-                            vm.swipeRight()
-                            cardKey = UUID()
-                            isTopCardThrown = false
-                            swipeProgress = 0
-                            preloadUpcomingCards()
-                        },
-                        onSwipeLeft: {
-                            vm.swipeLeft()
-                            cardKey = UUID()
-                            isTopCardThrown = false
-                            swipeProgress = 0
-                            preloadUpcomingCards()
-                        },
-                        onSkip: vm.canSkipCurrent ? {
-                            skipUsageCount += 1
-                            vm.skipCurrent()
-                            cardKey = UUID()
-                            isTopCardThrown = false
-                            swipeProgress = 0
-                            preloadUpcomingCards()
-                        } : nil,
-                        onProgressChange: { swipeProgress = $0 },
-                        onThrowRight: {
-                            isTopCardThrown = true
-                            triggerFlash(tint: .appKeep)
-                            HapticManager.shared.playKeep()
-                            SoundManager.shared.playKeep()
-                        },
-                        onThrowLeft: {
-                            isTopCardThrown = true
-                            triggerFlash(tint: .appDelete)
-                            HapticManager.shared.playDelete()
-                            SoundManager.shared.playDelete()
-                        }
-                    )
-                    .id(cardKey)
-                    .rotationEffect(.degrees(cardAppearWobble))
-                    .onAppear {
-                        guard cardAppearWobble != 0 else { return }
-                        Task {
-                            try? await Task.sleep(for: .milliseconds(120))
-                            withAnimation(.spring(duration: 0.7, bounce: 0.45)) { cardAppearWobble = 0 }
-                        }
-                    }
-                    .accessibilityIdentifier("photoCard")
                 }
+                .frame(height: 4)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
+                .padding(.top, 6)
+                .padding(.bottom, 2)
 
-            bottomBar
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-        }
+                BatchStripView(
+                    group: vm.group,
+                    currentAssetID: vm.currentAsset?.localIdentifier,
+                    onTap: { asset in
+                        vm.jumpTo(asset: asset)
+                        preloadUpcomingCards()
+                    }
+                )
+                .padding(.top, 8)
+            },
+            bottomBar: {
+                bottomBar
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 16)
+            }
+        )
     }
 
     // MARK: - Bottom bar
@@ -226,8 +158,6 @@ struct SifterView: View {
             case .screenshots:
                 Button {
                     vm.deleteAll()
-                    cardKey = UUID()
-                    swipeProgress = 0
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "trash.circle")
@@ -242,8 +172,6 @@ struct SifterView: View {
             case .duplicates:
                 Button {
                     vm.keepOldestAndDeleteRest()
-                    cardKey = UUID()
-                    swipeProgress = 0
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "clock.badge.checkmark")
@@ -259,8 +187,6 @@ struct SifterView: View {
                 if vm.group.assets.count >= 2 {
                     Button {
                         vm.deleteAll()
-                        cardKey = UUID()
-                        swipeProgress = 0
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "trash.circle")
@@ -317,11 +243,6 @@ struct SifterView: View {
         pendingNextGroup = nil
         showSummary = false
         isHandlingCompletion = false
-        cardKey = UUID()
-        swipeProgress = 0
-        flashIntensity = 0
-        isTopCardThrown = false
-        cardAppearWobble = 1.5
         imageCache.removeAll()
         Task { await hydrateAndPreload() }
     }
@@ -412,41 +333,6 @@ struct SifterView: View {
         withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSummary = true }
     }
 
-    // MARK: - Swipe vignette
-
-    private var swipeVignette: some View {
-        GeometryReader { geo in
-            let radius = hypot(geo.size.width, geo.size.height) * 0.6
-            RadialGradient(
-                gradient: Gradient(stops: [
-                    .init(color: .clear,                                location: 0.00),
-                    .init(color: .clear,                                location: 0.32),
-                    .init(color: flashTint.opacity(flashIntensity * 0.04), location: 0.46),
-                    .init(color: flashTint.opacity(flashIntensity * 0.09), location: 0.58),
-                    .init(color: flashTint.opacity(flashIntensity * 0.16), location: 0.69),
-                    .init(color: flashTint.opacity(flashIntensity * 0.26), location: 0.79),
-                    .init(color: flashTint.opacity(flashIntensity * 0.38), location: 0.88),
-                    .init(color: flashTint.opacity(flashIntensity * 0.52), location: 0.95),
-                    .init(color: flashTint.opacity(flashIntensity * 0.68), location: 1.00),
-                ]),
-                center: .center,
-                startRadius: 0,
-                endRadius: radius
-            )
-            .ignoresSafeArea()
-        }
-    }
-
-    private func triggerFlash(tint: Color) {
-        flashTint = tint
-        withAnimation(.easeOut(duration: 0.08)) {
-            flashIntensity = 1.0
-        }
-        withAnimation(.easeOut(duration: 0.35).delay(0.08)) {
-            flashIntensity = 0
-        }
-    }
-
     // MARK: - Completion flash
 
     private var completionFlash: some View {
@@ -463,10 +349,6 @@ struct SifterView: View {
     }
 
     // MARK: - Preloading
-
-    private var nextPreviewAsset: PHAsset? {
-        vm.nextAsset
-    }
 
     private func preloadUpcomingCards() {
         for asset in vm.upcomingAssets(count: preloadAhead) {

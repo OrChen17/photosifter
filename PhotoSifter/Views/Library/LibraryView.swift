@@ -93,29 +93,12 @@ struct LibraryView: View {
             .navigationDestination(item: $vm.selectedSweepSession) { session in
                 SweepSifterView(groups: session.groups)
             }
+            .toolbar(vm.selectedSweepSession != nil ? .hidden : .visible, for: .tabBar)
         }
     }
 
     private var groupList: some View {
         ScrollView {
-            // Sweep entrypoint — collapses alongside Quick Wins on scroll
-            if vm.groups.count >= 2 {
-                SweepBannerView(
-                    memoryCount: vm.groups.count,
-                    photoCount: vm.groups.reduce(0) { $0 + $1.assets.count },
-                    action: {
-                        HapticManager.shared.playNavigate()
-                        vm.startSweepSession()
-                    }
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .frame(height: stripCollapsed ? 0 : nil)
-                .opacity(stripCollapsed ? 0 : 1)
-                .clipped()
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: stripCollapsed)
-            }
-
             // Quick wins strip — collapses when user scrolls down
             if !vm.quickWins.isEmpty {
                 QuickWinsStripView(quickWins: vm.quickWins) { win in

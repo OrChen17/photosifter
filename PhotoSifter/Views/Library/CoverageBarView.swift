@@ -1,15 +1,15 @@
 import SwiftUI
 
 /// Slim stacked horizontal bar showing how a user's library decomposes into
-/// kept / deleted / untouched photo counts. Drives the visual on top of the
-/// History tab. Total = kept + deleted + untouched (deleted are no longer in
+/// kept / deleted / unflicked photo counts. Drives the visual on top of the
+/// History tab. Total = kept + deleted + unflicked (deleted are no longer in
 /// the library; the union approximates "every photo the user has ever taken").
 struct CoverageBarView: View {
     let keptCount: Int
     let deletedCount: Int
-    let untouchedCount: Int
+    let unflickedCount: Int
 
-    private var total: Int { max(1, keptCount + deletedCount + untouchedCount) }
+    private var total: Int { max(1, keptCount + deletedCount + unflickedCount) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -25,7 +25,7 @@ struct CoverageBarView: View {
                             .fill(Color.appDelete)
                             .frame(width: width(geo, deletedCount))
                     }
-                    if untouchedCount > 0 {
+                    if unflickedCount > 0 {
                         // No explicit width — soaks up the remainder so we don't
                         // accumulate rounding error across three segments.
                         Rectangle()
@@ -39,7 +39,7 @@ struct CoverageBarView: View {
             HStack(spacing: 14) {
                 legendDot(color: .appKeep, label: "Kept")
                 legendDot(color: .appDelete, label: "Deleted")
-                legendDot(color: .appTextSecondary.opacity(0.45), label: "Untouched")
+                legendDot(color: .appTextSecondary.opacity(0.45), label: "Unflicked")
             }
         }
     }

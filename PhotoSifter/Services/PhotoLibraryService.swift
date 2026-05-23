@@ -20,18 +20,17 @@ actor PhotoLibraryService {
         PHPhotoLibrary.authorizationStatus(for: .readWrite)
     }
 
-    /// When `cutoff` is provided, only assets with `creationDate > cutoff` are returned.
-    /// Trade-off: pre-cutoff singletons that didn't form a group on a previous scan
-    /// won't be re-evaluated — callers should pass `cutoff - bucketGap` so any straddling
-    /// pairs near the boundary are still considered.
+    /// When `cutoff` is provided, only assets with `modificationDate > cutoff` are returned.
+    /// Using modificationDate (rather than creationDate) means photos restored from
+    /// Recently Deleted are re-fetched if iOS bumps their modificationDate on restoration.
     func fetchAllAssets(since cutoff: Date? = nil) -> [PHAsset] {
         let options = PHFetchOptions()
-        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
+        options.sortDescriptors = [NSSortDescriptor(key: "modificationDate", ascending: true)]
         // Only filter by mediaType in the DB predicate — PHQuery doesn't support
         // bitwise operators (&), so screenshot/cloud filtering is done in-memory below.
         if let cutoff {
             options.predicate = NSPredicate(
-                format: "mediaType == %d AND creationDate > %@",
+                format: "mediaType == %d AND modificationDate > %@",
                 PHAssetMediaType.image.rawValue, cutoff as NSDate
             )
         } else {
@@ -57,7 +56,7 @@ actor PhotoLibraryService {
     }
 
     /// Sums file sizes across every image asset in the library. Used by the History
-    /// tab's "Untouched" stat tile (Untouched = total − Kept). PHAssetResource's
+    /// tab's "Unflicked" stat tile (Unflicked = total − Kept). PHAssetResource's
     /// `fileSize` is a metadata read so this does no I/O, but with N in the tens of
     /// thousands the enumeration is non-trivial.
     ///
