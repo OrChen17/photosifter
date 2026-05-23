@@ -47,7 +47,7 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
     @State private var flashTint: Color = .appKeep
     @State private var flashCounter: Int = 0
     @State private var isTopCardThrown: Bool = false
-    @State private var cardAppearWobble: Double = 1.5
+    @State private var cardAppearWobble: Double = 1.875
 
     var body: some View {
         ZStack {
@@ -105,7 +105,7 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
                             guard cardAppearWobble != 0 else { return }
                             Task {
                                 try? await Task.sleep(for: .milliseconds(120))
-                                withAnimation(.spring(duration: 0.7, bounce: 0.45)) { cardAppearWobble = 0 }
+                                withAnimation(.spring(duration: 0.9, bounce: 0.72)) { cardAppearWobble = 0 }
                             }
                         }
                         .accessibilityIdentifier("photoCard")
@@ -119,7 +119,7 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
 
             FlashVignetteView(tint: flashTint, counter: flashCounter).allowsHitTesting(false)
         }
-        .onChange(of: groupID) { _, _ in cardAppearWobble = 1.5 }
+        .onChange(of: groupID) { _, _ in cardAppearWobble = 1.875 }
     }
 
     private func triggerFlash() { flashCounter += 1 }

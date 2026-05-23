@@ -305,7 +305,7 @@ struct SwipeCardView: View {
 
                 if crossedDistance || flickedHorizontal {
                     let direction: CGFloat = (crossedDistance ? dx : predictedDx) > 0 ? 1 : -1
-                    throwCard(direction: direction, then: direction > 0 ? onSwipeRight : onSwipeLeft)
+                    throwCard(direction: direction, velocity: value.velocity.width, then: direction > 0 ? onSwipeRight : onSwipeLeft)
                 } else if let onSkip,
                           (dy < -80 || (predictedDy < -flickPredictedThreshold && dy < -flickMinTranslation)) {
                     // Upward flick = skip
@@ -318,10 +318,13 @@ struct SwipeCardView: View {
             }
     }
 
-    private func throwCard(direction: CGFloat, then action: @escaping () -> Void) {
+    private func throwCard(direction: CGFloat, velocity: CGFloat = 800, then action: @escaping () -> Void) {
         isThrown = true
         if direction > 0 { onThrowRight?() } else { onThrowLeft?() }
-        withAnimation(.spring(duration: 0.22, bounce: 0.08)) {
+        // Scale duration with gesture speed: hard flick (~1200 pts/s) → 0.15s, slow push → 0.38s
+        let normalizedSpeed = min(1.0, abs(velocity) / 1200.0)
+        let duration = 0.38 - 0.23 * normalizedSpeed
+        withAnimation(.spring(duration: duration, bounce: 0.08)) {
             offset = CGSize(width: direction * 600, height: -50)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { action() }
