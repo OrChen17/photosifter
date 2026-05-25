@@ -13,6 +13,19 @@ private actor GeoCache {
     func set(_ key: String, _ value: String) { store[key] = value }
 }
 
+enum ThrowDirection { case left, right }
+
+/// Identifiable so a fresh UUID forces SwiftUI's `.onChange` to fire even when
+/// the parent throws the same direction twice in a row.
+struct ThrowCommand: Equatable {
+    let id: UUID
+    let direction: ThrowDirection
+    init(_ direction: ThrowDirection) {
+        self.id = UUID()
+        self.direction = direction
+    }
+}
+
 struct SwipeCardView: View {
     let asset: PHAsset
     let preloadedImage: UIImage?
@@ -25,6 +38,9 @@ struct SwipeCardView: View {
     /// Fires at throw start (before the animation completes) — use for immediate haptic/flash feedback.
     var onThrowRight: (() -> Void)? = nil
     var onThrowLeft: (() -> Void)? = nil
+    /// Set by the parent to programmatically throw the card (used by on-screen
+    /// keep/delete buttons). Fresh UUID per command so consecutive throws fire.
+    var throwCommand: ThrowCommand? = nil
     /// Override the badge labels (defaults: "KEEP" / "DELETE")
     var rightBadgeLabel: String? = nil
     var leftBadgeLabel: String? = nil
@@ -164,6 +180,14 @@ struct SwipeCardView: View {
         .onChange(of: offset) { _, _ in
             onProgressChange?(horizontalProgress)
         }
+        .onChange(of: throwCommand) { _, newValue in
+            guard let cmd = newValue, !isThrown else { return }
+            let direction: CGFloat = (cmd.direction == .right) ? 1 : -1
+            throwCard(
+                direction: direction,
+                then: (cmd.direction == .right) ? onSwipeRight : onSwipeLeft
+            )
+        }
     }
 
     // MARK: - Card photo
@@ -220,31 +244,17 @@ struct SwipeCardView: View {
     private var metadataOverlay: some View {
         VStack {
             Spacer()
-            HStack(spacing: 10) {
-                if let date = captureDate {
-                    Text(date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().second()))
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white)
-                }
+            HStack {
                 Spacer()
-                HStack(spacing: 4) {
-                    if let loc = locationLabel {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 9))
-                        Text(loc)
-                            .lineLimit(1)
-                    }
-                    if let size = fileSizeLabel {
-                        if locationLabel != nil { Text("·") }
-                        Text(size)
-                    }
+                if let size = fileSizeLabel {
+                    Text(size)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.85))
                 }
-                .font(.system(size: 11, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.65))
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
             .background(.ultraThinMaterial)
         }
     }

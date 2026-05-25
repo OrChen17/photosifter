@@ -25,7 +25,10 @@ final class SweepSifterViewModel {
     private let groupIDByAsset: [String: UUID]
 
     private var skippedIDs: Set<String> = []
-    private var decisionHistory: [(assetID: String, decision: Decision)] = []
+    /// Per-action undo log. `decision == nil` denotes a skip; otherwise a keep/delete.
+    /// Skip entries let `undo()` walk the cursor back to a skipped photo instead of
+    /// landing on whatever undecided slot got advanced to.
+    private var actionHistory: [(assetID: String, decision: Decision?)] = []
 
     init(groups: [PhotoGroup]) {
         self.sourceGroups = groups
@@ -75,6 +78,7 @@ final class SweepSifterViewModel {
         decisions.values.reduce(0) { $0 + ($1 == .keep ? 1 : 0) }
     }
     var hasPendingDecisions: Bool { !decisions.isEmpty }
+    var canUndo: Bool { !actionHistory.isEmpty }
 
     var progress: Double {
         guard !queue.isEmpty else { return 1.0 }
@@ -94,32 +98,47 @@ final class SweepSifterViewModel {
         guard let asset = currentAsset else { return }
         let id = asset.localIdentifier
         decisions[id] = decision
-        decisionHistory.append((id, decision))
+        actionHistory.append((id, decision))
         advanceCursor()
     }
 
-    /// Move current asset to the end of the queue. One-shot per asset so a
-    /// user can't loop forever on a hard photo.
+    /// Move the cursor to the next undecided, un-skipped asset, leaving the
+    /// current asset in place in the strip. One-shot per asset so a user can't
+    /// loop forever on a hard photo.
     func skip() {
         guard let asset = currentAsset else { return }
         let id = asset.localIdentifier
-        guard !skippedIDs.contains(id) else {
-            advanceCursor()
-            return
-        }
+        guard !skippedIDs.contains(id) else { return }
         skippedIDs.insert(id)
-        queue.remove(at: currentIndex)
-        queue.append(asset)
-        // currentIndex stays — it now points to whatever asset slid into this slot.
-        if currentIndex >= queue.count { currentIndex = queue.count }
+        actionHistory.append((id, nil))
+        var next = currentIndex + 1
+        while next < queue.count {
+            let nextID = queue[next].localIdentifier
+            if decisions[nextID] == nil && !skippedIDs.contains(nextID) {
+                currentIndex = next
+                HapticManager.shared.playNavigate()
+                SoundManager.shared.playSkip()
+                return
+            }
+            next += 1
+        }
+        currentIndex = queue.count
+        HapticManager.shared.playNavigate()
+        SoundManager.shared.playSkip()
     }
 
     func undo() {
-        guard let last = decisionHistory.popLast() else { return }
-        decisions.removeValue(forKey: last.assetID)
+        guard let last = actionHistory.popLast() else { return }
+        if last.decision != nil {
+            decisions.removeValue(forKey: last.assetID)
+        } else {
+            skippedIDs.remove(last.assetID)
+        }
         if let idx = queue.firstIndex(where: { $0.localIdentifier == last.assetID }) {
             currentIndex = idx
         }
+        HapticManager.shared.playUndo()
+        SoundManager.shared.playUndo()
     }
 
     /// Jump the cursor to a tapped strip thumbnail. Clears that asset's
@@ -130,7 +149,7 @@ final class SweepSifterViewModel {
         guard let idx = queue.firstIndex(where: { $0.localIdentifier == id }) else { return }
         if decisions[id] != nil {
             decisions.removeValue(forKey: id)
-            decisionHistory.removeAll { $0.assetID == id }
+            actionHistory.removeAll { $0.assetID == id }
         }
         currentIndex = idx
     }
@@ -265,7 +284,7 @@ final class SweepSifterViewModel {
             currentIndex = min(currentIndex, queue.count)
         }
         decisions.removeAll()
-        decisionHistory.removeAll()
+        actionHistory.removeAll()
 
         sessionDeletedCount += deletes.count
         sessionKeptCount    += keeps.count

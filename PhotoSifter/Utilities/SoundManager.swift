@@ -31,6 +31,16 @@ final class SoundManager: @unchecked Sendable {
     }
 
     func playFailure() {
-        AudioServicesPlaySystemSound(1519) 
+        AudioServicesPlaySystemSound(1519)
+    }
+
+    /// Light "tick" for skip — a forward step.
+    func playSkip() {
+        AudioServicesPlaySystemSound(1306)
+    }
+
+    /// Short rewind-y tone for revert/undo.
+    func playUndo() {
+        AudioServicesPlaySystemSound(1057)
     }
 }

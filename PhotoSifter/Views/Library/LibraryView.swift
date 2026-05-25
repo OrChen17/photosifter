@@ -15,18 +15,25 @@ struct LibraryView: View {
     /// plus generous lookahead on a 2-column grid.
     private static let prefetchGroupCap = 30
 
+    /// True whenever one of the sifter destinations is pushed — used to drop
+    /// the parent TabView's bar so the swipe deck gets the full screen.
+    private var isSiftingActive: Bool {
+        vm.selectedGroup != nil
+            || vm.selectedQuickWin != nil
+            || vm.selectedDuplicateSession != nil
+            || vm.selectedSweepSession != nil
+    }
+
     var body: some View {
         @Bindable var vm = vm
         NavigationStack {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
 
-                if vm.groups.isEmpty && vm.isScanning {
-                    scanningState
-                } else if vm.groups.isEmpty && !vm.isScanning {
-                    emptyState
-                } else {
+                if !vm.groups.isEmpty {
                     groupList
+                } else if !vm.isScanning {
+                    emptyState
                 }
 
                 if vm.groups.count >= 2 {
@@ -102,7 +109,7 @@ struct LibraryView: View {
             .navigationDestination(item: $vm.selectedSweepSession) { session in
                 SweepSifterView(groups: session.groups)
             }
-            .toolbar(vm.selectedSweepSession != nil ? .hidden : .visible, for: .tabBar)
+            .toolbar(isSiftingActive ? .hidden : .visible, for: .tabBar)
         }
     }
 
@@ -177,18 +184,6 @@ struct LibraryView: View {
             let assets = vm.groups.prefix(Self.prefetchGroupCap).compactMap { $0.assets.first }
             guard !assets.isEmpty else { return }
             await PhotoLibraryService.shared.startCachingThumbnails(for: assets, size: size)
-        }
-    }
-
-    private var scanningState: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.4)
-                .tint(.appAccent)
-
-            Text("Loading Photos...")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
-                .foregroundStyle(.appTextSecondary)
         }
     }
 

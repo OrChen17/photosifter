@@ -33,7 +33,10 @@ final class SifterViewModel {
 
     // Deletes are queued here and only executed when the group is finalized
     private var pendingDeletes: [PHAsset] = []
-    private var decisionHistory: [(index: Int, decision: Decision, asset: PHAsset)] = []
+    /// Per-action undo log. `decision == nil` denotes a skip; otherwise a keep/delete.
+    /// Keeping skips here lets `undo()` roll the cursor back to a skipped photo
+    /// instead of jumping to whatever undecided slot it had advanced to.
+    private var actionHistory: [(index: Int, decision: Decision?, asset: PHAsset)] = []
     // Track which assets have already been skipped once (can't skip twice)
     private var skippedIdentifiers: Set<String> = []
 
@@ -58,7 +61,8 @@ final class SifterViewModel {
 
     /// True if the user has made at least one decision in this session.
     /// Used to decide whether the back button should prompt to save.
-    var hasUnsavedDecisions: Bool { !decisionHistory.isEmpty }
+    /// Skips don't count — they're undoable but never persisted.
+    var hasUnsavedDecisions: Bool { actionHistory.contains { $0.decision != nil } }
 
     // MARK: - Queries
 
@@ -72,7 +76,7 @@ final class SifterViewModel {
         return Double(group.decisions.count) / Double(displayOrder.count)
     }
 
-    var canUndo: Bool { !decisionHistory.isEmpty }
+    var canUndo: Bool { !actionHistory.isEmpty }
 
     var canSkipCurrent: Bool {
         guard let asset = currentAsset else { return false }
@@ -107,12 +111,16 @@ final class SifterViewModel {
     func skipCurrent() {
         guard let asset = currentAsset,
               !skippedIdentifiers.contains(asset.localIdentifier) else { return }
+        let originIndex = currentIndex
         skippedIdentifiers.insert(asset.localIdentifier)
         // Advance circularly — skipped photo stays in its original position and
         // will be revisited when the circular scan wraps back around to it.
         if let next = nextUndecidedIndex(after: currentIndex) {
             currentIndex = next
         }
+        actionHistory.append((index: originIndex, decision: nil, asset: asset))
+        haptics.playNavigate()
+        sounds.playSkip()
     }
 
     // MARK: - Keep only this
@@ -174,7 +182,7 @@ final class SifterViewModel {
             if existing == .delete {
                 pendingDeletes.removeAll { $0.localIdentifier == asset.localIdentifier }
             }
-            decisionHistory.removeAll { $0.asset.localIdentifier == asset.localIdentifier }
+            actionHistory.removeAll { $0.asset.localIdentifier == asset.localIdentifier }
         }
 
         currentIndex = idx
@@ -185,16 +193,20 @@ final class SifterViewModel {
     // MARK: - Undo
 
     func undo() {
-        guard let last = decisionHistory.last else { return }
-        decisionHistory.removeLast()
-        group.decisions.removeValue(forKey: last.asset.localIdentifier)
-        // If it was a queued delete, remove from queue (fix #1)
-        if last.decision == .delete {
-            pendingDeletes.removeAll { $0.localIdentifier == last.asset.localIdentifier }
+        guard let last = actionHistory.popLast() else { return }
+        if let decision = last.decision {
+            group.decisions.removeValue(forKey: last.asset.localIdentifier)
+            if decision == .delete {
+                pendingDeletes.removeAll { $0.localIdentifier == last.asset.localIdentifier }
+            }
+        } else {
+            // Skip undo: clear the skip flag so the photo is eligible again.
+            skippedIdentifiers.remove(last.asset.localIdentifier)
         }
         currentIndex = last.index
         isComplete = false  // fix #3 — undo re-opens the session
         haptics.playUndo()
+        sounds.playUndo()
     }
 
     // MARK: - Commit
@@ -251,7 +263,7 @@ final class SifterViewModel {
     func resetAllDecisions() {
         group.decisions = [:]
         pendingDeletes = []
-        decisionHistory = []
+        actionHistory = []
         skippedIdentifiers = []
         displayOrder = group.assets
         currentIndex = 0
@@ -279,7 +291,7 @@ final class SifterViewModel {
     // MARK: - Private
 
     private func recordDecision(_ decision: Decision, for asset: PHAsset) {
-        decisionHistory.append((index: currentIndex, decision: decision, asset: asset))
+        actionHistory.append((index: currentIndex, decision: decision, asset: asset))
         group.decisions[asset.localIdentifier] = decision
     }
 

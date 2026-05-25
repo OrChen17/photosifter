@@ -21,6 +21,9 @@ struct SifterView: View {
     @State private var mode: QuickWinMode
     @AppStorage("skipUsageCount") private var skipUsageCount: Int = 0
 
+    @State private var dragProgress: Double = 0
+    @State private var throwCommand: ThrowCommand? = nil
+
     init(group: PhotoGroup, mode: QuickWinMode = .none) {
         _vm = State(initialValue: SifterViewModel(group: group))
         _mode = State(initialValue: mode)
@@ -30,9 +33,7 @@ struct SifterView: View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
 
-            if vm.isComplete {
-                completionFlash
-            } else {
+            if !vm.isComplete {
                 mainContent
             }
 
@@ -103,27 +104,41 @@ struct SifterView: View {
             imageCache: imageCache,
             groupID: vm.group.id,
             onSwipeRight: {
+                dragProgress = 0
                 vm.swipeRight()
                 preloadUpcomingCards()
             },
             onSwipeLeft: {
+                dragProgress = 0
                 vm.swipeLeft()
                 preloadUpcomingCards()
             },
             onSkip: vm.canSkipCurrent ? {
+                dragProgress = 0
                 skipUsageCount += 1
                 vm.skipCurrent()
                 preloadUpcomingCards()
             } : nil,
+            onProgressChange: { dragProgress = $0 },
+            throwCommand: throwCommand,
             strip: {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 3)
                             .fill(Color.white.opacity(0.12))
                             .frame(height: 4)
+                        // Full-width gradient bar that is progressively revealed by a
+                        // leading-aligned mask. Keeps the color stops anchored to the
+                        // ends of the track instead of compressing them.
                         RoundedRectangle(cornerRadius: 3)
                             .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
-                            .frame(width: geo.size.width * vm.progress, height: 4)
+                            .frame(height: 4)
+                            .mask(
+                                HStack(spacing: 0) {
+                                    Rectangle().frame(width: geo.size.width * vm.progress)
+                                    Spacer(minLength: 0)
+                                }
+                            )
                             .animation(.spring(duration: 0.4), value: vm.progress)
                     }
                 }
@@ -142,6 +157,20 @@ struct SifterView: View {
                 )
                 .padding(.top, 8)
             },
+            primaryActions: {
+                SifterPrimaryActions(
+                    dragProgress: dragProgress,
+                    onDelete: {
+                        guard vm.currentAsset != nil else { return }
+                        throwCommand = ThrowCommand(.left)
+                    },
+                    onKeep: {
+                        guard vm.currentAsset != nil else { return }
+                        throwCommand = ThrowCommand(.right)
+                    },
+                    isEnabled: vm.currentAsset != nil
+                )
+            },
             bottomBar: {
                 bottomBar
                     .padding(.horizontal, 24)
@@ -153,59 +182,22 @@ struct SifterView: View {
     // MARK: - Bottom bar
 
     private var bottomBar: some View {
-        VStack(spacing: 14) {
-            switch mode {
-            case .screenshots:
-                Button {
-                    vm.deleteAll()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "trash.circle")
-                        Text("Delete All Screenshots")
-                    }
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.appDelete)
-                }
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("deleteAllButton")
-
-            case .duplicates:
-                Button {
-                    vm.keepOldestAndDeleteRest()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "clock.badge.checkmark")
-                        Text("Keep Oldest Only")
-                    }
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.appAccent)
-                }
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("keepOldestButton")
-
-            case .none:
-                if vm.group.assets.count >= 2 {
-                    Button {
-                        vm.deleteAll()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "trash.circle")
-                            Text("Delete all remaining")
-                        }
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("deleteAllRemainingButton")
-                }
-            }
-
-            if vm.canSkipCurrent && skipUsageCount < 3 {
-                Text("Swipe ↑ to skip")
-                    .font(.system(size: 11, design: .rounded))
-                    .foregroundStyle(.appTextSecondary)
-            }
-        }
+        SifterSecondaryActions(
+            onSkip: {
+                dragProgress = 0
+                skipUsageCount += 1
+                vm.skipCurrent()
+                preloadUpcomingCards()
+            },
+            isSkipEnabled: vm.canSkipCurrent,
+            apply: nil,
+            onRevert: {
+                dragProgress = 0
+                vm.undo()
+                preloadUpcomingCards()
+            },
+            isRevertEnabled: vm.canUndo
+        )
     }
 
     // MARK: - Toolbar
@@ -331,21 +323,6 @@ struct SifterView: View {
         }
         try? await Task.sleep(for: .milliseconds(50))
         withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSummary = true }
-    }
-
-    // MARK: - Completion flash
-
-    private var completionFlash: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            ProgressView()
-                .scaleEffect(1.5)
-                .tint(.appAccent)
-            Text("Cleaning up…")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
-                .foregroundStyle(.appTextSecondary)
-            Spacer()
-        }
     }
 
     // MARK: - Preloading

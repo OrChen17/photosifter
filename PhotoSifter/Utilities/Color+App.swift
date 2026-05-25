@@ -6,6 +6,9 @@ extension Color {
     static let appKeep         = Color(hex: "22D3EE")
     static let appDelete       = Color(hex: "FF2D78")
     static let appAccent       = Color(hex: "FF2D78")
+    /// Triadic-yellow companion to appKeep (cyan) / appDelete (pink). Used by
+    /// the revert/undo affordance so the action reads as a "warning, take it back".
+    static let appRevert       = Color(hex: "FFD60A")
     static let appTextSecondary = Color(white: 0.55)
 
     init(hex: String) {
@@ -25,5 +28,6 @@ extension ShapeStyle where Self == Color {
     static var appKeep: Color            { Color.appKeep }
     static var appDelete: Color          { Color.appDelete }
     static var appAccent: Color          { Color.appAccent }
+    static var appRevert: Color          { Color.appRevert }
     static var appTextSecondary: Color   { Color.appTextSecondary }
 }

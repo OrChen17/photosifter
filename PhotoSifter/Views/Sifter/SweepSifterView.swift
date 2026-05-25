@@ -12,6 +12,9 @@ struct SweepSifterView: View {
     @State private var summaryDeletedCount: Int = 0
     @State private var summaryDeletedBytes: Int64 = 0
 
+    @State private var dragProgress: Double = 0
+    @State private var throwCommand: ThrowCommand? = nil
+
     init(groups: [PhotoGroup]) {
         _vm = State(initialValue: SweepSifterViewModel(groups: groups))
     }
@@ -20,34 +23,42 @@ struct SweepSifterView: View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
 
-            if vm.isApplying {
-                applyingContent
-            } else if vm.isQueueExhausted {
+            if vm.isQueueExhausted {
                 finishedContent
-            } else {
+            } else if !vm.isApplying {
                 mainContent
             }
 
             if showSweepSummary {
-                SessionSummaryView(
-                    group: nil,
-                    nextGroup: nil,
-                    outcome: summaryOutcome,
-                    deletedBytes: summaryDeletedBytes,
-                    onDismiss: { withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSweepSummary = false } },
-                    onContinue: {
-                        withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSweepSummary = false }
-                        if vm.isQueueExhausted { dismiss() }
-                    },
-                    onRetry: {
-                        showSweepSummary = false
-                        Task { await runApply() }
-                    },
-                    overrideDeletedCount: summaryDeletedCount,
-                    continueLabel: vm.isQueueExhausted ? "Back to Library" : "Continue Swiping"
-                )
-                .transition(.scale(scale: 0.88, anchor: .center).combined(with: .opacity))
-                .zIndex(10)
+                if vm.isQueueExhausted {
+                    summaryView(paintsBackground: true)
+                        .transition(.scale(scale: 0.88, anchor: .center).combined(with: .opacity))
+                        .zIndex(10)
+                } else {
+                    ZStack {
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                            .ignoresSafeArea()
+                            .overlay(Color.black.opacity(0.35).ignoresSafeArea())
+                            .contentShape(Rectangle())
+                            .onTapGesture { dismissSummary() }
+
+                        summaryView(paintsBackground: false)
+                            .frame(maxWidth: 480)
+                            .background(
+                                Color.appCard,
+                                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
+                            .padding(.horizontal, 20)
+                    }
+                    .transition(.scale(scale: 0.88, anchor: .center).combined(with: .opacity))
+                    .zIndex(10)
+                }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -121,12 +132,21 @@ struct SweepSifterView: View {
             nextAsset: vm.nextAsset,
             imageCache: imageCache,
             groupID: AnyHashable("sweep"),
-            onSwipeRight: { vm.swipeRight() },
-            onSwipeLeft:  { vm.swipeLeft() },
+            onSwipeRight: {
+                dragProgress = 0
+                vm.swipeRight()
+            },
+            onSwipeLeft:  {
+                dragProgress = 0
+                vm.swipeLeft()
+            },
             onSkip: {
+                dragProgress = 0
                 vm.skip()
                 preloadUpcomingImages()
             },
+            onProgressChange: { dragProgress = $0 },
+            throwCommand: throwCommand,
             strip: {
                 SweepStripView(
                     assets: vm.queue,
@@ -136,6 +156,20 @@ struct SweepSifterView: View {
                     onTap: { vm.jumpTo(asset: $0) }
                 )
                 .padding(.top, 4)
+            },
+            primaryActions: {
+                SifterPrimaryActions(
+                    dragProgress: dragProgress,
+                    onDelete: {
+                        guard vm.currentAsset != nil else { return }
+                        throwCommand = ThrowCommand(.left)
+                    },
+                    onKeep: {
+                        guard vm.currentAsset != nil else { return }
+                        throwCommand = ThrowCommand(.right)
+                    },
+                    isEnabled: vm.currentAsset != nil
+                )
             },
             bottomBar: {
                 bottomBar
@@ -148,58 +182,32 @@ struct SweepSifterView: View {
     // MARK: - Bottom bar
 
     private var bottomBar: some View {
-        applyButton
-    }
-
-    private var applyButton: some View {
-        Button { Task { await runApply() } } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                Text(applyLabel)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-            }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(
-                vm.hasPendingDecisions
-                    ? AnyShapeStyle(LinearGradient(
-                        colors: [.appAccent, Color(hex: "C91E6D")],
-                        startPoint: .leading, endPoint: .trailing
-                      ))
-                    : AnyShapeStyle(Color.white.opacity(0.08)),
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
-        }
-        .disabled(!vm.hasPendingDecisions)
-        .opacity(vm.hasPendingDecisions ? 1.0 : 0.55)
-        .animation(.easeOut(duration: 0.2), value: vm.hasPendingDecisions)
+        SifterSecondaryActions(
+            onSkip: {
+                dragProgress = 0
+                vm.skip()
+                preloadUpcomingImages()
+            },
+            isSkipEnabled: vm.currentAsset != nil,
+            apply: SifterSecondaryActions.ApplyConfig(
+                label: applyLabel,
+                isEnabled: vm.hasPendingDecisions,
+                action: { Task { await runApply() } }
+            ),
+            onRevert: {
+                dragProgress = 0
+                vm.undo()
+            },
+            isRevertEnabled: vm.canUndo
+        )
     }
 
     private var applyLabel: String {
         guard vm.hasPendingDecisions else { return "Apply" }
-        let d = vm.pendingDeleteCount
-        let k = vm.pendingKeepCount
-        switch (d, k) {
-        case (0, let k): return "Apply · \(k) to keep"
-        case (let d, 0): return "Apply · \(d) to delete"
-        default:         return "Apply · \(d) delete · \(k) keep"
-        }
+        return "Apply (\(vm.pendingDeleteCount), \(vm.pendingKeepCount))"
     }
 
     // MARK: - States
-
-    private var applyingContent: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            ProgressView().scaleEffect(1.4).tint(.appAccent)
-            Text("Applying decisions…")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-            Spacer()
-        }
-    }
 
     private var finishedContent: some View {
         VStack(spacing: 24) {
@@ -262,6 +270,37 @@ struct SweepSifterView: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
+        }
+    }
+
+    // MARK: - Summary helpers
+
+    @ViewBuilder
+    private func summaryView(paintsBackground: Bool) -> some View {
+        SessionSummaryView(
+            group: nil,
+            nextGroup: nil,
+            outcome: summaryOutcome,
+            deletedBytes: summaryDeletedBytes,
+            onDismiss: { dismissSummary() },
+            onContinue: {
+                dismissSummary()
+                if vm.isQueueExhausted { dismiss() }
+            },
+            onRetry: {
+                showSweepSummary = false
+                Task { await runApply() }
+            },
+            overrideDeletedCount: summaryDeletedCount,
+            continueLabel: vm.isQueueExhausted ? "Back to Library" : "Continue Flicking",
+            paintsBackground: paintsBackground,
+            statsFontSize: paintsBackground ? 56 : 40
+        )
+    }
+
+    private func dismissSummary() {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
+            showSweepSummary = false
         }
     }
 

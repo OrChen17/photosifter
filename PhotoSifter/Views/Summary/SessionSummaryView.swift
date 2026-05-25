@@ -11,6 +11,8 @@ struct SessionSummaryView: View {
     var onRetry: (() -> Void)? = nil
     var overrideDeletedCount: Int? = nil
     var continueLabel: String = "Back to Library"
+    var paintsBackground: Bool = true
+    var statsFontSize: CGFloat = 56
 
     @Environment(\.dismiss) private var dismiss
 
@@ -60,7 +62,9 @@ struct SessionSummaryView: View {
 
     var body: some View {
         ZStack {
-            Color.appBackground.ignoresSafeArea()
+            if paintsBackground {
+                Color.appBackground.ignoresSafeArea()
+            }
             VStack(spacing: 28) {
                 if isCancelledOrFailed {
                     cancelledOrFailedContent
@@ -143,10 +147,10 @@ struct SessionSummaryView: View {
     }
 
     private var statsRow: some View {
-        HStack(alignment: .center, spacing: 0) {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
             VStack(alignment: .center, spacing: 6) {
                 Text("\(animatedCount)")
-                    .font(.system(size: 56, weight: .black, design: .rounded))
+                    .font(.system(size: statsFontSize, weight: .black, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [.appDelete, Color(hex: "9B8BFF")],
@@ -154,6 +158,8 @@ struct SessionSummaryView: View {
                         )
                     )
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
                 Text(deletedCount == 1 ? "photo deleted" : "photos deleted")
                     .font(.system(size: 13, weight: .medium, design: .rounded))
@@ -163,12 +169,13 @@ struct SessionSummaryView: View {
 
             Rectangle()
                 .fill(Color.white.opacity(0.1))
-                .frame(width: 1, height: 56)
+                .frame(width: 1, height: statsFontSize)
                 .padding(.horizontal, 20)
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] }
 
             VStack(alignment: .center, spacing: 6) {
                 Text(totalBytes > 0 ? animatedBytesString : "—")
-                    .font(.system(size: 56, weight: .black, design: .rounded))
+                    .font(.system(size: statsFontSize, weight: .black, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [.appKeep, Color(hex: "67E8F9")],
@@ -176,8 +183,8 @@ struct SessionSummaryView: View {
                         )
                     )
                     .monospacedDigit()
-                    .minimumScaleFactor(0.5)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
                 Text("space saved")
                     .font(.system(size: 13, weight: .medium, design: .rounded))

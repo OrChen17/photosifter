@@ -31,7 +31,7 @@ final class ImagePreloadCache {
 /// drag-progress vignette, and post-throw flash + haptics/sounds.
 /// Preloading and VM state stay in the parent; the parent passes the photo
 /// strip and action bar as ViewBuilder slots.
-struct FlickCardArea<Strip: View, BottomBar: View>: View {
+struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     let currentAsset: PHAsset?
     let nextAsset: PHAsset?
     let imageCache: ImagePreloadCache
@@ -41,7 +41,15 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
     let onSwipeRight: () -> Void
     let onSwipeLeft: () -> Void
     let onSkip: (() -> Void)?
+    /// Forwarded to the top SwipeCardView so the parent can drive button-state
+    /// inversion from the live drag.
+    var onProgressChange: ((Double) -> Void)? = nil
+    /// Setting this triggers a programmatic throw on the top card.
+    var throwCommand: ThrowCommand? = nil
     @ViewBuilder let strip: () -> Strip
+    /// Overlaid on top of the card, anchored to the bottom — used for the
+    /// big keep/delete buttons so the photo can stay full-size.
+    @ViewBuilder let primaryActions: () -> PrimaryActions
     @ViewBuilder let bottomBar: () -> BottomBar
 
     @State private var flashTint: Color = .appKeep
@@ -84,6 +92,7 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
                             onSkip: onSkip.map { action in
                                 { isTopCardThrown = false; action() }
                             },
+                            onProgressChange: onProgressChange,
                             onThrowRight: {
                                 isTopCardThrown = true
                                 flashTint = .appKeep
@@ -97,7 +106,8 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
                                 triggerFlash()
                                 HapticManager.shared.playDelete()
                                 SoundManager.shared.playDelete()
-                            }
+                            },
+                            throwCommand: throwCommand
                         )
                         .id(asset.localIdentifier)
                         .rotationEffect(.degrees(cardAppearWobble))
@@ -109,6 +119,11 @@ struct FlickCardArea<Strip: View, BottomBar: View>: View {
                             }
                         }
                         .accessibilityIdentifier("photoCard")
+                    }
+                    .overlay(alignment: .bottom) {
+                        primaryActions()
+                            .padding(.bottom, 44)
+                            .allowsHitTesting(true)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
