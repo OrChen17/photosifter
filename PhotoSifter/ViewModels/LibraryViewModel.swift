@@ -45,16 +45,6 @@ final class LibraryViewModel {
     /// should absorb the new deletes. `nil` means the next completed batch is a
     /// brand-new memory (the normal flow).
     var currentRestoreSourceBatchID: UUID?
-    /// Total non-screenshot-ish image count in the library. Used as the denominator
-    /// for the History coverage graph. Refreshed on `load()` and after restores.
-    var totalLibraryCount: Int = 0
-    /// Total bytes across every image asset still in the library. Drives the
-    /// "Unflicked" stat tile (Unflicked = total − Kept). Computed asynchronously
-    /// in `load()` because PHAssetResource iteration is O(N) over assets.
-    var totalLibraryBytes: Int64 = 0
-    /// True while the off-actor byte-walk is in flight. HistoryView shows a
-    /// spinner on the Unflicked tile so users understand the value will land soon.
-    var isComputingTotalLibraryBytes: Bool = false
     var sortOrder: GroupSortOrder {
         didSet { UserDefaults.standard.set(sortOrder.rawValue, forKey: Self.sortOrderKey) }
     }
@@ -76,16 +66,17 @@ final class LibraryViewModel {
     var totalKeptBytes: Int64 {
         completedBatches.reduce(Int64(0)) { $0 + ($1.keptBytes ?? 0) }
     }
-    /// Photos in the library that haven't been flicked yet. The graph's third slice.
-    /// Clamped at 0 because a library mutation between scans could push this negative.
+    /// Photos still pending a sifting decision — assets in active (not-yet-completed)
+    /// duplicate groups plus pending Quick Wins. Derived from in-memory state on every
+    /// read; no library-wide walk and no persistence layer of its own.
     var unflickedCount: Int {
-        max(0, totalLibraryCount - totalKeptCount)
+        (groups + quickWins.map(\.group)).reduce(0) { $0 + $1.assets.count }
     }
-    /// Bytes still in the library that the user hasn't explicitly kept or deleted.
-    /// Total library bytes minus the kept bytes (deleted bytes are no longer on disk).
-    /// Clamped at 0 against any race between scans.
+    /// Bytes of the unflicked backlog. Sum of `PhotoGroup.totalFileBytes` across the
+    /// same set; cached groups are byteFilled by `GroupingService.loadCachedGroups`
+    /// and Quick Wins are byteFilled by `QuickWinsService` on emit.
     var unflickedBytes: Int64 {
-        max(0, totalLibraryBytes - totalKeptBytes)
+        (groups + quickWins.map(\.group)).reduce(Int64(0)) { $0 + $1.totalFileBytes }
     }
     /// Source-group ids whose memory is still in the main grid (partially
     /// resolved). Sweep emits a `CompletedBatch` on every apply (even partial)
@@ -148,25 +139,11 @@ final class LibraryViewModel {
             print("[PhotoSifter] \(ms)ms — \(label)")
         }
 
-        // Load stats immediately so counters are non-zero on first render
+        // Load stats immediately so counters are non-zero on first render.
+        // Unflicked totals derive from `groups` + `quickWins` (see unflickedCount /
+        // unflickedBytes) — no library-wide PHAssetResource walk happens here.
         completedBatches = await CompletedBatchStore.shared.loadAll()
-        totalLibraryCount = await photoService.totalImageAssetCount()
         elapsed("stats loaded")
-
-        // Total library bytes (unflicked-tile denominator) is O(N) over assets.
-        // CRITICAL: must run via `Task.detached`, not a structured Task that hops
-        // onto PhotoLibraryService's actor. Otherwise the byte-walk serializes
-        // against `loadThumbnailStream` and the library grid won't paint until
-        // it finishes. `totalImageBytes()` is `nonisolated` for the same reason.
-        let service = photoService
-        isComputingTotalLibraryBytes = true
-        Task.detached(priority: .utility) {
-            let bytes = service.totalImageBytes()
-            await MainActor.run {
-                self.totalLibraryBytes = bytes
-                self.isComputingTotalLibraryBytes = false
-            }
-        }
 
         let flickedIDs = await groupingService.loadFlickedIdentifiers()
         let rawDecisions = await groupingService.loadRawDecisions()

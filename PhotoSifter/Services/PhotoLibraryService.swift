@@ -46,40 +46,6 @@ actor PhotoLibraryService {
         return assets
     }
 
-    /// Cheap-ish count of all image assets in the library (PHFetchResult.count is O(1)).
-    /// Includes screenshots — used as the denominator for the History coverage graph,
-    /// where over- vs under-counting screenshots by ~a few percent is not material.
-    func totalImageAssetCount() -> Int {
-        let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
-        return PHAsset.fetchAssets(with: options).count
-    }
-
-    /// Sums file sizes across every image asset in the library. Used by the History
-    /// tab's "Unflicked" stat tile (Unflicked = total − Kept). PHAssetResource's
-    /// `fileSize` is a metadata read so this does no I/O, but with N in the tens of
-    /// thousands the enumeration is non-trivial.
-    ///
-    /// `nonisolated` is load-bearing here: if this ran on the actor's executor it
-    /// would serialize against `loadThumbnailStream`, blocking the library grid
-    /// while bytes are being summed. Callers should dispatch through
-    /// `Task.detached(priority: .utility)` so the work lands on the cooperative
-    /// thread pool instead of the calling executor.
-    nonisolated func totalImageBytes() -> Int64 {
-        let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
-        let result = PHAsset.fetchAssets(with: options)
-        let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
-        var total: Int64 = 0
-        result.enumerateObjects { asset, _, _ in
-            let resources = PHAssetResource.assetResources(for: asset)
-            guard let r = resources.first(where: { acceptable.contains($0.type) }),
-                  let bytes = r.value(forKey: "fileSize") as? Int64 else { return }
-            total += bytes
-        }
-        return total
-    }
-
     func loadThumbnail(for asset: PHAsset, size: CGSize) async -> UIImage? {
         await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()

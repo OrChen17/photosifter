@@ -38,10 +38,15 @@ actor QuickWinsService {
         }
 
         return chunks.map { chunk in
-            QuickWin(
+            // Fill totalFileBytes so the History "Unflicked" tile reflects this group's
+            // bytes. This walks PHAssetResource per chunk asset but stays on the
+            // .utility priority task that drives fetchAll().
+            var group = PhotoGroup(id: UUID(), assets: chunk, decisions: [:])
+            group.totalFileBytes = chunk.reduce(Int64(0)) { $0 + (fileSize(for: $1) ?? 0) }
+            return QuickWin(
                 id: UUID(),
                 category: .screenshots,
-                group: PhotoGroup(id: UUID(), assets: chunk, decisions: [:]),
+                group: group,
                 totalCount: totalCount
             )
         }
@@ -88,10 +93,14 @@ actor QuickWinsService {
             let grouped = ids.compactMap { assetByID[$0] }
                 .sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
             guard grouped.count >= 2 else { return nil }
+            // sizeMap was populated above for every candidate — reuse it instead of
+            // hitting PHAssetResource a second time.
+            var group = PhotoGroup(id: UUID(), assets: grouped, decisions: [:])
+            group.totalFileBytes = grouped.reduce(Int64(0)) { $0 + (sizeMap[$1.localIdentifier] ?? 0) }
             return QuickWin(
                 id: UUID(),
                 category: .duplicates,
-                group: PhotoGroup(id: UUID(), assets: grouped, decisions: [:]),
+                group: group,
                 totalCount: grouped.count
             )
         }

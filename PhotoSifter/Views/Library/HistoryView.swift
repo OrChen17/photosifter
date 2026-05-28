@@ -59,8 +59,7 @@ struct HistoryView: View {
                 statTile(
                     value: ByteCountFormatter.string(fromByteCount: vm.unflickedBytes, countStyle: .file),
                     label: "Unflicked",
-                    color: .white,
-                    isLoading: vm.isComputingTotalLibraryBytes
+                    color: .white
                 )
                 statTile(
                     value: ByteCountFormatter.string(fromByteCount: vm.totalSavedBytes, countStyle: .file),
