@@ -23,10 +23,12 @@ struct SweepSifterView: View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
 
-            if vm.isQueueExhausted {
-                finishedContent
-            } else if !vm.isApplying {
-                mainContent
+            if !vm.isApplying {
+                if vm.isQueueExhausted {
+                    finishedContent
+                } else {
+                    mainContent
+                }
             }
 
             if showSweepSummary {
@@ -114,6 +116,11 @@ struct SweepSifterView: View {
         .task { preloadUpcomingImages() }
         .onChange(of: vm.currentIndex) { _, _ in
             preloadUpcomingImages()
+        }
+        .onChange(of: vm.isQueueExhausted) { _, exhausted in
+            if exhausted && vm.hasPendingDecisions {
+                Task { await runApply() }
+            }
         }
     }
 
@@ -307,6 +314,11 @@ struct SweepSifterView: View {
             }
         case .cancelledByUser, .failed:
             SoundManager.shared.playFailure()
+        }
+        let isSuccess = snapshot.outcome == .committed || snapshot.outcome == .nothingToDelete
+        if vm.isQueueExhausted && isSuccess {
+            // Queue done — finishedContent is the landing screen, no overlay needed
+            return
         }
         summaryOutcome = snapshot.outcome
         summaryDeletedCount = snapshot.deletedIDs.count
