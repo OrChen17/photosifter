@@ -63,11 +63,15 @@ actor GroupingService {
 
         return AsyncStream { continuation in
             let task = Task(priority: .background) {
+                #if DEBUG
                 let t0 = Date()
                 func log(_ msg: String) {
                     let ms = Int(Date().timeIntervalSince(t0) * 1000)
                     print("[GroupingService] \(ms)ms — \(msg)")
                 }
+                #else
+                @inline(__always) func log(_ _: String) {}
+                #endif
 
                 // Phase 1: Burst groups — skip representatives already grouped
                 let burstGroups = await Self.fetchBurstGroups(excluding: knownIDs)

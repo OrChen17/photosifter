@@ -29,6 +29,7 @@
 		A01A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01A /* AppSettings.swift */; };
 		A01B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01B /* SettingsView.swift */; };
 		A019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B019 /* Assets.xcassets */; };
+		APRIV /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BPRIV /* PrivacyInfo.xcprivacy */; };
 		X001 /* CompletedBatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX01 /* CompletedBatch.swift */; };
 		X002 /* CompletedBatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX02 /* CompletedBatchStore.swift */; };
 		X003 /* QuickWin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX03 /* QuickWin.swift */; };
@@ -134,6 +135,7 @@
 		BX31 /* HistoryRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryRowView.swift; sourceTree = "<group>"; };
 		BX32 /* CompletedBatchRestoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchRestoreTests.swift; sourceTree = "<group>"; };
 		C001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BPRIV /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		PROD /* PhotoSifter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoSifter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		R001 /* PhotoSifterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSifterUITests.swift; sourceTree = "<group>"; };
 		R002 /* PermissionFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionFlowUITests.swift; sourceTree = "<group>"; };
@@ -347,6 +349,7 @@
 				B001 /* PhotoSifterApp.swift */,
 				B002 /* ContentView.swift */,
 				C001 /* Info.plist */,
+				BPRIV /* PrivacyInfo.xcprivacy */,
 				B019 /* Assets.xcassets */,
 				GRP_MODELS /* Models */,
 				GRP_SERVICES /* Services */,
@@ -480,6 +483,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A019 /* Assets.xcassets in Resources */,
+				APRIV /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

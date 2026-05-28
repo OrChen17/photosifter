@@ -133,11 +133,15 @@ final class LibraryViewModel {
         error = nil
         isScanning = true
 
+        #if DEBUG
         let t0 = Date()
         func elapsed(_ label: String) {
             let ms = Int(Date().timeIntervalSince(t0) * 1000)
             print("[PhotoSifter] \(ms)ms — \(label)")
         }
+        #else
+        @inline(__always) func elapsed(_ _: String) {}
+        #endif
 
         // Load stats immediately so counters are non-zero on first render.
         // Unflicked totals derive from `groups` + `quickWins` (see unflickedCount /
