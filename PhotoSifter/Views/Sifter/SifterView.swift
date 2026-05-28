@@ -121,6 +121,7 @@ struct SifterView: View {
             } : nil,
             onProgressChange: { dragProgress = $0 },
             throwCommand: throwCommand,
+            dragProgress: dragProgress,
             strip: {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
@@ -157,20 +158,7 @@ struct SifterView: View {
                 )
                 .padding(.top, 8)
             },
-            primaryActions: {
-                SifterPrimaryActions(
-                    dragProgress: dragProgress,
-                    onDelete: {
-                        guard vm.currentAsset != nil else { return }
-                        throwCommand = ThrowCommand(.left)
-                    },
-                    onKeep: {
-                        guard vm.currentAsset != nil else { return }
-                        throwCommand = ThrowCommand(.right)
-                    },
-                    isEnabled: vm.currentAsset != nil
-                )
-            },
+            primaryActions: { EmptyView() },
             bottomBar: {
                 bottomBar
                     .padding(.horizontal, 24)

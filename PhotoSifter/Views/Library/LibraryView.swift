@@ -7,7 +7,6 @@ struct LibraryView: View {
     @Environment(AppSettings.self) private var appSettings
     @Environment(\.displayScale) private var displayScale
     @State private var stripCollapsed = false
-    @State private var scrollOffset: CGFloat = 0
     @State private var showingSettings = false
 
     /// Cap the prefetch window so we don't try to warm thousands of thumbnails at once.
@@ -37,7 +36,6 @@ struct LibraryView: View {
                 }
 
                 if vm.groups.count >= 2 {
-                    let fabOpacity = Double(max(0, 1 - scrollOffset / 160))
                     EndlessModeButton {
                         HapticManager.shared.playNavigate()
                         vm.startSweepSession()
@@ -45,8 +43,6 @@ struct LibraryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     .padding(.trailing, 20)
                     .padding(.bottom, 20)
-                    .opacity(fabOpacity)
-                    .allowsHitTesting(fabOpacity > 0.1)
                 }
             }
             .navigationTitle("")
@@ -163,7 +159,6 @@ struct LibraryView: View {
                 GeometryReader { geo -> Color in
                     let offset = -geo.frame(in: .named("libraryScroll")).minY
                     DispatchQueue.main.async {
-                        scrollOffset = max(0, offset)
                         let should = offset > 60
                         if should != stripCollapsed {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -336,9 +331,9 @@ private struct EndlessModeButton: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(Color.appAccent.opacity(glowPulse ? 0.35 : 0.15))
-                    .frame(width: 88, height: 88)
-                    .blur(radius: 10)
+                    .fill(Color.appAccent.opacity(glowPulse ? 0.20 : 0.09))
+                    .frame(width: 78, height: 78)
+                    .blur(radius: 7)
 
                 Circle()
                     .fill(LinearGradient(
@@ -347,9 +342,9 @@ private struct EndlessModeButton: View {
                         endPoint: .bottomTrailing
                     ))
                     .frame(width: 60, height: 60)
-                    .shadow(color: Color.appAccent.opacity(0.55), radius: 12, y: 4)
+                    .shadow(color: Color.appAccent.opacity(0.3), radius: 8, y: 3)
 
-                Image(systemName: "wand.and.stars")
+                Image(systemName: "infinity")
                     .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(.white)
             }

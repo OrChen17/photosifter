@@ -6,7 +6,8 @@ import SwiftUI
 ///  - right: revert
 struct SifterSecondaryActions: View {
     struct ApplyConfig {
-        let label: String
+        let deleteCount: Int
+        let keepCount: Int
         let isEnabled: Bool
         let action: () -> Void
     }
@@ -24,7 +25,7 @@ struct SifterSecondaryActions: View {
                 accessibilityLabel: "Skip photo",
                 isEnabled: isSkipEnabled,
                 action: onSkip,
-                enabledTint: .appBackground
+                enabledTint: .white
             )
             .accessibilityIdentifier("skipButton")
 
@@ -52,10 +53,13 @@ struct SifterSecondaryActions: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .heavy))
-                .foregroundStyle(isEnabled ? enabledTint : Color.white.opacity(0.35))
+                .foregroundStyle(isEnabled ? enabledTint : Color.white.opacity(0.3))
                 .frame(width: 44, height: 44)
                 .background(
-                    Circle().fill(isEnabled ? Color.white : Color.white.opacity(0.10))
+                    Circle()
+                        .fill(Color.appCard)
+                        .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+                        .opacity(isEnabled ? 1 : 0.5)
                 )
         }
         .buttonStyle(SpringPressButtonStyle())
@@ -65,22 +69,41 @@ struct SifterSecondaryActions: View {
 
     private func applyButton(_ config: ApplyConfig) -> some View {
         Button(action: config.action) {
-            Text(config.label)
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity)
-                .background(
-                    config.isEnabled
-                        ? AnyShapeStyle(LinearGradient(
-                            colors: [.appAccent, Color(hex: "C91E6D")],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                          ))
-                        : AnyShapeStyle(Color.white.opacity(0.08)),
-                    in: Capsule(style: .continuous)
-                )
+            HStack(spacing: 8) {
+                Text("Apply")
+                if config.isEnabled {
+                    if config.deleteCount > 0 {
+                        HStack(spacing: 3) {
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("\(config.deleteCount)")
+                                .monospacedDigit()
+                        }
+                    }
+                    if config.keepCount > 0 {
+                        HStack(spacing: 3) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("\(config.keepCount)")
+                                .monospacedDigit()
+                        }
+                    }
+                }
+            }
+            .font(.system(size: 15, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(
+                config.isEnabled
+                    ? AnyShapeStyle(LinearGradient(
+                        colors: [.appAccent, Color(hex: "C91E6D")],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                      ))
+                    : AnyShapeStyle(Color.white.opacity(0.08)),
+                in: Capsule(style: .continuous)
+            )
         }
         .buttonStyle(SpringPressButtonStyle())
         .disabled(!config.isEnabled)
@@ -106,11 +129,14 @@ private struct RevertButton: View {
         } label: {
             Image(systemName: "arrow.counterclockwise")
                 .font(.system(size: 18, weight: .heavy))
-                .foregroundStyle(isEnabled ? Color.appRevert : Color.white.opacity(0.35))
+                .foregroundStyle(isEnabled ? Color.appRevert : Color.white.opacity(0.3))
                 .rotationEffect(.degrees(spin))
                 .frame(width: 44, height: 44)
                 .background(
-                    Circle().fill(isEnabled ? Color.white : Color.white.opacity(0.10))
+                    Circle()
+                        .fill(Color.appCard)
+                        .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+                        .opacity(isEnabled ? 1 : 0.5)
                 )
         }
         .buttonStyle(SpringPressButtonStyle())

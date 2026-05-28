@@ -147,6 +147,7 @@ struct SweepSifterView: View {
             },
             onProgressChange: { dragProgress = $0 },
             throwCommand: throwCommand,
+            dragProgress: dragProgress,
             strip: {
                 SweepStripView(
                     assets: vm.queue,
@@ -157,20 +158,7 @@ struct SweepSifterView: View {
                 )
                 .padding(.top, 4)
             },
-            primaryActions: {
-                SifterPrimaryActions(
-                    dragProgress: dragProgress,
-                    onDelete: {
-                        guard vm.currentAsset != nil else { return }
-                        throwCommand = ThrowCommand(.left)
-                    },
-                    onKeep: {
-                        guard vm.currentAsset != nil else { return }
-                        throwCommand = ThrowCommand(.right)
-                    },
-                    isEnabled: vm.currentAsset != nil
-                )
-            },
+            primaryActions: { EmptyView() },
             bottomBar: {
                 bottomBar
                     .padding(.horizontal, 20)
@@ -190,7 +178,8 @@ struct SweepSifterView: View {
             },
             isSkipEnabled: vm.currentAsset != nil,
             apply: SifterSecondaryActions.ApplyConfig(
-                label: applyLabel,
+                deleteCount: vm.pendingDeleteCount,
+                keepCount: vm.pendingKeepCount,
                 isEnabled: vm.hasPendingDecisions,
                 action: { Task { await runApply() } }
             ),
@@ -200,11 +189,6 @@ struct SweepSifterView: View {
             },
             isRevertEnabled: vm.canUndo
         )
-    }
-
-    private var applyLabel: String {
-        guard vm.hasPendingDecisions else { return "Apply" }
-        return "Apply (\(vm.pendingDeleteCount), \(vm.pendingKeepCount))"
     }
 
     // MARK: - States

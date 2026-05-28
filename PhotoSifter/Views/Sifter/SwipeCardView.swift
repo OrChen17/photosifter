@@ -140,7 +140,6 @@ struct SwipeCardView: View {
             .offset(x: offset.width, y: offset.height * 0.4)
             .rotationEffect(.degrees(Double(offset.width) / 22))
             .gesture(swipeDrag)
-            .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.85), value: offset)
         }
         .task {
             if let preloaded = preloadedImage {
@@ -244,17 +243,31 @@ struct SwipeCardView: View {
     private var metadataOverlay: some View {
         VStack {
             Spacer()
-            HStack {
-                Spacer()
-                if let size = fileSizeLabel {
-                    Text(size)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+            HStack(spacing: 10) {
+                if let date = captureDate {
+                    Text(date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().second()))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(.white.opacity(0.65))
                 }
+                Spacer()
+                HStack(spacing: 4) {
+                    if let loc = locationLabel {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 9))
+                        Text(loc)
+                            .lineLimit(1)
+                    }
+                    if let size = fileSizeLabel {
+                        if locationLabel != nil { Text("·") }
+                        Text(size)
+                    }
+                }
+                .font(.system(size: 11, weight: .regular, design: .rounded))
+                .foregroundStyle(.white.opacity(0.65))
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             .background(.ultraThinMaterial)
         }
     }

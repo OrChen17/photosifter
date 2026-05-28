@@ -46,6 +46,9 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     var onProgressChange: ((Double) -> Void)? = nil
     /// Setting this triggers a programmatic throw on the top card.
     var throwCommand: ThrowCommand? = nil
+    /// Live horizontal drag progress of the top card in [-1, 1], forwarded from the
+    /// parent. Drives the behind card "growing into place" as the top card is flicked.
+    var dragProgress: Double = 0
     @ViewBuilder let strip: () -> Strip
     /// Overlaid on top of the card, anchored to the bottom — used for the
     /// big keep/delete buttons so the photo can stay full-size.
@@ -65,15 +68,20 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                 if let asset = currentAsset {
                     ZStack {
                         if let next = nextAsset {
+                            // Reveal tracks how far the top card is flicked on the x-axis
+                            // (0 at rest → 1 at the throw threshold), so the behind card
+                            // scales up into the top slot as the current one is thrown.
+                            let reveal = min(1, abs(dragProgress))
                             SwipeCardView(
                                 asset: next,
                                 preloadedImage: imageCache.image(for: next.localIdentifier),
                                 onSwipeRight: {},
                                 onSwipeLeft: {}
                             )
-                            .scaleEffect(isTopCardThrown ? 1.0 : 0.95)
-                            .offset(y: isTopCardThrown ? 0 : 10)
+                            .scaleEffect(isTopCardThrown ? 1.0 : 0.95 + 0.05 * reveal)
+                            .offset(y: isTopCardThrown ? 0 : 10 * (1 - reveal))
                             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isTopCardThrown)
+                            .animation(.interactiveSpring(response: 0.18, dampingFraction: 0.9), value: dragProgress)
                             .allowsHitTesting(false)
                             .id(next.localIdentifier)
                         }
