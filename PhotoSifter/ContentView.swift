@@ -19,6 +19,9 @@ struct ContentView: View {
                     LibraryView()
                         .tabItem { Label("Flick", systemImage: "photo.stack") }
                         .tag(0)
+                    ShrinkView()
+                        .tabItem { Label("Shrink", systemImage: "film.stack") }
+                        .tag(2)
                     HistoryView()
                         .tabItem { Label("History", systemImage: "checkmark.circle.fill") }
                         .tag(1)

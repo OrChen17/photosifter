@@ -40,6 +40,13 @@
 		X008 /* DuplicateGroupSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX08 /* DuplicateGroupSifterViewModel.swift */; };
 		X009 /* DuplicateGroupSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX09 /* DuplicateGroupSifterView.swift */; };
 		X010 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX10 /* HistoryView.swift */; };
+		X050 /* VideoCandidate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX50 /* VideoCandidate.swift */; };
+		X051 /* VideoShrinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX51 /* VideoShrinkService.swift */; };
+		X052 /* VideoShrinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX52 /* VideoShrinkViewModel.swift */; };
+		X053 /* ShrinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX53 /* ShrinkView.swift */; };
+		T050 /* VideoShrinkPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S050 /* VideoShrinkPlanTests.swift */; };
+		T051 /* VideoShrinkViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S051 /* VideoShrinkViewModelTests.swift */; };
+		T052 /* MockVideoShrinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = S052 /* MockVideoShrinkService.swift */; };
 		X020 /* SweepSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX20 /* SweepSession.swift */; };
 		X021 /* SweepSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX21 /* SweepSifterViewModel.swift */; };
 		X022 /* SweepStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX22 /* SweepStripView.swift */; };
@@ -123,6 +130,13 @@
 		BX08 /* DuplicateGroupSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterViewModel.swift; sourceTree = "<group>"; };
 		BX09 /* DuplicateGroupSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterView.swift; sourceTree = "<group>"; };
 		BX10 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		BX50 /* VideoCandidate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCandidate.swift; sourceTree = "<group>"; };
+		BX51 /* VideoShrinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoShrinkService.swift; sourceTree = "<group>"; };
+		BX52 /* VideoShrinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoShrinkViewModel.swift; sourceTree = "<group>"; };
+		BX53 /* ShrinkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShrinkView.swift; sourceTree = "<group>"; };
+		S050 /* VideoShrinkPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoShrinkPlanTests.swift; sourceTree = "<group>"; };
+		S051 /* VideoShrinkViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoShrinkViewModelTests.swift; sourceTree = "<group>"; };
+		S052 /* MockVideoShrinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockVideoShrinkService.swift; sourceTree = "<group>"; };
 		BX20 /* SweepSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSession.swift; sourceTree = "<group>"; };
 		BX21 /* SweepSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterViewModel.swift; sourceTree = "<group>"; };
 		BX22 /* SweepStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepStripView.swift; sourceTree = "<group>"; };
@@ -192,6 +206,7 @@
 				S007 /* MockDeletionService.swift */,
 				S008 /* TestAssetHelpers.swift */,
 				S010 /* MockSimilarityService.swift */,
+				S052 /* MockVideoShrinkService.swift */,
 			);
 			path = Mocks;
 			sourceTree = "<group>";
@@ -203,6 +218,7 @@
 				BX01 /* CompletedBatch.swift */,
 				BX03 /* QuickWin.swift */,
 				BX20 /* SweepSession.swift */,
+				BX50 /* VideoCandidate.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -216,6 +232,7 @@
 				B006D /* DebugSimilarityService.swift */,
 				BX02 /* CompletedBatchStore.swift */,
 				BX04 /* QuickWinsService.swift */,
+				BX51 /* VideoShrinkService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -237,6 +254,8 @@
 				S015 /* AppSettingsTests.swift */,
 				S016 /* PhotoLibraryServiceTests.swift */,
 				BX32 /* CompletedBatchRestoreTests.swift */,
+				S050 /* VideoShrinkPlanTests.swift */,
+				S051 /* VideoShrinkViewModelTests.swift */,
 				GRP_MOCKS /* Mocks */,
 			);
 			path = PhotoSifterTests;
@@ -272,8 +291,17 @@
 				GRP_VSIFT /* Sifter */,
 				GRP_VSUM /* Summary */,
 				GRP_VSET /* Settings */,
+				GRP_VSHRINK /* Shrink */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		GRP_VSHRINK /* Shrink */ = {
+			isa = PBXGroup;
+			children = (
+				BX53 /* ShrinkView.swift */,
+			);
+			path = Shrink;
 			sourceTree = "<group>";
 		};
 		GRP_VLIB /* Library */ = {
@@ -298,6 +326,7 @@
 				B008 /* SifterViewModel.swift */,
 				BX08 /* DuplicateGroupSifterViewModel.swift */,
 				BX21 /* SweepSifterViewModel.swift */,
+				BX52 /* VideoShrinkViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -535,6 +564,10 @@
 				X024 /* SweepBannerView.swift in Sources */,
 				X030 /* CoverageBarView.swift in Sources */,
 				X031 /* HistoryRowView.swift in Sources */,
+				X050 /* VideoCandidate.swift in Sources */,
+				X051 /* VideoShrinkService.swift in Sources */,
+				X052 /* VideoShrinkViewModel.swift in Sources */,
+				X053 /* ShrinkView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -559,6 +592,9 @@
 				T015 /* AppSettingsTests.swift in Sources */,
 				T016 /* PhotoLibraryServiceTests.swift in Sources */,
 				T030 /* CompletedBatchRestoreTests.swift in Sources */,
+				T050 /* VideoShrinkPlanTests.swift in Sources */,
+				T051 /* VideoShrinkViewModelTests.swift in Sources */,
+				T052 /* MockVideoShrinkService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

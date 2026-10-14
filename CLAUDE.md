@@ -75,6 +75,7 @@ iCloud handling: when `AppSettings.cloudDownloadEnabled == false`, both burst an
 | `scan_cutoff.json` | `Date` | Last full-scan timestamp. |
 | `file_sizes.json` | `[String: Int64]` | `PHAssetResource.fileSize` cache. |
 | `completed_batches.json` | `[CompletedBatch]` | History tab data (owned by [CompletedBatchStore](PhotoSifter/Services/CompletedBatchStore.swift)). |
+| `video_frame_rates.json` | `[String: Double]` | Shrink tab's `nominalFrameRate` cache, keyed by localIdentifier (owned by [VideoShrinkService](PhotoSifter/Services/VideoShrinkService.swift)). |
 
 ### Deletion flow
 
@@ -98,6 +99,10 @@ Separate from the main grouping pipeline. Two categories:
 
 - **Screenshots** — `PHAssetMediaSubtype.photoScreenshot` (also filtered out of the main scan in `PhotoLibraryService.fetchAllAssets`), chunked into batches of 20.
 - **Exact duplicates** — size-prefilter (`sizePrefilterIdentifiers`) → SHA-256 of `PHAssetResource` data in batches of 4 (memory-bounded streaming hash via `CryptoKit`) → group by digest. Duplicates use a dedicated [DuplicateGroupSifterViewModel](PhotoSifter/ViewModels/DuplicateGroupSifterViewModel.swift) (merge-vs-keep-all, not per-photo decisions).
+
+### Shrink tab ([VideoShrinkService](PhotoSifter/Services/VideoShrinkService.swift), [VideoShrinkViewModel](PhotoSifter/ViewModels/VideoShrinkViewModel.swift))
+
+Lists videos above 1080p or 30 fps ([VideoShrinkPlan](PhotoSifter/Models/VideoCandidate.swift) holds the thresholds and size estimate) and re-encodes them to 1080p / 30 fps HEVC. Slo-mo, Cinematic and time-lapse videos are skipped. iOS can't shrink an asset in place: a content edit keeps the original. So every selected video is exported to `tmp/VideoShrink` first. Then one `performChanges` creates the new assets (date, location, favorite, hidden and albums copied) and deletes the originals. That is one iOS prompt, and cancelling it changes nothing; the view model keeps the files so "Replace" re-prompts without re-encoding. Originals land in Recently Deleted, so space is freed only once that is emptied.
 
 ### Concurrency model
 
