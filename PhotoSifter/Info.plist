@@ -26,6 +26,10 @@
 	<string>FlickPic needs access to your photo library to find and help you delete near-duplicate photos.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>FlickPic needs access to your photo library to manage your photos.</string>
+	<key>PostHogProjectToken</key>
+	<string>$(POSTHOG_PROJECT_TOKEN)</string>
+	<key>PostHogHost</key>
+	<string>$(POSTHOG_HOST)</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

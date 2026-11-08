@@ -22,6 +22,51 @@ enum PostHogAppLogger {
     }
 }
 
+enum PostHogInfoKey: String {
+    case projectToken = "PostHogProjectToken"
+    case host = "PostHogHost"
+}
+
+enum PostHogBootstrap {
+    private static let serviceName = "photosifter-ios"
+    private static let uiTestingArgument = "UI_TESTING"
+    private static let xcTestConfigurationKey = "XCTestConfigurationFilePath"
+    private static let unexpandedBuildSettingPrefix = "$("
+
+    static func start() {
+        guard !isRunningTests else { return }
+        guard let projectToken = infoValue(.projectToken), let host = infoValue(.host) else {
+            #if DEBUG
+            print("PostHog disabled: set the POSTHOG_PROJECT_TOKEN and POSTHOG_HOST build settings")
+            #endif
+            return
+        }
+
+        let config = PostHogConfig(projectToken: projectToken, host: host)
+        config.errorTrackingConfig.autoCapture = true
+        config.logs.serviceName = serviceName
+        #if DEBUG
+        config.logs.environment = "debug"
+        #else
+        config.logs.environment = "production"
+        #endif
+        PostHogSDK.shared.setup(config)
+    }
+
+    private static var isRunningTests: Bool {
+        let process = ProcessInfo.processInfo
+        return process.arguments.contains(uiTestingArgument)
+            || process.environment[xcTestConfigurationKey] != nil
+    }
+
+    private static func infoValue(_ key: PostHogInfoKey) -> String? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: key.rawValue) as? String,
+              !value.isEmpty,
+              !value.hasPrefix(unexpandedBuildSettingPrefix) else { return nil }
+        return value
+    }
+}
+
 @main
 struct PhotoSifterApp: App {
     @Environment(\.scenePhase) private var scenePhase
@@ -29,25 +74,7 @@ struct PhotoSifterApp: App {
     @State private var appSettings = AppSettings()
 
     init() {
-        let environment = ProcessInfo.processInfo.environment
-        guard let projectToken = environment["POSTHOG_PROJECT_TOKEN"], !projectToken.isEmpty else {
-            reportMissingPostHogConfiguration("POSTHOG_PROJECT_TOKEN")
-            return
-        }
-        guard let host = environment["POSTHOG_HOST"], !host.isEmpty else {
-            reportMissingPostHogConfiguration("POSTHOG_HOST")
-            return
-        }
-
-        let config = PostHogConfig(projectToken: projectToken, host: host)
-        config.errorTrackingConfig.autoCapture = true
-        config.logs.serviceName = "photosifter-ios"
-        #if DEBUG
-        config.logs.environment = "debug"
-        #else
-        config.logs.environment = "production"
-        #endif
-        PostHogSDK.shared.setup(config)
+        PostHogBootstrap.start()
     }
 
     var body: some Scene {
@@ -80,12 +107,6 @@ struct PhotoSifterApp: App {
                     }
                 }
         }
-    }
-
-    private func reportMissingPostHogConfiguration(_ variable: String) {
-        #if DEBUG
-        assertionFailure("\(variable) variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once \(variable) is configured")
-        #endif
     }
 
     private func applyAppearance(_ mode: AppearanceMode) {
