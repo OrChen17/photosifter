@@ -1,4 +1,5 @@
 import SwiftUI
+import PostHog
 
 struct HistoryView: View {
     @Environment(LibraryViewModel.self) private var vm
@@ -119,7 +120,14 @@ struct HistoryView: View {
                     CompletedBatchCardView(batch: batch)
                         .onTapGesture {
                             HapticManager.shared.playNavigate()
-                            Task { await vm.restoreBatch(batch) }
+                            Task {
+                                if await vm.restoreBatch(batch) != nil {
+                                    PostHogSDK.shared.capture("revisit_started", properties: [
+                                        "reopened_photo_count": batch.keptAssetIdentifiers?.count ?? 0,
+                                        "previously_deleted_photo_count": batch.deletedCount
+                                    ])
+                                }
+                            }
                         }
                         .accessibilityIdentifier("revisitCard_\(batch.id)")
                 }

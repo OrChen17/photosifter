@@ -1,4 +1,5 @@
 import SwiftUI
+import PostHog
 
 struct PermissionView: View {
     let onRequest: () async -> Void
@@ -46,6 +47,8 @@ struct PermissionView: View {
                 Spacer()
 
                 Button {
+                    PostHogSDK.shared.capture("photo_library_access_requested")
+                    PostHogAppLogger.photoLibraryAccessRequested()
                     Task { await onRequest() }
                 } label: {
                     Text("Allow Full Access")

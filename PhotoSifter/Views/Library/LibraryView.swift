@@ -1,6 +1,6 @@
 import SwiftUI
 import Photos
-
+import PostHog
 
 struct LibraryView: View {
     @Environment(LibraryViewModel.self) private var vm
@@ -37,6 +37,10 @@ struct LibraryView: View {
 
                 if vm.groups.count >= 2 {
                     EndlessModeButton {
+                        PostHogSDK.shared.capture("sweep_started", properties: [
+                            "group_count": vm.groups.count,
+                            "photo_count": vm.groups.reduce(0) { $0 + $1.assets.count }
+                        ])
                         HapticManager.shared.playNavigate()
                         vm.startSweepSession()
                     }
@@ -117,12 +121,21 @@ struct LibraryView: View {
                         HapticManager.shared.playNavigate()
                         switch win.category {
                         case .screenshots:
+                            PostHogSDK.shared.capture("sifting_started", properties: [
+                                "entry_point": "quick_win_screenshots",
+                                "photo_count": win.group.assets.count
+                            ])
                             vm.selectedQuickWin = win
                         case .duplicates:
                             let groups = vm.quickWins
                                 .filter { $0.category == .duplicates }
                                 .map { $0.group }
                             if !groups.isEmpty {
+                                PostHogSDK.shared.capture("sifting_started", properties: [
+                                    "entry_point": "quick_win_duplicates",
+                                    "group_count": groups.count,
+                                    "photo_count": groups.reduce(0) { $0 + $1.assets.count }
+                                ])
                                 vm.selectedDuplicateSession = DuplicateSession(groups: groups)
                             }
                         }
@@ -139,6 +152,10 @@ struct LibraryView: View {
                     ForEach(vm.groups) { group in
                         MemoryCardView(group: group)
                             .onTapGesture {
+                                PostHogSDK.shared.capture("sifting_started", properties: [
+                                    "entry_point": "photo_group",
+                                    "photo_count": group.assets.count
+                                ])
                                 HapticManager.shared.playNavigate()
                                 vm.selectedGroup = group
                             }

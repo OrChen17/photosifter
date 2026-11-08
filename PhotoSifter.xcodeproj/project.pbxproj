@@ -71,6 +71,7 @@
 		U002 /* PermissionFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R002 /* PermissionFlowUITests.swift */; };
 		U003 /* LibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R003 /* LibraryUITests.swift */; };
 		U004 /* SifterFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = R004 /* SifterFlowUITests.swift */; };
+		1A2B3C4D5E6F708192A3B4C5 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 2A3B4C5D6E7F8091A2B3C4D5 /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -166,6 +167,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A2B3C4D5E6F708192A3B4C5 /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -395,6 +397,9 @@
 			);
 			dependencies = (
 			);
+			packageProductDependencies = (
+				2A3B4C5D6E7F8091A2B3C4D5 /* PostHog */,
+			);
 			name = PhotoSifter;
 			productName = PhotoSifter;
 			productReference = PROD /* PhotoSifter.app */;
@@ -469,6 +474,9 @@
 			productRefGroup = PRODS /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				3A4B5C6D7E8F9012A3B4C5D6 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+			);
 			targets = (
 				TARGET /* PhotoSifter */,
 				TEST_TARGET /* PhotoSifterTests */,
@@ -488,6 +496,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3A4B5C6D7E8F9012A3B4C5D6 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.59.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2A3B4C5D6E7F8091A2B3C4D5 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3A4B5C6D7E8F9012A3B4C5D6 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin PBXSourcesBuildPhase section */
 		SOURCES /* Sources */ = {
