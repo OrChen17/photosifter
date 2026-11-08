@@ -28,6 +28,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 final class AppSettings {
     private static let cloudKey = "allowCloudDownload"
     private static let appearanceKey = "appearanceMode"
+    static let defaultAllowCloudDownload = false
 
     var allowCloudDownload: Bool {
         didSet { UserDefaults.standard.set(allowCloudDownload, forKey: Self.cloudKey) }
@@ -38,19 +39,15 @@ final class AppSettings {
     }
 
     init() {
-        // Default true: most users have iCloud Photos with Optimize Storage, and
-        // without network access the feature-print comparison silently fails for
-        // any photo not locally cached.
         let stored = UserDefaults.standard.object(forKey: Self.cloudKey)
-        allowCloudDownload = stored != nil ? UserDefaults.standard.bool(forKey: Self.cloudKey) : true
+        allowCloudDownload = stored != nil ? UserDefaults.standard.bool(forKey: Self.cloudKey) : Self.defaultAllowCloudDownload
 
         let storedAppearance = UserDefaults.standard.string(forKey: Self.appearanceKey)
         appearance = storedAppearance.flatMap(AppearanceMode.init(rawValue:)) ?? .system
     }
 
     static var cloudDownloadEnabled: Bool {
-        // Match the instance's default-true behaviour when the key has never been written.
-        guard UserDefaults.standard.object(forKey: cloudKey) != nil else { return true }
+        guard UserDefaults.standard.object(forKey: cloudKey) != nil else { return defaultAllowCloudDownload }
         return UserDefaults.standard.bool(forKey: cloudKey)
     }
 }

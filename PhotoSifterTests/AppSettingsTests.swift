@@ -17,9 +17,8 @@ final class AppSettingsTests: XCTestCase {
 
     // MARK: - Static accessor
 
-    func testCloudDownloadEnabled_static_defaultsTrueWhenKeyAbsent() {
-        // No value written — must behave as if true
-        XCTAssertTrue(AppSettings.cloudDownloadEnabled, "Absent key should default to true")
+    func testCloudDownloadEnabled_static_defaultsFalseWhenKeyAbsent() {
+        XCTAssertFalse(AppSettings.cloudDownloadEnabled, "Absent key should default to false")
     }
 
     func testCloudDownloadEnabled_static_returnsTrueWhenStoredTrue() {
@@ -30,14 +29,14 @@ final class AppSettingsTests: XCTestCase {
     func testCloudDownloadEnabled_static_returnsFalseWhenStoredFalse() {
         UserDefaults.standard.set(false, forKey: cloudKey)
         XCTAssertFalse(AppSettings.cloudDownloadEnabled,
-                       "Stored false must not be silently promoted to the default-true path")
+                       "Stored false must be read back as false")
     }
 
     // MARK: - Instance
 
-    func testAllowCloudDownload_instance_defaultsTrueWhenKeyAbsent() {
+    func testAllowCloudDownload_instance_defaultsFalseWhenKeyAbsent() {
         let settings = AppSettings()
-        XCTAssertTrue(settings.allowCloudDownload, "Instance default must be true when key is absent")
+        XCTAssertFalse(settings.allowCloudDownload, "Instance default must be false when key is absent")
     }
 
     func testAllowCloudDownload_instance_readsStoredTrue() {
@@ -52,10 +51,10 @@ final class AppSettingsTests: XCTestCase {
 
     func testAllowCloudDownload_instance_persistsOnChange() {
         let settings = AppSettings()
-        settings.allowCloudDownload = false
+        settings.allowCloudDownload = true
 
         // Static accessor reflects the new value immediately (same UserDefaults.standard)
-        XCTAssertFalse(AppSettings.cloudDownloadEnabled)
+        XCTAssertTrue(AppSettings.cloudDownloadEnabled)
     }
 
     // MARK: - Static/instance consistency
