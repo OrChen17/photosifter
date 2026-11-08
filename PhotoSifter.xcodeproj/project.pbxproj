@@ -30,6 +30,9 @@
 		A01B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01B /* SettingsView.swift */; };
 		A019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B019 /* Assets.xcassets */; };
 		APRIV /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BPRIV /* PrivacyInfo.xcprivacy */; };
+		ASND1 /* keep.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND1 /* keep.caf */; };
+		ASND2 /* delete.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND2 /* delete.caf */; };
+		ASND3 /* finish.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND3 /* finish.caf */; };
 		X001 /* CompletedBatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX01 /* CompletedBatch.swift */; };
 		X002 /* CompletedBatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX02 /* CompletedBatchStore.swift */; };
 		X003 /* QuickWin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX03 /* QuickWin.swift */; };
@@ -137,6 +140,9 @@
 		BX32 /* CompletedBatchRestoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchRestoreTests.swift; sourceTree = "<group>"; };
 		C001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BPRIV /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		BSND1 /* keep.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = keep.caf; sourceTree = "<group>"; };
+		BSND2 /* delete.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = delete.caf; sourceTree = "<group>"; };
+		BSND3 /* finish.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = finish.caf; sourceTree = "<group>"; };
 		PROD /* PhotoSifter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoSifter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		R001 /* PhotoSifterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSifterUITests.swift; sourceTree = "<group>"; };
 		R002 /* PermissionFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionFlowUITests.swift; sourceTree = "<group>"; };
@@ -266,6 +272,16 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
+		GRP_SOUNDS /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				BSND1 /* keep.caf */,
+				BSND2 /* delete.caf */,
+				BSND3 /* finish.caf */,
+			);
+			path = Sounds;
+			sourceTree = "<group>";
+		};
 		GRP_VIEWS /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -358,6 +374,7 @@
 				GRP_VMS /* ViewModels */,
 				GRP_VIEWS /* Views */,
 				GRP_UTILS /* Utilities */,
+				GRP_SOUNDS /* Sounds */,
 			);
 			path = PhotoSifter;
 			sourceTree = "<group>";
@@ -492,6 +509,9 @@
 			files = (
 				A019 /* Assets.xcassets in Resources */,
 				APRIV /* PrivacyInfo.xcprivacy in Resources */,
+				ASND1 /* keep.caf in Resources */,
+				ASND2 /* delete.caf in Resources */,
+				ASND3 /* finish.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
