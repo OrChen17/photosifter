@@ -1,30 +1,42 @@
 import SwiftUI
 import Photos
 
+enum StripMetrics {
+    static let thumbSize: CGFloat = 110
+    static let spacing: CGFloat = 8
+    static let cornerRadius: CGFloat = 10
+    static let currentScale: CGFloat = 1.08
+    static let verticalPadding: CGFloat = 6
+    static let height: CGFloat = thumbSize + verticalPadding * 2
+}
+
 struct BatchStripView: View {
     let group: PhotoGroup
     let currentAssetID: String?   // replaces currentIndex — works with skip reordering
     var onTap: ((PHAsset) -> Void)? = nil
 
+    @Environment(\.displayScale) private var displayScale
     @State private var thumbnails: [String: UIImage] = [:]
     @State private var scrollID: String?
 
-    private let thumbSize: CGFloat = 64
+    private let thumbSize = StripMetrics.thumbSize
+    private let cornerRadius = StripMetrics.cornerRadius
     // Subtle tint — color signals the decision without overwhelming the photo.
     private let decisionTintOpacity: Double = 0.35
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: 8) {
+            LazyHStack(spacing: StripMetrics.spacing) {
                 ForEach(Array(group.assets.enumerated()), id: \.element.localIdentifier) { idx, asset in
                     thumbnail(for: asset, position: idx + 1)
                         .id(asset.localIdentifier)
                 }
             }
             .padding(.horizontal, 16)
+            .padding(.vertical, StripMetrics.verticalPadding)
         }
         .scrollPosition(id: $scrollID, anchor: .center)
-        .frame(height: thumbSize + 8)
+        .frame(height: StripMetrics.height)
         .onChange(of: currentAssetID) { _, id in
             guard let id else { return }
             withAnimation(.spring(duration: 0.4)) {
@@ -53,11 +65,11 @@ struct BatchStripView: View {
                 }
             }
             .frame(width: thumbSize, height: thumbSize)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .opacity(decision == .delete ? 0.45 : 1.0)
 
             if let decision {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(decision == .keep
                           ? Color.appKeep.opacity(decisionTintOpacity)
                           : Color.appDelete.opacity(decisionTintOpacity))
@@ -65,15 +77,15 @@ struct BatchStripView: View {
             }
 
             if isCurrent {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(Color.appForeground, lineWidth: 2.5)
                     .frame(width: thumbSize, height: thumbSize)
             }
         }
         .frame(width: thumbSize, height: thumbSize)
-        .scaleEffect(isCurrent ? 1.08 : 1.0)
+        .scaleEffect(isCurrent ? StripMetrics.currentScale : 1.0)
         .animation(.spring(duration: 0.3), value: isCurrent)
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .cardButton(label: StripAccessibility.label(
             position: position,
             count: group.assets.count,
@@ -84,7 +96,7 @@ struct BatchStripView: View {
     }
 
     private func loadAllThumbnails() async {
-        let size = CGSize(width: thumbSize * 2, height: thumbSize * 2)
+        let size = CGSize(width: thumbSize * displayScale, height: thumbSize * displayScale)
         for asset in group.assets {
             let img = await PhotoLibraryService.shared.loadThumbnail(for: asset, size: size)
             if let img { thumbnails[asset.localIdentifier] = img }

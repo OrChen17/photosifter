@@ -13,8 +13,8 @@ struct SweepStripView: View {
     let groupID: (PHAsset) -> UUID?
     let onTap: (PHAsset) -> Void
 
-    private let cellSize: CGFloat = 56
-    private let cellSpacing: CGFloat = 6
+    private let cellSize = StripMetrics.thumbSize
+    private let cellSpacing = StripMetrics.spacing
     @State private var scrollID: String?
 
     var body: some View {
@@ -44,11 +44,11 @@ struct SweepStripView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.vertical, StripMetrics.verticalPadding)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: assets.map(\.localIdentifier))
         }
         .scrollPosition(id: $scrollID, anchor: .center)
-        .frame(height: cellSize + 16)
+        .frame(height: StripMetrics.height)
         .onChange(of: currentAssetID) { _, id in
             guard let id else { return }
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -89,10 +89,10 @@ private struct SweepStripCell: View {
                     .frame(width: size, height: size)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: StripMetrics.cornerRadius, style: .continuous))
         .opacity(decision == .delete ? 0.45 : 1.0)
         .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: StripMetrics.cornerRadius, style: .continuous)
                 .stroke(isCurrent ? Color.appForeground : .clear, lineWidth: 2.5)
         )
         .overlay(alignment: .leading) {
@@ -103,7 +103,7 @@ private struct SweepStripCell: View {
                     .offset(x: -(dividerSpacing / 2 + 1))
             }
         }
-        .scaleEffect(isCurrent ? 1.08 : 1.0)
+        .scaleEffect(isCurrent ? StripMetrics.currentScale : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isCurrent)
         .task(id: asset.localIdentifier) {
             guard thumbnail == nil else { return }
