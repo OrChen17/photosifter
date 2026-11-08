@@ -37,6 +37,35 @@ xcodebuild test -scheme PhotoSifter \
 
 Build output goes to `build/` (gitignored). Tests use `TEST_HOST` of the host app, so they have full access to `PHPhotoLibrary` — see [PhotoSifterTests/Mocks/TestAssetHelpers.swift](PhotoSifterTests/Mocks/TestAssetHelpers.swift) for `requirePhotoAssets`/`requirePhotoGroup` which `XCTSkipIf` when no photos are present.
 
+### Seeding the simulator (known test state)
+
+Use [scripts/seed-simulator.sh](scripts/seed-simulator.sh) whenever you need a predictable library: before UI checks, before screenshots, or after a test run left the simulator in a messy state. Don't hand-import photos or delete app files yourself.
+
+```sh
+scripts/seed-simulator.sh            # reseed the default simulator, launch the app
+scripts/seed-simulator.sh --build    # build + install first (use after code changes)
+scripts/seed-simulator.sh --no-launch --device <udid>
+```
+
+What it does (takes ~30s, ~90s with `--build`):
+
+1. Generates 100 deterministic photos into `build/seed-photos` via [scripts/seed/GenerateSeedPhotos.swift](scripts/seed/GenerateSeedPhotos.swift). Same files and EXIF dates every run.
+2. Shuts the simulator down and **wipes its whole photo library** (`data/Media/DCIM` + `PhotoData`) and all FlickPic app state (Application Support JSON, UserDefaults, caches).
+3. Boots, imports the 100 photos, resets Photos permission, launches the app.
+
+The app opens on the **first-launch permission screen** — that is expected. Tap "Allow Full Access", then allow in the iOS prompt.
+
+Expected result on the simulator (time-proximity similarity, see below):
+
+| What | Count |
+|---|---|
+| Grid groups | 16 — 12 similar groups (sizes 2,2,3,3,4,4,5,5,6,7,8,10) + 4 exact-duplicate sets |
+| Quick Win: Screenshots | 1 batch of 12 |
+| Quick Win: Exact Duplicates | 9 photos in 4 sets (2,2,2,3) |
+| Singles (never grouped) | 20 |
+
+Each photo has its scene name, role (`similar 3/10`, `exact duplicate ×3`, `single`) and timestamp drawn on it, so you can check groupings by eye. To change the set, edit the scene tables at the top of `GenerateSeedPhotos.swift`; keep groups ≥5 min apart from each other so the time buckets don't merge. No burst groups: `simctl addmedia` can't create burst identifiers. Physical devices can't be seeded from the CLI.
+
 ## Testing constraints
 
 - **Simulator cannot run real Vision similarity.** `VNGenerateImageFeaturePrintRequest` fails to load its CoreML model on the simulator. `GroupingService.shared` swaps in `DebugTimeProximitySimilarity` (treats photos within 30s as duplicates) under `#if DEBUG && targetEnvironment(simulator)` so the UI is still exercisable. Tests that depend on real similarity must run on device or use `MockSimilarityService`.
