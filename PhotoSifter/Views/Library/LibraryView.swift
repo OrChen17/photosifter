@@ -7,6 +7,7 @@ struct LibraryView: View {
     @Environment(AppSettings.self) private var appSettings
     @Environment(\.displayScale) private var displayScale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var stripCollapsed = false
     @State private var showingSettings = false
 
@@ -45,6 +46,8 @@ struct LibraryView: View {
                         HapticManager.shared.playNavigate()
                         vm.startSweepSession()
                     }
+                    .accessibilityLabel("Flick Forever")
+                    .accessibilityHint("Flick every group in one session")
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     .padding(.trailing, 20)
                     .padding(.bottom, 20)
@@ -66,6 +69,7 @@ struct LibraryView: View {
                             .font(.system(.subheadline, weight: .medium))
                             .foregroundStyle(.appTextSecondary)
                     }
+                    .accessibilityLabel("Settings")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -155,7 +159,7 @@ struct LibraryView: View {
                 ) {
                     ForEach(vm.groups) { group in
                         MemoryCardView(group: group)
-                            .onTapGesture {
+                            .cardButton(hint: String(localized: "Opens the group to flick")) {
                                 PostHogSDK.shared.capture("sifting_started", properties: [
                                     "entry_point": "photo_group",
                                     "photo_count": group.assets.count
@@ -165,7 +169,7 @@ struct LibraryView: View {
                             }
                             .accessibilityIdentifier("groupRow_\(group.id)")
                             .transition(.asymmetric(
-                                insertion: .scale(scale: 0.9).combined(with: .opacity),
+                                insertion: .scaleFade(0.9, reduceMotion: reduceMotion),
                                 removal: .opacity
                             ))
                     }
@@ -377,6 +381,7 @@ private struct EndlessModeButton: View {
 
 struct ScanningBadge: View {
     @State private var isAnimating = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 6) {
@@ -384,13 +389,14 @@ struct ScanningBadge: View {
                 .fill(.appAccent)
                 .frame(width: 8, height: 8)
                 .scaleEffect(isAnimating ? 1.3 : 0.8)
-                .animation(.easeInOut(duration: 0.7).repeatForever(), value: isAnimating)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.7).repeatForever(), value: isAnimating)
                 .padding(.leading, 2)
 
             Text("Scanning")
                 .font(.system(.footnote, design: .rounded, weight: .medium))
                 .foregroundStyle(.appTextSecondary)
         }
-        .onAppear { isAnimating = true }
+        .onAppear { isAnimating = !reduceMotion }
+        .onChange(of: reduceMotion) { _, reduce in isAnimating = !reduce }
     }
 }

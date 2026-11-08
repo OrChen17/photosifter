@@ -60,6 +60,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     @State private var isTopCardThrown: Bool = false
     @State private var cardAppearWobble: Double = 1.875
     @AppStorage(SwipeHintView.storageKey) private var hintSwipeCount: Int = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -117,7 +118,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                             throwCommand: throwCommand
                         )
                         .id(asset.localIdentifier)
-                        .rotationEffect(.degrees(cardAppearWobble))
+                        .rotationEffect(.degrees(reduceMotion ? 0 : cardAppearWobble))
                         .onAppear {
                             guard cardAppearWobble != 0 else { return }
                             Task {
@@ -132,22 +133,16 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                             .padding(.bottom, 44)
                             .allowsHitTesting(true)
                     }
-                    .overlay(alignment: .bottom) {
-                        if showsSwipeHint {
-                            SwipeHintView(showsSkip: onSkip != nil)
-                                .padding(.bottom, 64)
-                                .opacity(isTopCardThrown || dragProgress != 0 ? 0 : 1)
-                                .transition(.opacity)
-                                .allowsHitTesting(false)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    .animation(.easeOut(duration: 0.25), value: showsSwipeHint)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
 
                 bottomBar()
+                    .environment(\.swipeHint, SwipeHintState(
+                        isActive: showsSwipeHint && currentAsset != nil,
+                        isDimmed: isTopCardThrown || dragProgress != 0
+                    ))
+                    .animation(.easeOut(duration: 0.25), value: showsSwipeHint)
             }
 
             FlashVignetteView(tint: flashTint, counter: flashCounter).allowsHitTesting(false)
@@ -165,33 +160,38 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     }
 }
 
-private struct SwipeHintView: View {
+/// First-run swipe hint. Shown in the middle of the skip / undo row for the
+/// user's first few swipes, then never again.
+struct SwipeHintView: View {
     static let storageKey = "flickHintSwipeCount"
     static let swipesUntilHidden = 3
 
-    let showsSkip: Bool
-
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 16) {
             Label(CardActionName.delete, systemImage: "arrow.left")
                 .labelStyle(HintLabelStyle(tint: .appDelete, iconLeading: true))
-            if showsSkip {
-                Label(CardActionName.skip, systemImage: "arrow.up")
-                    .labelStyle(HintLabelStyle(tint: .white, iconLeading: true))
-            }
             Label(CardActionName.keep, systemImage: "arrow.right")
                 .labelStyle(HintLabelStyle(tint: .appKeep, iconLeading: false))
         }
         .font(.subheadline.weight(.semibold))
         .fontDesign(.rounded)
+        .foregroundStyle(.appTextSecondary)
         .lineLimit(1)
+        .minimumScaleFactor(0.8)
         .dynamicTypeSize(...DynamicTypeSize.cardOverlayMax)
-        .foregroundStyle(.white)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: Capsule())
-        .environment(\.colorScheme, .dark)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
+}
+
+struct SwipeHintState: Equatable {
+    var isActive = false
+    /// True while a card is being dragged or thrown, so the hint gets out of the way.
+    var isDimmed = false
+}
+
+extension EnvironmentValues {
+    @Entry var swipeHint = SwipeHintState()
 }
 
 private struct HintLabelStyle: LabelStyle {

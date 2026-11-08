@@ -18,6 +18,7 @@ struct SifterView: View {
     @State private var hasHandledContinue: Bool = false
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var mode: QuickWinMode
     @AppStorage("skipUsageCount") private var skipUsageCount: Int = 0
@@ -48,7 +49,7 @@ struct SifterView: View {
                     onContinue: { handleContinue() },
                     onRetry: { Task { await vm.retryCommitDeletes() } }
                 )
-                .transition(.scale(scale: 0.88, anchor: .center).combined(with: .opacity))
+                .transition(.scaleFade(0.88, reduceMotion: reduceMotion))
                 .zIndex(10)
             }
         }

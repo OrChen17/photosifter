@@ -5,6 +5,7 @@ import PostHog
 struct SweepSifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var vm: SweepSifterViewModel
     @State private var imageCache = ImagePreloadCache()
     @State private var showDiscardConfirm: Bool = false
@@ -35,7 +36,7 @@ struct SweepSifterView: View {
             if showSweepSummary {
                 if vm.isQueueExhausted {
                     summaryView(paintsBackground: true)
-                        .transition(.scale(scale: 0.88, anchor: .center).combined(with: .opacity))
+                        .transition(.scaleFade(0.88, reduceMotion: reduceMotion))
                         .zIndex(10)
                 } else {
                     ZStack {
@@ -59,7 +60,7 @@ struct SweepSifterView: View {
                             .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
                             .padding(.horizontal, 20)
                     }
-                    .transition(.scale(scale: 0.88, anchor: .center).combined(with: .opacity))
+                    .transition(.scaleFade(0.88, reduceMotion: reduceMotion))
                     .zIndex(10)
                 }
             }
@@ -234,9 +235,9 @@ struct SweepSifterView: View {
                     VStack(spacing: 4) {
                         Text(ByteCountFormatter.string(fromByteCount: vm.sessionDeletedBytes, countStyle: .file))
                             .font(.system(.title2, design: .rounded, weight: .black))
-                            .foregroundStyle(.appAccent)
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
+                            .foregroundStyle(.appAccent)
                         Text("freed")
                             .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(.appTextSecondary)

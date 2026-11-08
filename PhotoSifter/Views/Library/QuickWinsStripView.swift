@@ -26,7 +26,7 @@ struct QuickWinsStripView: View {
         layout {
             ForEach(pills, id: \.category) { category, win, total in
                 QuickWinCardView(category: category, totalCount: total)
-                    .onTapGesture { onSelect(win) }
+                    .cardButton { onSelect(win) }
             }
         }
         .padding(.horizontal, 16)

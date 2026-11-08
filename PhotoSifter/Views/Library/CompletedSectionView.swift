@@ -6,6 +6,7 @@ struct CompletedSectionView: View {
     let totalSavedBytes: Int64
 
     @State private var isExpanded: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,7 +44,7 @@ struct CompletedSectionView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
             }
         }
         .background(Color.appCard.opacity(0.3), in: RoundedRectangle(cornerRadius: 16, style: .continuous))

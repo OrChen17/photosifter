@@ -17,6 +17,12 @@ struct SifterSecondaryActions: View {
     let apply: ApplyConfig?
     let onRevert: () -> Void
     let isRevertEnabled: Bool
+    @Environment(\.swipeHint) private var swipeHint
+
+    /// The first-run hint takes the middle slot until there is something to apply.
+    private var showsHint: Bool {
+        swipeHint.isActive && apply?.isEnabled != true
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -29,7 +35,14 @@ struct SifterSecondaryActions: View {
             )
             .accessibilityIdentifier("skipButton")
 
-            if let apply {
+            if showsHint {
+                Spacer(minLength: 8)
+                SwipeHintView()
+                    .opacity(swipeHint.isDimmed ? 0 : 1)
+                    .animation(.easeOut(duration: 0.2), value: swipeHint.isDimmed)
+                    .transition(.opacity)
+                Spacer(minLength: 8)
+            } else if let apply {
                 Spacer(minLength: 8)
                 applyButton(apply)
                     .accessibilityIdentifier("applyButton")
@@ -119,11 +132,14 @@ private struct RevertButton: View {
     let isEnabled: Bool
     let action: () -> Void
     @State private var spin: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) {
-                spin -= 360
+            if !reduceMotion {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) {
+                    spin -= 360
+                }
             }
             action()
         } label: {

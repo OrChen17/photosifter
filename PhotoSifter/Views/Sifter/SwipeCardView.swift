@@ -64,6 +64,9 @@ struct SwipeCardView: View {
 
     @State private var offset: CGSize = .zero
     @State private var isThrown: Bool = false
+    /// With Reduce Motion on, a thrown card fades out in place instead of flying off.
+    @State private var throwFade: Double = 1
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var imageState: CardImageState = .loading
     @State private var locationLabel: String?
     @State private var hasCrossedBadgeThreshold: Bool = false
@@ -154,6 +157,7 @@ struct SwipeCardView: View {
             .shadow(color: .black.opacity(0.4), radius: 16, x: 0, y: 8)
             .offset(x: offset.width, y: offset.height * 0.4)
             .rotationEffect(.degrees(Double(offset.width) / 22))
+            .opacity(throwFade)
             .gesture(swipeDrag)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isImage)
@@ -361,7 +365,7 @@ struct SwipeCardView: View {
                     // Upward flick = skip
                     throwCardUp(then: onSkip)
                 } else {
-                    withAnimation(.spring(duration: 0.5, bounce: 0.45)) {
+                    withAnimation(reduceMotion ? .easeOut(duration: 0.25) : .spring(duration: 0.5, bounce: 0.45)) {
                         offset = .zero
                     }
                 }
@@ -372,10 +376,14 @@ struct SwipeCardView: View {
         isThrown = true
         if direction > 0 { onThrowRight?() } else { onThrowLeft?() }
         // Scale duration with gesture speed: hard flick (~1200 pts/s) → 0.15s, slow push → 0.38s
-        let normalizedSpeed = min(1.0, abs(velocity) / 1200.0)
-        let duration = 0.38 - 0.23 * normalizedSpeed
-        withAnimation(.spring(duration: duration, bounce: 0.08)) {
-            offset = CGSize(width: direction * 600, height: -50)
+        if reduceMotion {
+            withAnimation(.easeOut(duration: 0.2)) { throwFade = 0 }
+        } else {
+            let normalizedSpeed = min(1.0, abs(velocity) / 1200.0)
+            let duration = 0.38 - 0.23 * normalizedSpeed
+            withAnimation(.spring(duration: duration, bounce: 0.08)) {
+                offset = CGSize(width: direction * 600, height: -50)
+            }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { action() }
     }
@@ -398,8 +406,12 @@ struct SwipeCardView: View {
 
     private func throwCardUp(then action: @escaping () -> Void) {
         isThrown = true
-        withAnimation(.spring(duration: 0.18, bounce: 0.0)) {
-            offset = CGSize(width: 0, height: -700)
+        if reduceMotion {
+            withAnimation(.easeOut(duration: 0.15)) { throwFade = 0 }
+        } else {
+            withAnimation(.spring(duration: 0.18, bounce: 0.0)) {
+                offset = CGSize(width: 0, height: -700)
+            }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.13) { action() }
     }

@@ -9,8 +9,8 @@ extension Color {
     /// sits on a photo.
     static let appForeground   = Color(light: "0A0A0F", dark: "FFFFFF")
     /// Primary brand colour: keep decisions, buttons, badges, tints.
-    /// Text and tint; darker in light mode for contrast.
-    static let appKeep         = Color(light: "0891B2", dark: "22D3EE")
+    /// Same cyan in light and dark mode.
+    static let appKeep         = Color(hex: "22D3EE")
     /// Cyan button fill. Fixed in both modes so appOnKeep text stays readable.
     static let appKeepFill     = Color(hex: "22D3EE")
     static let appKeepDeep     = Color(hex: "06B6D4")

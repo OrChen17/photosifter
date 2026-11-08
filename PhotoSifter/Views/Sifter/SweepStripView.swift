@@ -30,7 +30,12 @@ struct SweepStripView: View {
                         showDivider: crossesBoundary,
                         dividerSpacing: cellSpacing
                     )
-                    .onTapGesture {
+                    .cardButton(label: StripAccessibility.label(
+                        position: idx + 1,
+                        count: assets.count,
+                        decision: decisions[asset.localIdentifier],
+                        isCurrent: asset.localIdentifier == currentAssetID
+                    )) {
                         HapticManager.shared.playDragTick()
                         onTap(asset)
                     }

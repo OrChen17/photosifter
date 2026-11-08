@@ -16,8 +16,8 @@ struct BatchStripView: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 8) {
-                ForEach(group.assets, id: \.localIdentifier) { asset in
-                    thumbnail(for: asset)
+                ForEach(Array(group.assets.enumerated()), id: \.element.localIdentifier) { idx, asset in
+                    thumbnail(for: asset, position: idx + 1)
                         .id(asset.localIdentifier)
                 }
             }
@@ -35,7 +35,7 @@ struct BatchStripView: View {
     }
 
     @ViewBuilder
-    private func thumbnail(for asset: PHAsset) -> some View {
+    private func thumbnail(for asset: PHAsset, position: Int) -> some View {
         let isCurrent = asset.localIdentifier == currentAssetID
         let decision = group.decisions[asset.localIdentifier]
 
@@ -74,7 +74,12 @@ struct BatchStripView: View {
         .scaleEffect(isCurrent ? 1.08 : 1.0)
         .animation(.spring(duration: 0.3), value: isCurrent)
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .onTapGesture { onTap?(asset) }
+        .cardButton(label: StripAccessibility.label(
+            position: position,
+            count: group.assets.count,
+            decision: decision,
+            isCurrent: isCurrent
+        )) { onTap?(asset) }
         .accessibilityIdentifier("stripThumb_\(asset.localIdentifier)")
     }
 

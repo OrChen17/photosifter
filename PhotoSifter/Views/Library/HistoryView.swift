@@ -119,7 +119,7 @@ struct HistoryView: View {
             ) {
                 ForEach(vm.revisitableBatches) { batch in
                     CompletedBatchCardView(batch: batch)
-                        .onTapGesture {
+                        .cardButton(hint: String(localized: "Re-flicks the kept photos")) {
                             HapticManager.shared.playNavigate()
                             Task {
                                 if await vm.restoreBatch(batch) != nil {
