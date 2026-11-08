@@ -55,7 +55,6 @@ struct SifterView: View {
         .toolbar(.hidden, for: .tabBar)
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             backButton
         }
@@ -126,7 +125,7 @@ struct SifterView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.white.opacity(0.12))
+                            .fill(Color.appForeground.opacity(0.12))
                             .frame(height: 4)
                         // Full-width gradient bar that is progressively revealed by a
                         // leading-aligned mask. Keeps the color stops anchored to the
@@ -202,7 +201,7 @@ struct SifterView: View {
                     Text("Library")
                         .font(.system(size: 17))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
             }
             .accessibilityIdentifier("backButton")
         }

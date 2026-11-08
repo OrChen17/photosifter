@@ -18,7 +18,7 @@ struct CompletedBatchCardView: View {
                 HStack(spacing: 6) {
                     Text("\(keptCount) remaining")
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.appForeground)
                     Spacer(minLength: 4)
                     if let bytes = batch.keptBytes, bytes > 0 {
                         Text(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
@@ -50,7 +50,7 @@ struct CompletedBatchCardView: View {
         .background(Color.appCard.opacity(0.3), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(Color.appForeground.opacity(0.06), lineWidth: 1)
         )
         .task { await loadThumbnail() }
     }
@@ -74,7 +74,7 @@ struct CompletedBatchCardView: View {
                     let inset = CGFloat(fromFront) * 6
                     let opacity = 0.20 + Double(numBackLayers - fromFront) * 0.16
                     RoundedRectangle(cornerRadius: 14 - CGFloat(fromFront), style: .continuous)
-                        .fill(Color.white.opacity(opacity))
+                        .fill(Color.appForeground.opacity(opacity))
                         .frame(
                             width: geo.size.width - inset * 2,
                             height: frontHeight + CGFloat(fromFront) * peek

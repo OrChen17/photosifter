@@ -47,7 +47,6 @@ struct LibraryView: View {
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
                     .environment(appSettings)
@@ -190,7 +189,7 @@ struct LibraryView: View {
 
             Text("All clear!")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
 
             Text("No near-duplicate photo groups found.")
                 .font(.system(size: 16, design: .rounded))
@@ -215,7 +214,7 @@ struct MemoryCardView: View {
                 HStack(spacing: 6) {
                     Text("\(group.assets.count) photos")
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.appForeground)
                     Spacer(minLength: 4)
                     if groupBytes > 0 {
                         Text(formattedBytes(groupBytes))
@@ -269,7 +268,7 @@ struct MemoryCardView: View {
                     let inset = CGFloat(fromFront) * 6
                     let opacity = 0.20 + Double(numBackLayers - fromFront) * 0.16
                     RoundedRectangle(cornerRadius: 14 - CGFloat(fromFront), style: .continuous)
-                        .fill(Color.white.opacity(opacity))
+                        .fill(Color.appForeground.opacity(opacity))
                         .frame(
                             width: geo.size.width - inset * 2,
                             height: frontHeight + CGFloat(fromFront) * peek

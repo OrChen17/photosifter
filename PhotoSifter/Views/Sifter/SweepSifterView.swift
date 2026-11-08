@@ -53,7 +53,7 @@ struct SweepSifterView: View {
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                                    .stroke(Color.appForeground.opacity(0.06), lineWidth: 1)
                             )
                             .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
                             .padding(.horizontal, 20)
@@ -66,7 +66,6 @@ struct SweepSifterView: View {
         .navigationBarBackButtonHidden(true)
         .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -76,7 +75,7 @@ struct SweepSifterView: View {
                             .font(.system(size: 17, weight: .semibold))
                         Text("Library").font(.system(size: 17))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.appForeground)
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -87,7 +86,7 @@ struct SweepSifterView: View {
                             .foregroundStyle(.appDelete)
                         Text("\(vm.sessionDeletedCount)")
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.appForeground)
                     }
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
@@ -95,7 +94,7 @@ struct SweepSifterView: View {
                             .foregroundStyle(.appKeep)
                         Text("\(vm.sessionKeptCount)")
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.appForeground)
                     }
                 }
             }
@@ -210,7 +209,7 @@ struct SweepSifterView: View {
 
             Text("Library swept.")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
 
             HStack(spacing: 28) {
                 VStack(spacing: 4) {

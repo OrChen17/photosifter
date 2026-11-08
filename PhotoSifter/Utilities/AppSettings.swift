@@ -1,11 +1,40 @@
-import Foundation
+import SwiftUI
+
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .system: "System"
+        case .light:  "Light"
+        case .dark:   "Dark"
+        }
+    }
+
+    var userInterfaceStyle: UIUserInterfaceStyle {
+        switch self {
+        case .system: .unspecified
+        case .light:  .light
+        case .dark:   .dark
+        }
+    }
+}
 
 @Observable
 final class AppSettings {
     private static let cloudKey = "allowCloudDownload"
+    private static let appearanceKey = "appearanceMode"
 
     var allowCloudDownload: Bool {
         didSet { UserDefaults.standard.set(allowCloudDownload, forKey: Self.cloudKey) }
+    }
+
+    var appearance: AppearanceMode {
+        didSet { UserDefaults.standard.set(appearance.rawValue, forKey: Self.appearanceKey) }
     }
 
     init() {
@@ -14,6 +43,9 @@ final class AppSettings {
         // any photo not locally cached.
         let stored = UserDefaults.standard.object(forKey: Self.cloudKey)
         allowCloudDownload = stored != nil ? UserDefaults.standard.bool(forKey: Self.cloudKey) : true
+
+        let storedAppearance = UserDefaults.standard.string(forKey: Self.appearanceKey)
+        appearance = storedAppearance.flatMap(AppearanceMode.init(rawValue:)) ?? .system
     }
 
     static var cloudDownloadEnabled: Bool {

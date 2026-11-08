@@ -31,7 +31,6 @@ struct HistoryView: View {
             }
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.large)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .navigationDestination(item: $vm.selectedRestoreSession) { session in
                 SifterView(group: session.group)
             }
@@ -59,7 +58,7 @@ struct HistoryView: View {
                 statTile(
                     value: ByteCountFormatter.string(fromByteCount: vm.unflickedBytes, countStyle: .file),
                     label: "Unflicked",
-                    color: .white
+                    color: .appForeground
                 )
                 statTile(
                     value: ByteCountFormatter.string(fromByteCount: vm.totalSavedBytes, countStyle: .file),
@@ -78,7 +77,7 @@ struct HistoryView: View {
         .background(Color.appCard.opacity(0.3), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(Color.appForeground.opacity(0.06), lineWidth: 1)
         )
     }
 
@@ -145,7 +144,7 @@ struct HistoryView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
             if let subtitle {
                 Text(subtitle)
                     .font(.system(size: 13, design: .rounded))
@@ -165,7 +164,7 @@ struct HistoryView: View {
 
             Text("No history yet")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
 
             Text("Completed sifting sessions will appear here.")
                 .font(.system(size: 15, design: .rounded))

@@ -30,7 +30,6 @@ struct DuplicateGroupSifterView: View {
         .navigationBarBackButtonHidden(true)
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { dismiss() } label: {
@@ -40,7 +39,7 @@ struct DuplicateGroupSifterView: View {
                         Text("Library")
                             .font(.system(size: 17))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.appForeground)
                 }
             }
         }
@@ -135,7 +134,7 @@ struct DuplicateGroupSifterView: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.white.opacity(0.12))
+                        .fill(Color.appForeground.opacity(0.12))
                         .frame(height: 4)
                     RoundedRectangle(cornerRadius: 3)
                         .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
@@ -165,7 +164,7 @@ struct DuplicateGroupSifterView: View {
             ProgressView().scaleEffect(1.5).tint(.appAccent)
             Text("Merging duplicates…")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
             Spacer()
         }
     }
@@ -176,7 +175,7 @@ struct DuplicateGroupSifterView: View {
 
             Text("Duplicates cleared.")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 0) {
@@ -196,7 +195,7 @@ struct DuplicateGroupSifterView: View {
                 .frame(maxWidth: .infinity)
 
                 Rectangle()
-                    .fill(Color.white.opacity(0.1))
+                    .fill(Color.appForeground.opacity(0.1))
                     .frame(width: 1, height: 56)
                     .padding(.horizontal, 20)
 
@@ -207,7 +206,7 @@ struct DuplicateGroupSifterView: View {
                         .font(.system(size: vm.deletedBytes > 0 ? 38 : 56, weight: .black, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [.appKeep, Color(hex: "67E8F9")],
+                                colors: [.appKeep, .appKeepGlow],
                                 startPoint: .top, endPoint: .bottom
                             )
                         )

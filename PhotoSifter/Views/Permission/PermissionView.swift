@@ -24,7 +24,7 @@ struct PermissionView: View {
                     VStack(spacing: 12) {
                         Text("FlickPic")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.appForeground)
 
                         Text("Swipe through near-duplicate photos\nand keep only the best shots.")
                             .font(.system(size: 17, design: .rounded))
@@ -83,7 +83,7 @@ private struct FeatureRow: View {
 
             Text(text)
                 .font(.system(size: 16, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
 
             Spacer()
         }

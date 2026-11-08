@@ -45,21 +45,21 @@ private struct QuickWinCardView: View {
                 }
                 Text("\(totalCount) photos")
                     .font(.system(size: 11, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(.appForeground.opacity(0.55))
             }
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.35))
+                .foregroundStyle(.appForeground.opacity(0.35))
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(.appForeground)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity)
         .background(Color.appCard, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(Color.appForeground.opacity(0.08), lineWidth: 1)
         )
     }
 }

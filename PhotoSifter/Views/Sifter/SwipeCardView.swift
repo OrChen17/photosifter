@@ -248,7 +248,7 @@ struct SwipeCardView: View {
                     Text(date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().second()))
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(.appForeground.opacity(0.65))
                 }
                 Spacer()
                 HStack(spacing: 4) {
@@ -264,7 +264,7 @@ struct SwipeCardView: View {
                     }
                 }
                 .font(.system(size: 11, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.65))
+                .foregroundStyle(.appForeground.opacity(0.65))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)

@@ -66,7 +66,7 @@ struct BatchStripView: View {
 
             if isCurrent {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(.white, lineWidth: 2.5)
+                    .stroke(Color.appForeground, lineWidth: 2.5)
                     .frame(width: thumbSize, height: thumbSize)
             }
         }

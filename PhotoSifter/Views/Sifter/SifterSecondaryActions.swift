@@ -25,7 +25,7 @@ struct SifterSecondaryActions: View {
                 accessibilityLabel: "Skip photo",
                 isEnabled: isSkipEnabled,
                 action: onSkip,
-                enabledTint: .white
+                enabledTint: .appForeground
             )
             .accessibilityIdentifier("skipButton")
 
@@ -53,12 +53,12 @@ struct SifterSecondaryActions: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .heavy))
-                .foregroundStyle(isEnabled ? enabledTint : Color.white.opacity(0.3))
+                .foregroundStyle(isEnabled ? enabledTint : Color.appForeground.opacity(0.3))
                 .frame(width: 44, height: 44)
                 .background(
                     Circle()
                         .fill(Color.appCard)
-                        .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+                        .overlay(Circle().stroke(Color.appForeground.opacity(0.08), lineWidth: 1))
                         .opacity(isEnabled ? 1 : 0.5)
                 )
         }
@@ -91,7 +91,7 @@ struct SifterSecondaryActions: View {
                 }
             }
             .font(.system(size: 15, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white)
+            .foregroundStyle(config.isEnabled ? Color.white : Color.appForeground)
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .background(
@@ -101,7 +101,7 @@ struct SifterSecondaryActions: View {
                         startPoint: .leading,
                         endPoint: .trailing
                       ))
-                    : AnyShapeStyle(Color.white.opacity(0.08)),
+                    : AnyShapeStyle(Color.appForeground.opacity(0.08)),
                 in: Capsule(style: .continuous)
             )
         }
@@ -129,13 +129,13 @@ private struct RevertButton: View {
         } label: {
             Image(systemName: "arrow.counterclockwise")
                 .font(.system(size: 18, weight: .heavy))
-                .foregroundStyle(isEnabled ? Color.appRevert : Color.white.opacity(0.3))
+                .foregroundStyle(isEnabled ? Color.appRevert : Color.appForeground.opacity(0.3))
                 .rotationEffect(.degrees(spin))
                 .frame(width: 44, height: 44)
                 .background(
                     Circle()
                         .fill(Color.appCard)
-                        .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+                        .overlay(Circle().stroke(Color.appForeground.opacity(0.08), lineWidth: 1))
                         .opacity(isEnabled ? 1 : 0.5)
                 )
         }

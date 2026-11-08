@@ -46,7 +46,7 @@ private struct DeniedView: View {
 
                 Text("Photo Access Denied")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.appForeground)
 
                 Text("Open Settings → Privacy → Photos\nand allow access to FlickPic.")
                     .font(.system(size: 16, design: .rounded))

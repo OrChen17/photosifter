@@ -132,7 +132,7 @@ struct SessionSummaryView: View {
     private var committedContent: some View {
         Text(headline)
             .font(.system(size: 30, weight: .bold, design: .rounded))
-            .foregroundStyle(.white)
+            .foregroundStyle(.appForeground)
             .multilineTextAlignment(.center)
 
         statsRow
@@ -168,7 +168,7 @@ struct SessionSummaryView: View {
             .frame(maxWidth: .infinity)
 
             Rectangle()
-                .fill(Color.white.opacity(0.1))
+                .fill(Color.appForeground.opacity(0.1))
                 .frame(width: 1, height: statsFontSize)
                 .padding(.horizontal, 20)
                 .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] }
@@ -178,7 +178,7 @@ struct SessionSummaryView: View {
                     .font(.system(size: statsFontSize, weight: .black, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.appKeep, Color(hex: "67E8F9")],
+                            colors: [.appKeep, .appKeepGlow],
                             startPoint: .top, endPoint: .bottom
                         )
                     )
@@ -275,18 +275,18 @@ struct SessionSummaryView: View {
             // Metadata + Continue inside the card
             VStack(spacing: 12) {
                 HStack(spacing: 10) {
-                    Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                    Rectangle().fill(Color.appForeground.opacity(0.12)).frame(height: 1)
                     Text("UP NEXT")
                         .font(.system(size: 11, weight: .heavy, design: .rounded))
                         .tracking(2)
                         .foregroundStyle(.appTextSecondary)
-                    Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                    Rectangle().fill(Color.appForeground.opacity(0.12)).frame(height: 1)
                 }
 
                 VStack(spacing: 2) {
                     Text("\(next.assets.count) photos")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.appForeground)
                     if let date = next.captureDate {
                         Text(date, format: .dateTime.month(.abbreviated).day().year())
                             .font(.system(size: 12, design: .rounded))
@@ -315,7 +315,7 @@ struct SessionSummaryView: View {
         .background(Color.appCard.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(Color.appForeground.opacity(0.06), lineWidth: 1)
         )
     }
 
@@ -331,7 +331,7 @@ struct SessionSummaryView: View {
 
         Text(cancelledTitle)
             .font(.system(size: 28, weight: .bold, design: .rounded))
-            .foregroundStyle(.white)
+            .foregroundStyle(.appForeground)
             .multilineTextAlignment(.center)
 
         Text(cancelledSubtitle)

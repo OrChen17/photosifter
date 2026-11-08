@@ -12,8 +12,12 @@ struct PhotoSifterApp: App {
             ContentView()
                 .environment(libraryViewModel)
                 .environment(appSettings)
-                .preferredColorScheme(.dark)
                 .onAppear { applyUITestingOverrides() }
+                // Window-level override instead of .preferredColorScheme so UIKit-presented
+                // UI (alerts, the iOS delete-confirmation sheet) follows the setting too.
+                .onChange(of: appSettings.appearance, initial: true) { _, mode in
+                    applyAppearance(mode)
+                }
                 // If access was already granted, load immediately.
                 // If not determined, PermissionView shows and the button triggers the request.
                 .task {
@@ -32,6 +36,15 @@ struct PhotoSifterApp: App {
                         Task { await libraryViewModel.load() }
                     }
                 }
+        }
+    }
+
+    private func applyAppearance(_ mode: AppearanceMode) {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        for window in windows {
+            window.overrideUserInterfaceStyle = mode.userInterfaceStyle
         }
     }
 
