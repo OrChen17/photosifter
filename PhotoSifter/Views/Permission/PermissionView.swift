@@ -16,7 +16,7 @@ struct PermissionView: View {
                         .scaledFont(size: 72, weight: .thin)
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [.appAccent, .appKeep],
+                                colors: [.appKeepFill, .appKeepDeep],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -53,12 +53,12 @@ struct PermissionView: View {
                 } label: {
                     Text("Allow Full Access")
                         .scaledFont(size: 18, weight: .semibold, design: .rounded)
-                        .foregroundStyle(.appOnAccent)
+                        .foregroundStyle(.appOnKeep)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .background(
                             LinearGradient(
-                                colors: [.appAccentFill, .appAccentDeep],
+                                colors: [.appKeepFill, .appKeepDeep],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             ),
@@ -81,7 +81,7 @@ private struct FeatureRow: View {
         HStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(.title3))
-                .foregroundStyle(.appAccent)
+                .foregroundStyle(.appKeep)
                 .frame(width: 32)
 
             Text(text)

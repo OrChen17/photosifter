@@ -14,7 +14,7 @@ struct HistoryRowView: View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .scaledFont(size: 18)
-                .foregroundStyle(.appAccent.opacity(0.7))
+                .foregroundStyle(.appKeep.opacity(0.7))
 
             VStack(alignment: .leading, spacing: 2) {
                 if let date = batch.captureDate {

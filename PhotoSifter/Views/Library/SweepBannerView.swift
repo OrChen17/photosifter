@@ -12,21 +12,21 @@ struct SweepBannerView: View {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(Color.appOnAccent.opacity(0.12))
+                        .fill(Color.appOnKeep.opacity(0.12))
                         .frame(width: 44, height: 44)
                     Image(systemName: "wand.and.stars")
                         .font(.system(.title3, weight: .semibold))
-                        .foregroundStyle(Color.appOnAccent)
+                        .foregroundStyle(Color.appOnKeep)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Flick Forever")
                         .font(.system(.callout, design: .rounded, weight: .bold))
-                        .foregroundStyle(Color.appOnAccent)
+                        .foregroundStyle(Color.appOnKeep)
                         .lineLimit(1)
                     Text(subtitle)
                         .font(.system(.caption, design: .rounded, weight: .medium))
-                        .foregroundStyle(Color.appOnAccent.opacity(0.85))
+                        .foregroundStyle(Color.appOnKeep.opacity(0.85))
                         .lineLimit(1)
                 }
 
@@ -34,18 +34,18 @@ struct SweepBannerView: View {
 
                 Image(systemName: "chevron.right")
                     .scaledFont(size: 14, weight: .semibold)
-                    .foregroundStyle(Color.appOnAccent.opacity(0.9))
+                    .foregroundStyle(Color.appOnKeep.opacity(0.9))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
                 LinearGradient(
-                    colors: [.appAccentFill, .appAccentDeep],
+                    colors: [.appKeepFill, .appKeepDeep],
                     startPoint: .leading, endPoint: .trailing
                 ),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
-            .shadow(color: .appAccent.opacity(0.25), radius: 10, x: 0, y: 4)
+            .shadow(color: .appKeep.opacity(0.25), radius: 10, x: 0, y: 4)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("sweepBanner")

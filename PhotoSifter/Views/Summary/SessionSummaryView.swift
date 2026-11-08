@@ -286,14 +286,14 @@ struct SessionSummaryView: View {
 
                 Text(countdown.map { "Continue · \($0)" } ?? "Continue")
                     .font(.system(.body, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.appOnAccent)
+                    .foregroundStyle(.appOnKeep)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .contentTransition(.numericText())
                     .animation(.default, value: countdown)
                     .background(
                         LinearGradient(
-                            colors: [.appAccentFill, .appAccentDeep],
+                            colors: [.appKeepFill, .appKeepDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -338,12 +338,12 @@ struct SessionSummaryView: View {
             } label: {
                 Text("Try Again")
                     .font(.system(.body, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.appOnAccent)
+                    .foregroundStyle(.appOnKeep)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [.appAccentFill, .appAccentDeep],
+                            colors: [.appKeepFill, .appKeepDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)

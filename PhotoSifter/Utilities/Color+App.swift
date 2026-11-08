@@ -8,7 +8,8 @@ extension Color {
     /// White on dark, near-black on light. Keep plain `.white` for content that
     /// sits on a photo.
     static let appForeground   = Color(light: "0A0A0F", dark: "FFFFFF")
-    /// Keep decisions. Text and tint; darker in light mode for contrast.
+    /// Primary brand colour: keep decisions, buttons, badges, tints.
+    /// Text and tint; darker in light mode for contrast.
     static let appKeep         = Color(light: "0891B2", dark: "22D3EE")
     /// Cyan button fill. Fixed in both modes so appOnKeep text stays readable.
     static let appKeepFill     = Color(hex: "22D3EE")
@@ -16,15 +17,9 @@ extension Color {
     /// Text and glyphs drawn on a cyan fill. Cyan is too light for white.
     static let appOnKeep       = Color(hex: "083344")
     static let appDelete       = Color(hex: "FF2D78")
-    /// Lime third of the cyan / magenta / lime triad. Owns progress and wins
-    /// (progress bars, space saved), never a keep/delete decision.
-    /// Text and tint; darker in light mode for contrast.
-    static let appAccent       = Color(light: "4D7C0F", dark: "A3E635")
-    /// Lime button fill. Fixed in both modes so appOnAccent text stays readable.
-    static let appAccentFill   = Color(hex: "A3E635")
-    static let appAccentDeep   = Color(hex: "84CC16")
-    /// Text and glyphs drawn on a lime fill. Lime is too light for white.
-    static let appOnAccent     = Color(hex: "1A2E05")
+    /// Supporting lime: progress bars and space saved only. Never a button,
+    /// badge or keep/delete decision. Same bright lime in both modes.
+    static let appAccent       = Color(hex: "A3E635")
     /// Neutral so undo never competes with the keep / delete / progress hues.
     static let appRevert       = Color(light: "3A3A3C", dark: "EBEBEB")
     static let appTextSecondary = Color(light: "6B6B73", dark: "8C8C8C")
@@ -68,9 +63,6 @@ extension ShapeStyle where Self == Color {
     static var appOnKeep: Color          { Color.appOnKeep }
     static var appDelete: Color          { Color.appDelete }
     static var appAccent: Color          { Color.appAccent }
-    static var appAccentFill: Color      { Color.appAccentFill }
-    static var appAccentDeep: Color      { Color.appAccentDeep }
-    static var appOnAccent: Color        { Color.appOnAccent }
     static var appRevert: Color          { Color.appRevert }
     static var appTextSecondary: Color   { Color.appTextSecondary }
 }

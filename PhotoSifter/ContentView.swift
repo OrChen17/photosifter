@@ -59,7 +59,7 @@ private struct DeniedView: View {
                     }
                 }
                 .font(.system(.callout, design: .rounded, weight: .semibold))
-                .foregroundStyle(.appAccent)
+                .foregroundStyle(.appKeep)
             }
             .padding(32)
         }

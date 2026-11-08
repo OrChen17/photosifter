@@ -91,13 +91,13 @@ struct SifterSecondaryActions: View {
                 }
             }
             .font(.system(.subheadline, design: .rounded, weight: .semibold))
-            .foregroundStyle(config.isEnabled ? Color.appOnAccent : Color.appForeground)
+            .foregroundStyle(config.isEnabled ? Color.appOnKeep : Color.appForeground)
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .background(
                 config.isEnabled
                     ? AnyShapeStyle(LinearGradient(
-                        colors: [.appAccentFill, .appAccentDeep],
+                        colors: [.appKeepFill, .appKeepDeep],
                         startPoint: .leading,
                         endPoint: .trailing
                       ))

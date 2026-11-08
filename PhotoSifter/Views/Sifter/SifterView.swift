@@ -138,7 +138,7 @@ struct SifterView: View {
                         // leading-aligned mask. Keeps the color stops anchored to the
                         // ends of the track instead of compressing them.
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
+                            .fill(Color.appAccent)
                             .frame(height: 4)
                             .mask(
                                 HStack(spacing: 0) {

@@ -102,7 +102,7 @@ struct CompletedBatchCardView: View {
         Image(systemName: "arrow.counterclockwise.circle.fill")
             .font(.system(.title2))
             .symbolRenderingMode(.palette)
-            .foregroundStyle(Color.appOnAccent, Color.appAccentFill)
+            .foregroundStyle(Color.appOnKeep, Color.appKeepFill)
             .padding(8)
             .shadow(color: .black.opacity(0.45), radius: 4, y: 2)
     }

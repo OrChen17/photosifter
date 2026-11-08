@@ -30,7 +30,7 @@ struct SettingsView: View {
                                     .foregroundStyle(.appTextSecondary)
                             }
                         }
-                        .tint(.appAccent)
+                        .tint(.appKeep)
                     }
                     .listRowBackground(Color.appCard)
                 }

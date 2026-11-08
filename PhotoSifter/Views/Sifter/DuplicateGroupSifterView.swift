@@ -145,7 +145,7 @@ struct DuplicateGroupSifterView: View {
                         .fill(Color.appForeground.opacity(0.12))
                         .frame(height: 4)
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
+                        .fill(Color.appAccent)
                         .frame(width: geo.size.width * vm.progress, height: 4)
                         .animation(.spring(duration: 0.4), value: vm.progress)
                 }

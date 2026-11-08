@@ -206,7 +206,7 @@ struct LibraryView: View {
         VStack(spacing: 20) {
             Image(systemName: "checkmark.circle.fill")
                 .scaledFont(size: 64)
-                .foregroundStyle(.appAccent)
+                .foregroundStyle(.appKeep)
 
             Text("All clear!")
                 .font(.system(.title, design: .rounded, weight: .bold))
@@ -358,22 +358,22 @@ private struct EndlessModeButton: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(Color.appAccent.opacity(glowPulse ? 0.20 : 0.09))
+                    .fill(Color.appKeep.opacity(glowPulse ? 0.20 : 0.09))
                     .frame(width: 78, height: 78)
                     .blur(radius: 7)
 
                 Circle()
                     .fill(LinearGradient(
-                        colors: [.appAccentFill, .appAccentDeep],
+                        colors: [.appKeepFill, .appKeepDeep],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ))
                     .frame(width: 60, height: 60)
-                    .shadow(color: Color.appAccent.opacity(0.3), radius: 8, y: 3)
+                    .shadow(color: Color.appKeep.opacity(0.3), radius: 8, y: 3)
 
                 Image(systemName: "infinity")
                     .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(.appOnAccent)
+                    .foregroundStyle(.appOnKeep)
             }
         }
         .onAppear {

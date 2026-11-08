@@ -207,7 +207,7 @@ struct SweepSifterView: View {
 
             Image(systemName: "checkmark.seal.fill")
                 .scaledFont(size: 64)
-                .foregroundStyle(.appAccent)
+                .foregroundStyle(.appKeep)
 
             Text("Library swept.")
                 .font(.system(.title, design: .rounded, weight: .bold))
