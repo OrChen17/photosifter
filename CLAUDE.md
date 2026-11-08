@@ -8,9 +8,10 @@ iOS app **FlickPic** (Xcode scheme `PhotoSifter`, bundle id `com.flickpic.app`).
 
 ## Build / Run / Test
 
-Three pre-wired devices live in [.vscode/tasks.json](.vscode/tasks.json). Use these IDs (don't invent destinations):
+Four pre-wired devices live in [.vscode/tasks.json](.vscode/tasks.json). Use these IDs (don't invent destinations):
 
-- Orr's iPhone: `00008120-001261E402A0C01E`
+- Orr's iPhone 14 Pro (old): `00008120-001261E402A0C01E`
+- Orr's iPhone 17 (iPhone18,3): `00008150-001A74142283C01C` (needs `-allowProvisioningUpdates`)
 - Ofir's iPhone: `00008120-0004598E0132201E` (needs `-allowProvisioningUpdates`)
 - Simulator: `4902F1E6-4F1C-40A8-8C57-F1D91073F8F1`
 
