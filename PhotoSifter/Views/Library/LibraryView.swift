@@ -352,16 +352,10 @@ struct MemoryCardView: View {
 
 private struct EndlessModeButton: View {
     let action: () -> Void
-    @State private var glowPulse = false
 
     var body: some View {
         Button(action: action) {
             ZStack {
-                Circle()
-                    .fill(Color.appKeep.opacity(glowPulse ? 0.20 : 0.09))
-                    .frame(width: 78, height: 78)
-                    .blur(radius: 7)
-
                 Circle()
                     .fill(LinearGradient(
                         colors: [.appKeepFill, .appKeepDeep],
@@ -369,16 +363,11 @@ private struct EndlessModeButton: View {
                         endPoint: .bottomTrailing
                     ))
                     .frame(width: 60, height: 60)
-                    .shadow(color: Color.appKeep.opacity(0.3), radius: 8, y: 3)
+                    .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
 
                 Image(systemName: "infinity")
                     .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(.appOnKeep)
-            }
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                glowPulse = true
             }
         }
     }

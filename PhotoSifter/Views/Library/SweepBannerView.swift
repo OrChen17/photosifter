@@ -45,7 +45,6 @@ struct SweepBannerView: View {
                 ),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
-            .shadow(color: .appKeep.opacity(0.25), radius: 10, x: 0, y: 4)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("sweepBanner")
