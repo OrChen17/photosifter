@@ -1,5 +1,6 @@
 import SwiftUI
 import Photos
+import PostHog
 
 struct SweepSifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
@@ -315,6 +316,14 @@ struct SweepSifterView: View {
             SoundManager.shared.playFailure()
         }
         let isSuccess = snapshot.outcome == .committed || snapshot.outcome == .nothingToDelete
+        if isSuccess {
+            PostHogSDK.shared.capture("sweep_batch_applied", properties: [
+                "source_group_count": snapshot.sourceGroupIDs.count,
+                "deleted_photo_count": snapshot.deletedIDs.count,
+                "kept_photo_count": snapshot.keptIDs.count,
+                "freed_bytes": snapshot.deletedBytes
+            ])
+        }
         if vm.isQueueExhausted && isSuccess {
             // Queue done — finishedContent is the landing screen, no overlay needed
             return

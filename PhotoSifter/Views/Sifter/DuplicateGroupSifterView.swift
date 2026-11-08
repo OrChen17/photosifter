@@ -1,5 +1,6 @@
 import SwiftUI
 import Photos
+import PostHog
 
 struct DuplicateGroupSifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
@@ -49,6 +50,12 @@ struct DuplicateGroupSifterView: View {
                 await vm.commitDecisions()
                 switch vm.commitOutcome {
                 case .committed, .nothingToDelete:
+                    PostHogSDK.shared.capture("duplicate_session_completed", properties: [
+                        "group_count": vm.groups.count,
+                        "merged_group_count": vm.mergedCount,
+                        "deleted_photo_count": vm.deletedCount,
+                        "freed_bytes": vm.deletedBytes
+                    ])
                     libraryVM.removeQuickWins(ofCategory: .duplicates)
                     try? await Task.sleep(for: .milliseconds(400))
                     isDone = true
