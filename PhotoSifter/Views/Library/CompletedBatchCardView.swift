@@ -17,12 +17,12 @@ struct CompletedBatchCardView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text("\(keptCount) remaining")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .scaledFont(size: 14, weight: .semibold, design: .rounded)
                         .foregroundStyle(.white)
                     Spacer(minLength: 4)
                     if let bytes = batch.keptBytes, bytes > 0 {
                         Text(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
-                            .font(.system(size: 12, design: .rounded))
+                            .font(.system(.caption, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
                     }
                 }
@@ -31,13 +31,13 @@ struct CompletedBatchCardView: View {
                 HStack(spacing: 6) {
                     if let date = batch.captureDate {
                         Text(date, format: .dateTime.month(.abbreviated).day().year())
-                            .font(.system(size: 12, design: .rounded))
+                            .font(.system(.caption, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
                     }
                     Spacer(minLength: 4)
                     if batch.deletedCount > 0 {
                         Text("\(batch.deletedCount) deleted")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(.appDelete)
                     }
                 }
@@ -100,9 +100,9 @@ struct CompletedBatchCardView: View {
 
     private var reviveBadge: some View {
         Image(systemName: "arrow.counterclockwise.circle.fill")
-            .font(.system(size: 22))
+            .font(.system(.title2))
             .symbolRenderingMode(.palette)
-            .foregroundStyle(.white, Color.appAccent)
+            .foregroundStyle(Color.appOnAccent, Color.appAccent)
             .padding(8)
             .shadow(color: .black.opacity(0.45), radius: 4, y: 2)
     }

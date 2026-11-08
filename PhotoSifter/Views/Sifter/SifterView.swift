@@ -52,6 +52,12 @@ struct SifterView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .interactiveBackSwipe()
+        .onDisappear {
+            guard vm.hasUnsavedDecisions, !vm.isComplete else { return }
+            let group = vm.group
+            Task { await libraryVM.saveGroupProgress(group) }
+        }
         .toolbar(.hidden, for: .tabBar)
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -198,9 +204,9 @@ struct SifterView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.backward")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(.body, weight: .semibold))
                     Text("Library")
-                        .font(.system(size: 17))
+                        .font(.system(.body))
                 }
                 .foregroundStyle(.white)
             }

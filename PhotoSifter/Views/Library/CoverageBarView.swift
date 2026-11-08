@@ -8,6 +8,7 @@ struct CoverageBarView: View {
     let keptCount: Int
     let deletedCount: Int
     let unflickedCount: Int
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var total: Int { max(1, keptCount + deletedCount + unflickedCount) }
 
@@ -36,12 +37,18 @@ struct CoverageBarView: View {
             }
             .frame(height: 10)
 
-            HStack(spacing: 14) {
+            legendLayout {
                 legendDot(color: .appKeep, label: "Kept")
                 legendDot(color: .appDelete, label: "Deleted")
                 legendDot(color: .appTextSecondary.opacity(0.45), label: "Unflicked")
             }
         }
+    }
+
+    private var legendLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 14))
     }
 
     private func width(_ geo: GeometryProxy, _ count: Int) -> CGFloat {
@@ -52,7 +59,7 @@ struct CoverageBarView: View {
         HStack(spacing: 6) {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(label)
-                .font(.system(size: 12, design: .rounded))
+                .font(.system(.caption, design: .rounded))
                 .foregroundStyle(.appTextSecondary)
         }
     }

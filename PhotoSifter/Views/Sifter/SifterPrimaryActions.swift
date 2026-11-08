@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Top action row in the sifter — big circular DELETE (pink X) and KEEP (cyan heart)
+/// Top action row in the sifter — big circular DELETE (magenta X) and KEEP (cyan heart)
 /// buttons that sit directly under the photo card.
 ///
 /// Reacts to the live `dragProgress` so the corresponding button "fills in" as the

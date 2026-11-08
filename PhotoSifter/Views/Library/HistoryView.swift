@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(LibraryViewModel.self) private var vm
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         @Bindable var vm = vm
@@ -42,10 +43,10 @@ struct HistoryView: View {
 
     private var statsSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10)
-            ], spacing: 10) {
+            LazyVGrid(columns: Array(
+                repeating: GridItem(.flexible(), spacing: 10),
+                count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+            ), spacing: 10) {
                 statTile(
                     value: "\(vm.totalKeptCount)",
                     label: "Kept",
@@ -85,13 +86,13 @@ struct HistoryView: View {
     private func statTile(value: String, label: String, color: Color, isLoading: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .scaledFont(size: 26, weight: .bold, design: .rounded)
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             HStack(spacing: 6) {
                 Text(label)
-                    .font(.system(size: 12, design: .rounded))
+                    .font(.system(.caption, design: .rounded))
                     .foregroundStyle(.appTextSecondary)
                 if isLoading {
                     ProgressView()
@@ -144,11 +145,11 @@ struct HistoryView: View {
     private func sectionHeader(_ title: String, subtitle: String?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(.white)
             if let subtitle {
                 Text(subtitle)
-                    .font(.system(size: 13, design: .rounded))
+                    .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(.appTextSecondary)
             }
         }
@@ -160,15 +161,15 @@ struct HistoryView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 56))
+                .scaledFont(size: 56)
                 .foregroundStyle(.appTextSecondary)
 
             Text("No history yet")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .scaledFont(size: 24, weight: .bold, design: .rounded)
                 .foregroundStyle(.white)
 
             Text("Completed sifting sessions will appear here.")
-                .font(.system(size: 15, design: .rounded))
+                .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(.appTextSecondary)
                 .multilineTextAlignment(.center)
         }

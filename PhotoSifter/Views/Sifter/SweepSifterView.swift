@@ -64,6 +64,7 @@ struct SweepSifterView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .interactiveBackSwipe(enabled: !vm.hasPendingDecisions && !vm.isApplying)
         .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -73,8 +74,8 @@ struct SweepSifterView: View {
                 Button { handleBack() } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.backward")
-                            .font(.system(size: 17, weight: .semibold))
-                        Text("Library").font(.system(size: 17))
+                            .font(.system(.body, weight: .semibold))
+                        Text("Library").font(.system(.body))
                     }
                     .foregroundStyle(.white)
                 }
@@ -83,18 +84,18 @@ struct SweepSifterView: View {
                 HStack(spacing: 10) {
                     HStack(spacing: 4) {
                         Image(systemName: "trash.fill")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(.caption2, weight: .semibold))
                             .foregroundStyle(.appDelete)
                         Text("\(vm.sessionDeletedCount)")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(.system(.footnote, design: .rounded, weight: .semibold))
                             .foregroundStyle(.white)
                     }
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(.caption2, weight: .semibold))
                             .foregroundStyle(.appKeep)
                         Text("\(vm.sessionKeptCount)")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(.system(.footnote, design: .rounded, weight: .semibold))
                             .foregroundStyle(.white)
                     }
                 }
@@ -205,39 +206,39 @@ struct SweepSifterView: View {
             Spacer()
 
             Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.appKeep)
+                .scaledFont(size: 64)
+                .foregroundStyle(.appAccent)
 
             Text("Library swept.")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(.system(.title, design: .rounded, weight: .bold))
                 .foregroundStyle(.white)
 
             HStack(spacing: 28) {
                 VStack(spacing: 4) {
                     Text("\(vm.sessionDeletedCount)")
-                        .font(.system(size: 38, weight: .black, design: .rounded))
+                        .scaledFont(size: 38, weight: .black, design: .rounded)
                         .foregroundStyle(.appDelete)
                     Text("deleted")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(.appTextSecondary)
                 }
                 VStack(spacing: 4) {
                     Text("\(vm.sessionKeptCount)")
-                        .font(.system(size: 38, weight: .black, design: .rounded))
+                        .scaledFont(size: 38, weight: .black, design: .rounded)
                         .foregroundStyle(.appKeep)
                     Text("kept")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(.appTextSecondary)
                 }
                 if vm.sessionDeletedBytes > 0 {
                     VStack(spacing: 4) {
                         Text(ByteCountFormatter.string(fromByteCount: vm.sessionDeletedBytes, countStyle: .file))
-                            .font(.system(size: 22, weight: .black, design: .rounded))
+                            .font(.system(.title2, design: .rounded, weight: .black))
                             .foregroundStyle(.appAccent)
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
                         Text("freed")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(.appTextSecondary)
                     }
                 }
@@ -247,13 +248,13 @@ struct SweepSifterView: View {
 
             Button { dismiss() } label: {
                 Text("Back to Library")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .foregroundStyle(.appOnKeep)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [.appAccent, Color(hex: "C91E6D")],
+                            colors: [.appKeep, .appKeepDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)

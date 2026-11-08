@@ -131,7 +131,7 @@ struct SessionSummaryView: View {
     @ViewBuilder
     private var committedContent: some View {
         Text(headline)
-            .font(.system(size: 30, weight: .bold, design: .rounded))
+            .scaledFont(size: 30, weight: .bold, design: .rounded)
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
 
@@ -139,7 +139,7 @@ struct SessionSummaryView: View {
 
         if deletedCount == 0 {
             Text("All photos kept this round.")
-                .font(.system(size: 15, design: .rounded))
+                .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(.appTextSecondary)
         }
 
@@ -150,19 +150,14 @@ struct SessionSummaryView: View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
             VStack(alignment: .center, spacing: 6) {
                 Text("\(animatedCount)")
-                    .font(.system(size: statsFontSize, weight: .black, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.appDelete, Color(hex: "9B8BFF")],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                    )
+                    .scaledFont(size: statsFontSize, weight: .black, design: .rounded)
+                    .foregroundStyle(.appDelete)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
                 Text(deletedCount == 1 ? "photo deleted" : "photos deleted")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
                     .foregroundStyle(.appTextSecondary)
             }
             .frame(maxWidth: .infinity)
@@ -175,19 +170,14 @@ struct SessionSummaryView: View {
 
             VStack(alignment: .center, spacing: 6) {
                 Text(totalBytes > 0 ? animatedBytesString : "—")
-                    .font(.system(size: statsFontSize, weight: .black, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.appKeep, Color(hex: "67E8F9")],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                    )
+                    .scaledFont(size: statsFontSize, weight: .black, design: .rounded)
+                    .foregroundStyle(.appAccent)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
                 Text("space saved")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
                     .foregroundStyle(.appTextSecondary)
             }
             .frame(maxWidth: .infinity)
@@ -215,13 +205,13 @@ struct SessionSummaryView: View {
                     onContinue?()
                 } label: {
                     Text(continueLabel)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(.body, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.appOnKeep)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(
                             LinearGradient(
-                                colors: [.appAccent, Color(hex: "C91E6D")],
+                                colors: [.appKeep, .appKeepDeep],
                                 startPoint: .leading, endPoint: .trailing
                             ),
                             in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -237,7 +227,7 @@ struct SessionSummaryView: View {
                 } label: {
                     Label("View Recently Deleted", systemImage: "trash")
                         .accessibilityIdentifier("viewRecentlyDeletedButton")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .scaledFont(size: 14, weight: .medium, design: .rounded)
                         .foregroundStyle(.appTextSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -277,7 +267,7 @@ struct SessionSummaryView: View {
                 HStack(spacing: 10) {
                     Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
                     Text("UP NEXT")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .font(.system(.caption2, design: .rounded, weight: .heavy))
                         .tracking(2)
                         .foregroundStyle(.appTextSecondary)
                     Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
@@ -285,25 +275,25 @@ struct SessionSummaryView: View {
 
                 VStack(spacing: 2) {
                     Text("\(next.assets.count) photos")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(.white)
                     if let date = next.captureDate {
                         Text(date, format: .dateTime.month(.abbreviated).day().year())
-                            .font(.system(size: 12, design: .rounded))
+                            .font(.system(.caption, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
                     }
                 }
 
                 Text(countdown.map { "Continue · \($0)" } ?? "Continue")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .foregroundStyle(.appOnAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .contentTransition(.numericText())
                     .animation(.default, value: countdown)
                     .background(
                         LinearGradient(
-                            colors: [.appAccent, Color(hex: "C91E6D")],
+                            colors: [.appAccent, .appAccentDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -326,16 +316,16 @@ struct SessionSummaryView: View {
         Spacer(minLength: 0)
 
         Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 44))
+            .scaledFont(size: 44)
             .foregroundStyle(Color(hex: "FFB84D"))
 
         Text(cancelledTitle)
-            .font(.system(size: 28, weight: .bold, design: .rounded))
+            .font(.system(.title, design: .rounded, weight: .bold))
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
 
         Text(cancelledSubtitle)
-            .font(.system(size: 15, design: .rounded))
+            .font(.system(.subheadline, design: .rounded))
             .foregroundStyle(.appTextSecondary)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 8)
@@ -347,13 +337,13 @@ struct SessionSummaryView: View {
                 onRetry?()
             } label: {
                 Text("Try Again")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .foregroundStyle(.appOnAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [.appAccent, Color(hex: "C91E6D")],
+                            colors: [.appAccent, .appAccentDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -373,7 +363,7 @@ struct SessionSummaryView: View {
                     onContinue?()
                 } label: {
                     Text(continueLabel)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .scaledFont(size: 14, weight: .medium, design: .rounded)
                         .foregroundStyle(.appTextSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)

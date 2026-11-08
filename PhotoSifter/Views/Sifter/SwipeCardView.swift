@@ -15,6 +15,16 @@ private actor GeoCache {
 
 enum ThrowDirection { case left, right }
 
+extension DynamicTypeSize {
+    static let cardOverlayMax: DynamicTypeSize = .xxxLarge
+}
+
+enum CardActionName {
+    static let keep = "Keep"
+    static let delete = "Delete"
+    static let skip = "Skip"
+}
+
 /// Identifiable so a fresh UUID forces SwiftUI's `.onChange` to fire even when
 /// the parent throws the same direction twice in a row.
 struct ThrowCommand: Equatable {
@@ -66,6 +76,7 @@ struct SwipeCardView: View {
     private let flickPredictedThreshold: CGFloat = 300
     /// Minimum actual drag distance for a flick to be considered intentional (filters jitter).
     private let flickMinTranslation: CGFloat = 30
+    private let backSwipeEdgeWidth: CGFloat = 24
 
     private var keepOpacity: Double { max(0, min(1, Double(offset.width / badgeThreshold))) }
     private var deleteOpacity: Double { max(0, min(1, Double(-offset.width / badgeThreshold))) }
@@ -92,6 +103,7 @@ struct SwipeCardView: View {
                     HStack {
                         DecisionBadgeView(kind: .keep, opacity: keepOpacity, label: rightBadgeLabel)
                             .padding(24)
+                            .accessibilityHidden(true)
                         Spacer()
                     }
                     Spacer()
@@ -103,6 +115,7 @@ struct SwipeCardView: View {
                         Spacer()
                         DecisionBadgeView(kind: .delete, opacity: deleteOpacity, label: leftBadgeLabel)
                             .padding(24)
+                            .accessibilityHidden(true)
                     }
                     Spacer()
                 }
@@ -115,7 +128,7 @@ struct SwipeCardView: View {
                         HStack {
                             Spacer()
                             Text("SKIP")
-                                .font(.system(size: 22, weight: .black, design: .rounded))
+                                .font(.system(.title2, design: .rounded, weight: .black))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
@@ -126,6 +139,7 @@ struct SwipeCardView: View {
                                 .rotationEffect(.degrees(10))
                                 .opacity(skipOpacity)
                                 .padding(24)
+                                .accessibilityHidden(true)
                             Spacer()
                         }
                     }
@@ -135,11 +149,24 @@ struct SwipeCardView: View {
                 metadataOverlay
             }
             .frame(width: geo.size.width, height: geo.size.height)
+            .dynamicTypeSize(...DynamicTypeSize.cardOverlayMax)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: .black.opacity(0.4), radius: 16, x: 0, y: 8)
             .offset(x: offset.width, y: offset.height * 0.4)
             .rotationEffect(.degrees(Double(offset.width) / 22))
             .gesture(swipeDrag)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isImage)
+            .accessibilityActions {
+                Button(rightActionName) { accessibilityThrow(.right) }
+                Button(leftActionName) { accessibilityThrow(.left) }
+                if let onSkip {
+                    Button(CardActionName.skip) {
+                        guard !isThrown else { return }
+                        throwCardUp(then: onSkip)
+                    }
+                }
+            }
         }
         .task {
             if let preloaded = preloadedImage {
@@ -211,11 +238,11 @@ struct SwipeCardView: View {
             Color.appCard.overlay {
                 VStack(spacing: 10) {
                     Image(systemName: "icloud.slash")
-                        .font(.system(size: 36))
+                        .scaledFont(size: 36)
                     Text("Not on device")
-                        .font(.system(size: 13, design: .rounded))
+                        .font(.system(.footnote, design: .rounded))
                     Text("Enable iCloud downloads in Settings")
-                        .font(.system(size: 11, design: .rounded))
+                        .font(.system(.caption2, design: .rounded))
                         .multilineTextAlignment(.center)
                 }
                 .foregroundStyle(.appTextSecondary)
@@ -225,9 +252,9 @@ struct SwipeCardView: View {
             Color.appCard.overlay {
                 VStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 36))
+                        .scaledFont(size: 36)
                     Text("Couldn't load photo")
-                        .font(.system(size: 13, design: .rounded))
+                        .font(.system(.footnote, design: .rounded))
                 }
                 .foregroundStyle(.appTextSecondary)
             }
@@ -246,7 +273,7 @@ struct SwipeCardView: View {
             HStack(spacing: 10) {
                 if let date = captureDate {
                     Text(date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().second()))
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(.footnote, design: .rounded, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(.white.opacity(0.65))
                 }
@@ -254,7 +281,7 @@ struct SwipeCardView: View {
                 HStack(spacing: 4) {
                     if let loc = locationLabel {
                         Image(systemName: "location.fill")
-                            .font(.system(size: 9))
+                            .scaledFont(size: 9)
                         Text(loc)
                             .lineLimit(1)
                     }
@@ -263,7 +290,7 @@ struct SwipeCardView: View {
                         Text(size)
                     }
                 }
-                .font(.system(size: 11, weight: .regular, design: .rounded))
+                .font(.system(.caption2, design: .rounded, weight: .regular))
                 .foregroundStyle(.white.opacity(0.65))
             }
             .padding(.horizontal, 14)
@@ -298,9 +325,9 @@ struct SwipeCardView: View {
     // MARK: - Gesture
 
     private var swipeDrag: some Gesture {
-        DragGesture(minimumDistance: 10)
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onChanged { value in
-                guard !isThrown else { return }
+                guard !isThrown, value.startLocation.x > backSwipeEdgeWidth else { return }
                 offset = value.translation
 
                 // Haptic fires exactly once when crossing the badge threshold (#14 fix)
@@ -313,7 +340,7 @@ struct SwipeCardView: View {
                 }
             }
             .onEnded { value in
-                guard !isThrown else { return }
+                guard !isThrown, value.startLocation.x > backSwipeEdgeWidth else { return }
                 hasCrossedBadgeThreshold = false
 
                 let dx = value.translation.width
@@ -351,6 +378,22 @@ struct SwipeCardView: View {
             offset = CGSize(width: direction * 600, height: -50)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { action() }
+    }
+
+    private var rightActionName: String {
+        rightBadgeLabel?.localizedCapitalized ?? CardActionName.keep
+    }
+
+    private var leftActionName: String {
+        leftBadgeLabel?.localizedCapitalized ?? CardActionName.delete
+    }
+
+    private func accessibilityThrow(_ direction: ThrowDirection) {
+        guard !isThrown else { return }
+        switch direction {
+        case .right: throwCard(direction: 1, then: onSwipeRight)
+        case .left: throwCard(direction: -1, then: onSwipeLeft)
+        }
     }
 
     private func throwCardUp(then action: @escaping () -> Void) {

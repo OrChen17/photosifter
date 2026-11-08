@@ -75,7 +75,7 @@ struct SifterSecondaryActions: View {
                     if config.deleteCount > 0 {
                         HStack(spacing: 3) {
                             Image(systemName: "trash.fill")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(.caption, weight: .semibold))
                             Text("\(config.deleteCount)")
                                 .monospacedDigit()
                         }
@@ -83,21 +83,21 @@ struct SifterSecondaryActions: View {
                     if config.keepCount > 0 {
                         HStack(spacing: 3) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(.caption, weight: .semibold))
                             Text("\(config.keepCount)")
                                 .monospacedDigit()
                         }
                     }
                 }
             }
-            .font(.system(size: 15, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white)
+            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+            .foregroundStyle(config.isEnabled ? Color.appOnAccent : Color.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .background(
                 config.isEnabled
                     ? AnyShapeStyle(LinearGradient(
-                        colors: [.appAccent, Color(hex: "C91E6D")],
+                        colors: [.appAccent, .appAccentDeep],
                         startPoint: .leading,
                         endPoint: .trailing
                       ))

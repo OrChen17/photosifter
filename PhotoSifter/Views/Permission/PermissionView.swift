@@ -12,7 +12,7 @@ struct PermissionView: View {
 
                 VStack(spacing: 20) {
                     Image(systemName: "photo.stack")
-                        .font(.system(size: 72, weight: .thin))
+                        .scaledFont(size: 72, weight: .thin)
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [.appAccent, .appKeep],
@@ -23,11 +23,11 @@ struct PermissionView: View {
 
                     VStack(spacing: 12) {
                         Text("FlickPic")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .scaledFont(size: 36, weight: .bold, design: .rounded)
                             .foregroundStyle(.white)
 
                         Text("Swipe through near-duplicate photos\nand keep only the best shots.")
-                            .font(.system(size: 17, design: .rounded))
+                            .font(.system(.body, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
                             .multilineTextAlignment(.center)
                             .lineSpacing(4)
@@ -49,13 +49,13 @@ struct PermissionView: View {
                     Task { await onRequest() }
                 } label: {
                     Text("Allow Full Access")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .scaledFont(size: 18, weight: .semibold, design: .rounded)
+                        .foregroundStyle(.appOnAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .background(
                             LinearGradient(
-                                colors: [.appAccent, Color(hex: "C91E6D")],
+                                colors: [.appAccent, .appAccentDeep],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             ),
@@ -77,12 +77,12 @@ private struct FeatureRow: View {
     var body: some View {
         HStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: 20))
+                .font(.system(.title3))
                 .foregroundStyle(.appAccent)
                 .frame(width: 32)
 
             Text(text)
-                .font(.system(size: 16, design: .rounded))
+                .font(.system(.callout, design: .rounded))
                 .foregroundStyle(.white)
 
             Spacer()

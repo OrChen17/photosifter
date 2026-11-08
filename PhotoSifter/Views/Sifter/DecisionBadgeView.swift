@@ -9,7 +9,7 @@ struct DecisionBadgeView: View {
 
     var body: some View {
         Text(label ?? (kind == .keep ? "KEEP" : "DELETE"))
-            .font(.system(size: 28, weight: .black, design: .rounded))
+            .font(.system(.title, design: .rounded, weight: .black))
             .foregroundStyle(Color.white)
             .padding(.horizontal, 18)
             .padding(.vertical, 10)

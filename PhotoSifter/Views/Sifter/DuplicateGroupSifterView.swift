@@ -28,6 +28,7 @@ struct DuplicateGroupSifterView: View {
             swipeVignette.allowsHitTesting(false)
         }
         .navigationBarBackButtonHidden(true)
+        .interactiveBackSwipe(enabled: !vm.isCommitting)
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -36,9 +37,9 @@ struct DuplicateGroupSifterView: View {
                 Button { dismiss() } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.backward")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(.body, weight: .semibold))
                         Text("Library")
-                            .font(.system(size: 17))
+                            .font(.system(.body))
                     }
                     .foregroundStyle(.white)
                 }
@@ -147,11 +148,11 @@ struct DuplicateGroupSifterView: View {
 
             HStack {
                 Label("Merge", systemImage: "arrow.left")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
                     .foregroundStyle(.appDelete.opacity(0.7))
                 Spacer()
                 Label("Keep All", systemImage: "arrow.right")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
                     .foregroundStyle(.appKeep.opacity(0.7))
             }
         }
@@ -164,7 +165,7 @@ struct DuplicateGroupSifterView: View {
             Spacer()
             ProgressView().scaleEffect(1.5).tint(.appAccent)
             Text("Merging duplicates…")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(.system(.title, design: .rounded, weight: .bold))
                 .foregroundStyle(.white)
             Spacer()
         }
@@ -175,22 +176,17 @@ struct DuplicateGroupSifterView: View {
             Spacer()
 
             Text("Duplicates cleared.")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .scaledFont(size: 30, weight: .bold, design: .rounded)
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 0) {
                 VStack(spacing: 6) {
                     Text("\(vm.mergedCount)")
-                        .font(.system(size: 56, weight: .black, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.appDelete, Color(hex: "9B8BFF")],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        )
+                        .scaledFont(size: 56, weight: .black, design: .rounded)
+                        .foregroundStyle(.appDelete)
                     Text(vm.mergedCount == 1 ? "group merged" : "groups merged")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(.footnote, design: .rounded, weight: .medium))
                         .foregroundStyle(.appTextSecondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -204,17 +200,12 @@ struct DuplicateGroupSifterView: View {
                     Text(vm.deletedBytes > 0
                          ? ByteCountFormatter.string(fromByteCount: vm.deletedBytes, countStyle: .file)
                          : (vm.deletedCount > 0 ? "\(vm.deletedCount)" : "—"))
-                        .font(.system(size: vm.deletedBytes > 0 ? 38 : 56, weight: .black, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.appKeep, Color(hex: "67E8F9")],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        )
+                        .scaledFont(size: vm.deletedBytes > 0 ? 38 : 56, weight: .black, design: .rounded)
+                        .foregroundStyle(.appAccent)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
                     Text(vm.deletedBytes > 0 ? "space freed" : "photos deleted")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(.footnote, design: .rounded, weight: .medium))
                         .foregroundStyle(.appTextSecondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -224,13 +215,13 @@ struct DuplicateGroupSifterView: View {
 
             Button { dismiss() } label: {
                 Text("Back to Library")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .foregroundStyle(.appOnKeep)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [.appAccent, Color(hex: "C91E6D")],
+                            colors: [.appKeep, .appKeepDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)

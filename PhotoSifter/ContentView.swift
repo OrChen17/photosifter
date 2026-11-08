@@ -23,7 +23,7 @@ struct ContentView: View {
                         .tabItem { Label("History", systemImage: "checkmark.circle.fill") }
                         .tag(1)
                 }
-                .tint(.appAccent)
+                .tint(.appKeep)
             case .denied, .restricted:
                 DeniedView()
             default:
@@ -41,15 +41,15 @@ private struct DeniedView: View {
             Color.appBackground.ignoresSafeArea()
             VStack(spacing: 20) {
                 Image(systemName: "lock.fill")
-                    .font(.system(size: 56))
+                    .scaledFont(size: 56)
                     .foregroundStyle(.appTextSecondary)
 
                 Text("Photo Access Denied")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .scaledFont(size: 24, weight: .bold, design: .rounded)
                     .foregroundStyle(.white)
 
                 Text("Open Settings → Privacy → Photos\nand allow access to FlickPic.")
-                    .font(.system(size: 16, design: .rounded))
+                    .font(.system(.callout, design: .rounded))
                     .foregroundStyle(.appTextSecondary)
                     .multilineTextAlignment(.center)
 
@@ -58,7 +58,7 @@ private struct DeniedView: View {
                         UIApplication.shared.open(url)
                     }
                 }
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .font(.system(.callout, design: .rounded, weight: .semibold))
                 .foregroundStyle(.appAccent)
             }
             .padding(32)

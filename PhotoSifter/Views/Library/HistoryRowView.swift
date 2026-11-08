@@ -13,17 +13,17 @@ struct HistoryRowView: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 18))
-                .foregroundStyle(.appKeep.opacity(0.7))
+                .scaledFont(size: 18)
+                .foregroundStyle(.appAccent.opacity(0.7))
 
             VStack(alignment: .leading, spacing: 2) {
                 if let date = batch.captureDate {
                     Text(date, format: Self.dateFormat)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .scaledFont(size: 14, weight: .semibold, design: .rounded)
                         .foregroundStyle(.white)
                 } else {
                     Text("Batch")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .scaledFont(size: 14, weight: .semibold, design: .rounded)
                         .foregroundStyle(.white)
                 }
 
@@ -37,14 +37,14 @@ struct HistoryRowView: View {
                     }
                     if batch.savedBytes > 0 {
                         Text(ByteCountFormatter.string(fromByteCount: batch.savedBytes, countStyle: .file))
-                            .foregroundStyle(.appKeep)
+                            .foregroundStyle(.appAccent)
                     }
                     if batch.deletedCount == 0 && batch.savedBytes == 0 {
                         Text("Reviewed — nothing deleted")
                             .foregroundStyle(.appTextSecondary)
                     }
                 }
-                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .font(.system(.caption, design: .rounded, weight: .medium))
                 .lineLimit(1)
             }
 

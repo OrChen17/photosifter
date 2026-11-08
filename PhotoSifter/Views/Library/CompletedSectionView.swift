@@ -15,15 +15,15 @@ struct CompletedSectionView: View {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Completed")
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .scaledFont(size: 18, weight: .bold, design: .rounded)
                             .foregroundStyle(.white)
                         Text(subtitleText)
-                            .font(.system(size: 13, design: .rounded))
+                            .font(.system(.footnote, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
                     }
                     Spacer()
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(.footnote, weight: .semibold))
                         .foregroundStyle(.appTextSecondary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                         .animation(.spring(duration: 0.35), value: isExpanded)

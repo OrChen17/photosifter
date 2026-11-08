@@ -3,6 +3,7 @@ import SwiftUI
 struct QuickWinsStripView: View {
     let quickWins: [QuickWin]
     var onSelect: (QuickWin) -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     // Deduplicate pills — one per category, pointing to the first batch.
     // totalCount comes from the first win of that category.
@@ -19,7 +20,10 @@ struct QuickWinsStripView: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 10))
+            : AnyLayout(HStackLayout(spacing: 10))
+        layout {
             ForEach(pills, id: \.category) { category, win, total in
                 QuickWinCardView(category: category, totalCount: total)
                     .onTapGesture { onSelect(win) }
@@ -33,23 +37,30 @@ struct QuickWinsStripView: View {
 private struct QuickWinCardView: View {
     let category: QuickWinCategory
     let totalCount: Int
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var titleLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(spacing: 6))
+    }
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
+                titleLayout {
                     Image(systemName: category.systemImage)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(.footnote, weight: .semibold))
                     Text(category.label)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(.footnote, design: .rounded, weight: .semibold))
                 }
                 Text("\(totalCount) photos")
-                    .font(.system(size: 11, design: .rounded))
+                    .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(.white.opacity(0.55))
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(.caption, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.35))
         }
         .foregroundStyle(.white)

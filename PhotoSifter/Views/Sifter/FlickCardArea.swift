@@ -59,6 +59,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     @State private var flashCounter: Int = 0
     @State private var isTopCardThrown: Bool = false
     @State private var cardAppearWobble: Double = 1.875
+    @AppStorage(SwipeHintView.storageKey) private var hintSwipeCount: Int = 0
 
     var body: some View {
         ZStack {
@@ -78,6 +79,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                                 onSwipeLeft: {}
                             )
                             .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                             .id(next.localIdentifier)
                         }
 
@@ -86,14 +88,16 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                             preloadedImage: imageCache.image(for: asset.localIdentifier),
                             onSwipeRight: {
                                 isTopCardThrown = false
+                                recordHintSwipe()
                                 onSwipeRight()
                             },
                             onSwipeLeft: {
                                 isTopCardThrown = false
+                                recordHintSwipe()
                                 onSwipeLeft()
                             },
                             onSkip: onSkip.map { action in
-                                { isTopCardThrown = false; action() }
+                                { isTopCardThrown = false; recordHintSwipe(); action() }
                             },
                             onProgressChange: onProgressChange,
                             onThrowRight: {
@@ -128,6 +132,17 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                             .padding(.bottom, 44)
                             .allowsHitTesting(true)
                     }
+                    .overlay(alignment: .bottom) {
+                        if showsSwipeHint {
+                            SwipeHintView(showsSkip: onSkip != nil)
+                                .padding(.bottom, 64)
+                                .opacity(isTopCardThrown || dragProgress != 0 ? 0 : 1)
+                                .transition(.opacity)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .animation(.easeOut(duration: 0.25), value: showsSwipeHint)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
@@ -141,6 +156,55 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     }
 
     private func triggerFlash() { flashCounter += 1 }
+
+    private var showsSwipeHint: Bool { hintSwipeCount < SwipeHintView.swipesUntilHidden }
+
+    private func recordHintSwipe() {
+        guard showsSwipeHint else { return }
+        hintSwipeCount += 1
+    }
+}
+
+private struct SwipeHintView: View {
+    static let storageKey = "flickHintSwipeCount"
+    static let swipesUntilHidden = 3
+
+    let showsSkip: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Label(CardActionName.delete, systemImage: "arrow.left")
+                .labelStyle(HintLabelStyle(tint: .appDelete, iconLeading: true))
+            if showsSkip {
+                Label(CardActionName.skip, systemImage: "arrow.up")
+                    .labelStyle(HintLabelStyle(tint: .white, iconLeading: true))
+            }
+            Label(CardActionName.keep, systemImage: "arrow.right")
+                .labelStyle(HintLabelStyle(tint: .appKeep, iconLeading: false))
+        }
+        .font(.subheadline.weight(.semibold))
+        .fontDesign(.rounded)
+        .lineLimit(1)
+        .dynamicTypeSize(...DynamicTypeSize.cardOverlayMax)
+        .foregroundStyle(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+private struct HintLabelStyle: LabelStyle {
+    let tint: Color
+    let iconLeading: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 5) {
+            if iconLeading { configuration.icon.foregroundStyle(tint) }
+            configuration.title
+            if !iconLeading { configuration.icon.foregroundStyle(tint) }
+        }
+    }
 }
 
 private struct FlashVignetteView: View {

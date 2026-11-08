@@ -12,35 +12,35 @@ struct SweepBannerView: View {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(.white.opacity(0.18))
+                        .fill(Color.appOnAccent.opacity(0.12))
                         .frame(width: 44, height: 44)
                     Image(systemName: "wand.and.stars")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .font(.system(.title3, weight: .semibold))
+                        .foregroundStyle(Color.appOnAccent)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Flick Forever")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(.callout, design: .rounded, weight: .bold))
+                        .foregroundStyle(Color.appOnAccent)
                         .lineLimit(1)
                     Text(subtitle)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                        .foregroundStyle(Color.appOnAccent.opacity(0.85))
                         .lineLimit(1)
                 }
 
                 Spacer(minLength: 4)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.9))
+                    .scaledFont(size: 14, weight: .semibold)
+                    .foregroundStyle(Color.appOnAccent.opacity(0.9))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
                 LinearGradient(
-                    colors: [.appAccent, Color(hex: "C91E6D")],
+                    colors: [.appAccent, .appAccentDeep],
                     startPoint: .leading, endPoint: .trailing
                 ),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)

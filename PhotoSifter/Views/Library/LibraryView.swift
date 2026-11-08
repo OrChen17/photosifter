@@ -6,6 +6,7 @@ struct LibraryView: View {
     @Environment(LibraryViewModel.self) private var vm
     @Environment(AppSettings.self) private var appSettings
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var stripCollapsed = false
     @State private var showingSettings = false
 
@@ -59,7 +60,7 @@ struct LibraryView: View {
                         showingSettings = true
                     } label: {
                         Image(systemName: "gearshape")
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.system(.subheadline, weight: .medium))
                             .foregroundStyle(.appTextSecondary)
                     }
                 }
@@ -80,9 +81,9 @@ struct LibraryView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "line.3.horizontal.decrease")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(.caption, weight: .medium))
                             Text(vm.sortOrder.label)
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .font(.system(.footnote, design: .rounded, weight: .medium))
                         }
                         .foregroundStyle(.appTextSecondary)
                     }
@@ -134,7 +135,10 @@ struct LibraryView: View {
                 }
 
                 LazyVGrid(
-                    columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                    columns: Array(
+                        repeating: GridItem(.flexible(), spacing: 12),
+                        count: dynamicTypeSize.isAccessibilitySize ? 1 : 2
+                    ),
                     spacing: 12
                 ) {
                     ForEach(vm.groups) { group in
@@ -185,15 +189,15 @@ struct LibraryView: View {
     private var emptyState: some View {
         VStack(spacing: 20) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.appKeep)
+                .scaledFont(size: 64)
+                .foregroundStyle(.appAccent)
 
             Text("All clear!")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(.system(.title, design: .rounded, weight: .bold))
                 .foregroundStyle(.white)
 
             Text("No near-duplicate photo groups found.")
-                .font(.system(size: 16, design: .rounded))
+                .font(.system(.callout, design: .rounded))
                 .foregroundStyle(.appTextSecondary)
         }
     }
@@ -204,37 +208,44 @@ struct LibraryView: View {
 struct MemoryCardView: View {
     let group: PhotoGroup
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var thumbnail: UIImage? = nil
     @State private var groupBytes: Int64 = 0
+
+    private var metaRowLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+            : AnyLayout(HStackLayout(spacing: 6))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             thumbnailStack
 
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
+                metaRowLayout {
                     Text("\(group.assets.count) photos")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .scaledFont(size: 14, weight: .semibold, design: .rounded)
                         .foregroundStyle(.white)
-                    Spacer(minLength: 4)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 4) }
                     if groupBytes > 0 {
                         Text(formattedBytes(groupBytes))
-                            .font(.system(size: 12, design: .rounded))
+                            .font(.system(.caption, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
                     }
                 }
                 .lineLimit(1)
 
-                HStack(spacing: 6) {
+                metaRowLayout {
                     if let date = group.captureDate {
                         Text(Self.relativeDateFormatter.localizedString(for: date, relativeTo: .now))
-                            .font(.system(size: 12, design: .rounded))
+                            .font(.system(.caption, design: .rounded))
                             .foregroundStyle(.appTextSecondary)
                     }
-                    Spacer(minLength: 4)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 4) }
                     if group.deleteCount > 0 {
                         Text("\(group.deleteCount) marked")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(.appDelete)
                     }
                 }
@@ -337,7 +348,7 @@ private struct EndlessModeButton: View {
 
                 Circle()
                     .fill(LinearGradient(
-                        colors: [Color.appAccent, Color(hex: "C91E6D")],
+                        colors: [.appAccent, .appAccentDeep],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ))
@@ -346,7 +357,7 @@ private struct EndlessModeButton: View {
 
                 Image(systemName: "infinity")
                     .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.appOnAccent)
             }
         }
         .onAppear {
@@ -372,7 +383,7 @@ struct ScanningBadge: View {
                 .padding(.leading, 2)
 
             Text("Scanning")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .font(.system(.footnote, design: .rounded, weight: .medium))
                 .foregroundStyle(.appTextSecondary)
         }
         .onAppear { isAnimating = true }

@@ -25,6 +25,8 @@
 		A015 /* SessionSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B015 /* SessionSummaryView.swift */; };
 		A016 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B016 /* HapticManager.swift */; };
 		A017 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B017 /* SoundManager.swift */; };
+		A0F1 /* InteractiveBackSwipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F1 /* InteractiveBackSwipe.swift */; };
+		A0F2 /* Font+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F2 /* Font+App.swift */; };
 		A018 /* Color+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018 /* Color+App.swift */; };
 		A01A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01A /* AppSettings.swift */; };
 		A01B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01B /* SettingsView.swift */; };
@@ -109,6 +111,8 @@
 		B015 /* SessionSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummaryView.swift; sourceTree = "<group>"; };
 		B016 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		B017 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
+		B0F1 /* InteractiveBackSwipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteractiveBackSwipe.swift; sourceTree = "<group>"; };
+		B0F2 /* Font+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+App.swift"; sourceTree = "<group>"; };
 		B018 /* Color+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+App.swift"; sourceTree = "<group>"; };
 		B01A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		B01B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -260,6 +264,8 @@
 				B017 /* SoundManager.swift */,
 				B018 /* Color+App.swift */,
 				B01A /* AppSettings.swift */,
+				B0F1 /* InteractiveBackSwipe.swift */,
+				B0F2 /* Font+App.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -514,6 +520,8 @@
 				A017 /* SoundManager.swift in Sources */,
 				A018 /* Color+App.swift in Sources */,
 				A01A /* AppSettings.swift in Sources */,
+				A0F1 /* InteractiveBackSwipe.swift in Sources */,
+				A0F2 /* Font+App.swift in Sources */,
 				A01B /* SettingsView.swift in Sources */,
 				X001 /* CompletedBatch.swift in Sources */,
 				X002 /* CompletedBatchStore.swift in Sources */,
