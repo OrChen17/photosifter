@@ -183,6 +183,7 @@ final class LibraryViewModel {
         let fetchSince = cutoff.map { $0.addingTimeInterval(-GroupingService.timeBucketGap) }
         let assets = await photoService.fetchAllAssets(since: fetchSince)
         elapsed("fetchAllAssets done — \(assets.count) assets, \(knownIDs.count) already known")
+        PostHogAppLogger.libraryScanStarted(assetCount: assets.count)
         scanProgress = (0, assets.count)
 
         var allGroups = baseGroups
@@ -222,6 +223,7 @@ final class LibraryViewModel {
         isScanning = false
         await groupingService.saveScanCutoff(scanStartDate)
         await groupingService.persistGroups(groups)
+        PostHogAppLogger.libraryScanCompleted(assetCount: assets.count, groupCount: groups.count)
 
         // Quick wins fetch runs at utility priority after scan — doesn't block the grid
         Task(priority: .utility) {

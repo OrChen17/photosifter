@@ -132,7 +132,7 @@ struct SessionSummaryView: View {
     private var committedContent: some View {
         Text(headline)
             .scaledFont(size: 30, weight: .bold, design: .rounded)
-            .foregroundStyle(.white)
+            .foregroundStyle(.appForeground)
             .multilineTextAlignment(.center)
 
         statsRow
@@ -163,7 +163,7 @@ struct SessionSummaryView: View {
             .frame(maxWidth: .infinity)
 
             Rectangle()
-                .fill(Color.white.opacity(0.1))
+                .fill(Color.appForeground.opacity(0.1))
                 .frame(width: 1, height: statsFontSize)
                 .padding(.horizontal, 20)
                 .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] }
@@ -211,7 +211,7 @@ struct SessionSummaryView: View {
                         .padding(.vertical, 16)
                         .background(
                             LinearGradient(
-                                colors: [.appKeep, .appKeepDeep],
+                                colors: [.appKeepFill, .appKeepDeep],
                                 startPoint: .leading, endPoint: .trailing
                             ),
                             in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -265,18 +265,18 @@ struct SessionSummaryView: View {
             // Metadata + Continue inside the card
             VStack(spacing: 12) {
                 HStack(spacing: 10) {
-                    Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                    Rectangle().fill(Color.appForeground.opacity(0.12)).frame(height: 1)
                     Text("UP NEXT")
                         .font(.system(.caption2, design: .rounded, weight: .heavy))
                         .tracking(2)
                         .foregroundStyle(.appTextSecondary)
-                    Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                    Rectangle().fill(Color.appForeground.opacity(0.12)).frame(height: 1)
                 }
 
                 VStack(spacing: 2) {
                     Text("\(next.assets.count) photos")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.appForeground)
                     if let date = next.captureDate {
                         Text(date, format: .dateTime.month(.abbreviated).day().year())
                             .font(.system(.caption, design: .rounded))
@@ -293,7 +293,7 @@ struct SessionSummaryView: View {
                     .animation(.default, value: countdown)
                     .background(
                         LinearGradient(
-                            colors: [.appAccent, .appAccentDeep],
+                            colors: [.appAccentFill, .appAccentDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -305,7 +305,7 @@ struct SessionSummaryView: View {
         .background(Color.appCard.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(Color.appForeground.opacity(0.06), lineWidth: 1)
         )
     }
 
@@ -321,7 +321,7 @@ struct SessionSummaryView: View {
 
         Text(cancelledTitle)
             .font(.system(.title, design: .rounded, weight: .bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(.appForeground)
             .multilineTextAlignment(.center)
 
         Text(cancelledSubtitle)
@@ -343,7 +343,7 @@ struct SessionSummaryView: View {
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [.appAccent, .appAccentDeep],
+                            colors: [.appAccentFill, .appAccentDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)

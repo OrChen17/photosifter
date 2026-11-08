@@ -1,5 +1,6 @@
 import SwiftUI
 import Photos
+import PostHog
 
 // How many cards ahead to preload full-res images for. Change to tune memory vs. latency.
 private let preloadAhead = 3
@@ -61,7 +62,6 @@ struct SifterView: View {
         .toolbar(.hidden, for: .tabBar)
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             backButton
         }
@@ -132,7 +132,7 @@ struct SifterView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.white.opacity(0.12))
+                            .fill(Color.appForeground.opacity(0.12))
                             .frame(height: 4)
                         // Full-width gradient bar that is progressively revealed by a
                         // leading-aligned mask. Keeps the color stops anchored to the
@@ -208,7 +208,7 @@ struct SifterView: View {
                     Text("Library")
                         .font(.system(.body))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
             }
             .accessibilityIdentifier("backButton")
         }
@@ -293,6 +293,7 @@ struct SifterView: View {
             )
             await libraryVM.recordCompletedBatch(batch)
             libraryVM.markGroupComplete(vm.group)
+            captureCompletedSession()
         case .nothingToDelete:
             pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
             let keptIDs = vm.group.assets.map { $0.localIdentifier }
@@ -309,6 +310,7 @@ struct SifterView: View {
                 sourceGroupID: vm.group.id
             ))
             libraryVM.markGroupComplete(vm.group)
+            captureCompletedSession()
         case .cancelledByUser, .failed:
             SoundManager.shared.playFailure()
             await libraryVM.saveGroupProgress(vm.group)
@@ -317,6 +319,15 @@ struct SifterView: View {
         }
         try? await Task.sleep(for: .milliseconds(50))
         withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) { showSummary = true }
+    }
+
+    private func captureCompletedSession() {
+        PostHogSDK.shared.capture("sifting_session_completed", properties: [
+            "photo_count": vm.group.assets.count,
+            "deleted_photo_count": vm.deletedCount,
+            "kept_photo_count": vm.group.assets.count - vm.deletedCount,
+            "freed_bytes": vm.deletedBytes
+        ])
     }
 
     // MARK: - Preloading

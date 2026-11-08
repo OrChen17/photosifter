@@ -88,7 +88,7 @@ private struct SweepStripCell: View {
         .opacity(decision == .delete ? 0.45 : 1.0)
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(isCurrent ? Color.white : .clear, lineWidth: 2.5)
+                .stroke(isCurrent ? Color.appForeground : .clear, lineWidth: 2.5)
         )
         .overlay(alignment: .leading) {
             if showDivider {

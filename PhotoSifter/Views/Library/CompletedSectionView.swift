@@ -16,7 +16,7 @@ struct CompletedSectionView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Completed")
                             .scaledFont(size: 18, weight: .bold, design: .rounded)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.appForeground)
                         Text(subtitleText)
                             .font(.system(.footnote, design: .rounded))
                             .foregroundStyle(.appTextSecondary)

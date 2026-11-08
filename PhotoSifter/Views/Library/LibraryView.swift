@@ -1,6 +1,6 @@
 import SwiftUI
 import Photos
-
+import PostHog
 
 struct LibraryView: View {
     @Environment(LibraryViewModel.self) private var vm
@@ -38,6 +38,10 @@ struct LibraryView: View {
 
                 if vm.groups.count >= 2 {
                     EndlessModeButton {
+                        PostHogSDK.shared.capture("sweep_started", properties: [
+                            "group_count": vm.groups.count,
+                            "photo_count": vm.groups.reduce(0) { $0 + $1.assets.count }
+                        ])
                         HapticManager.shared.playNavigate()
                         vm.startSweepSession()
                     }
@@ -48,7 +52,6 @@ struct LibraryView: View {
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
                     .environment(appSettings)
@@ -119,12 +122,21 @@ struct LibraryView: View {
                         HapticManager.shared.playNavigate()
                         switch win.category {
                         case .screenshots:
+                            PostHogSDK.shared.capture("sifting_started", properties: [
+                                "entry_point": "quick_win_screenshots",
+                                "photo_count": win.group.assets.count
+                            ])
                             vm.selectedQuickWin = win
                         case .duplicates:
                             let groups = vm.quickWins
                                 .filter { $0.category == .duplicates }
                                 .map { $0.group }
                             if !groups.isEmpty {
+                                PostHogSDK.shared.capture("sifting_started", properties: [
+                                    "entry_point": "quick_win_duplicates",
+                                    "group_count": groups.count,
+                                    "photo_count": groups.reduce(0) { $0 + $1.assets.count }
+                                ])
                                 vm.selectedDuplicateSession = DuplicateSession(groups: groups)
                             }
                         }
@@ -144,6 +156,10 @@ struct LibraryView: View {
                     ForEach(vm.groups) { group in
                         MemoryCardView(group: group)
                             .onTapGesture {
+                                PostHogSDK.shared.capture("sifting_started", properties: [
+                                    "entry_point": "photo_group",
+                                    "photo_count": group.assets.count
+                                ])
                                 HapticManager.shared.playNavigate()
                                 vm.selectedGroup = group
                             }
@@ -194,7 +210,7 @@ struct LibraryView: View {
 
             Text("All clear!")
                 .font(.system(.title, design: .rounded, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
 
             Text("No near-duplicate photo groups found.")
                 .font(.system(.callout, design: .rounded))
@@ -226,7 +242,7 @@ struct MemoryCardView: View {
                 metaRowLayout {
                     Text("\(group.assets.count) photos")
                         .scaledFont(size: 14, weight: .semibold, design: .rounded)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.appForeground)
                     if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 4) }
                     if groupBytes > 0 {
                         Text(formattedBytes(groupBytes))
@@ -280,7 +296,7 @@ struct MemoryCardView: View {
                     let inset = CGFloat(fromFront) * 6
                     let opacity = 0.20 + Double(numBackLayers - fromFront) * 0.16
                     RoundedRectangle(cornerRadius: 14 - CGFloat(fromFront), style: .continuous)
-                        .fill(Color.white.opacity(opacity))
+                        .fill(Color.appForeground.opacity(opacity))
                         .frame(
                             width: geo.size.width - inset * 2,
                             height: frontHeight + CGFloat(fromFront) * peek
@@ -348,7 +364,7 @@ private struct EndlessModeButton: View {
 
                 Circle()
                     .fill(LinearGradient(
-                        colors: [.appAccent, .appAccentDeep],
+                        colors: [.appAccentFill, .appAccentDeep],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ))

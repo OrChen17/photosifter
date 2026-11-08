@@ -1,5 +1,6 @@
 import SwiftUI
 import Photos
+import PostHog
 
 struct DuplicateGroupSifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
@@ -31,7 +32,6 @@ struct DuplicateGroupSifterView: View {
         .interactiveBackSwipe(enabled: !vm.isCommitting)
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { dismiss() } label: {
@@ -41,7 +41,7 @@ struct DuplicateGroupSifterView: View {
                         Text("Library")
                             .font(.system(.body))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.appForeground)
                 }
             }
         }
@@ -51,6 +51,12 @@ struct DuplicateGroupSifterView: View {
                 await vm.commitDecisions()
                 switch vm.commitOutcome {
                 case .committed, .nothingToDelete:
+                    PostHogSDK.shared.capture("duplicate_session_completed", properties: [
+                        "group_count": vm.groups.count,
+                        "merged_group_count": vm.mergedCount,
+                        "deleted_photo_count": vm.deletedCount,
+                        "freed_bytes": vm.deletedBytes
+                    ])
                     libraryVM.removeQuickWins(ofCategory: .duplicates)
                     try? await Task.sleep(for: .milliseconds(400))
                     isDone = true
@@ -136,7 +142,7 @@ struct DuplicateGroupSifterView: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.white.opacity(0.12))
+                        .fill(Color.appForeground.opacity(0.12))
                         .frame(height: 4)
                     RoundedRectangle(cornerRadius: 3)
                         .fill(LinearGradient(colors: [.appAccent, .appKeep], startPoint: .leading, endPoint: .trailing))
@@ -166,7 +172,7 @@ struct DuplicateGroupSifterView: View {
             ProgressView().scaleEffect(1.5).tint(.appAccent)
             Text("Merging duplicates…")
                 .font(.system(.title, design: .rounded, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
             Spacer()
         }
     }
@@ -177,7 +183,7 @@ struct DuplicateGroupSifterView: View {
 
             Text("Duplicates cleared.")
                 .scaledFont(size: 30, weight: .bold, design: .rounded)
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 0) {
@@ -192,7 +198,7 @@ struct DuplicateGroupSifterView: View {
                 .frame(maxWidth: .infinity)
 
                 Rectangle()
-                    .fill(Color.white.opacity(0.1))
+                    .fill(Color.appForeground.opacity(0.1))
                     .frame(width: 1, height: 56)
                     .padding(.horizontal, 20)
 
@@ -221,7 +227,7 @@ struct DuplicateGroupSifterView: View {
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [.appKeep, .appKeepDeep],
+                            colors: [.appKeepFill, .appKeepDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)

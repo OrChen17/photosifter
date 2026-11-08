@@ -2,32 +2,56 @@ import AudioToolbox
 import AVFoundation
 
 final class SoundManager: @unchecked Sendable {
-    static let shared = SoundManager()
-    private var players: [String: AVAudioPlayer] = [:]
+    private enum BundledSound: String, CaseIterable {
+        case keep
+        case delete
+        case finish
 
-    private init() {
-        preload("keep",   resource: "keep",   ext: "caf")
-        preload("delete", resource: "delete", ext: "caf")
+        static let fileExtension = "caf"
+
+        var fallbackSystemSound: SystemSoundID {
+            switch self {
+            case .keep: 1104
+            case .delete: 1105
+            case .finish: 1001
+            }
+        }
     }
 
-    private func preload(_ key: String, resource: String, ext: String) {
-        guard let url = Bundle.main.url(forResource: resource, withExtension: ext) else { return }
-        players[key] = try? AVAudioPlayer(contentsOf: url)
-        players[key]?.prepareToPlay()
+    static let shared = SoundManager()
+    private var players: [BundledSound: AVAudioPlayer] = [:]
+
+    private init() {
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: .mixWithOthers)
+        BundledSound.allCases.forEach(preload)
+    }
+
+    private func preload(_ sound: BundledSound) {
+        guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: BundledSound.fileExtension),
+              let player = try? AVAudioPlayer(contentsOf: url) else { return }
+        player.prepareToPlay()
+        players[sound] = player
+    }
+
+    private func play(_ sound: BundledSound) {
+        guard let player = players[sound] else {
+            AudioServicesPlaySystemSound(sound.fallbackSystemSound)
+            return
+        }
+        player.currentTime = 0
+        player.play()
     }
 
     func playKeep() {
-        if let p = players["keep"] { p.play(); return }
-        AudioServicesPlaySystemSound(1104)
+        play(.keep)
     }
 
     func playDelete() {
-        if let p = players["delete"] { p.play(); return }
-        AudioServicesPlaySystemSound(1105)
+        play(.delete)
     }
 
     func playSuccess() {
-        AudioServicesPlaySystemSound(1001)  // mail-sent swoosh — satisfying, bigger than a tick
+        play(.finish)
     }
 
     func playFailure() {

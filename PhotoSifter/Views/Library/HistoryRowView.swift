@@ -20,11 +20,11 @@ struct HistoryRowView: View {
                 if let date = batch.captureDate {
                     Text(date, format: Self.dateFormat)
                         .scaledFont(size: 14, weight: .semibold, design: .rounded)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.appForeground)
                 } else {
                     Text("Batch")
                         .scaledFont(size: 14, weight: .semibold, design: .rounded)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.appForeground)
                 }
 
                 HStack(spacing: 6) {
@@ -55,7 +55,7 @@ struct HistoryRowView: View {
         .background(Color.appCard.opacity(0.3), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(Color.appForeground.opacity(0.05), lineWidth: 1)
         )
     }
 }

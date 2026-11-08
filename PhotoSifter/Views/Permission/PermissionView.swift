@@ -1,4 +1,5 @@
 import SwiftUI
+import PostHog
 
 struct PermissionView: View {
     let onRequest: () async -> Void
@@ -24,7 +25,7 @@ struct PermissionView: View {
                     VStack(spacing: 12) {
                         Text("FlickPic")
                             .scaledFont(size: 36, weight: .bold, design: .rounded)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.appForeground)
 
                         Text("Swipe through near-duplicate photos\nand keep only the best shots.")
                             .font(.system(.body, design: .rounded))
@@ -46,6 +47,8 @@ struct PermissionView: View {
                 Spacer()
 
                 Button {
+                    PostHogSDK.shared.capture("photo_library_access_requested")
+                    PostHogAppLogger.photoLibraryAccessRequested()
                     Task { await onRequest() }
                 } label: {
                     Text("Allow Full Access")
@@ -55,7 +58,7 @@ struct PermissionView: View {
                         .padding(.vertical, 18)
                         .background(
                             LinearGradient(
-                                colors: [.appAccent, .appAccentDeep],
+                                colors: [.appAccentFill, .appAccentDeep],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             ),
@@ -83,7 +86,7 @@ private struct FeatureRow: View {
 
             Text(text)
                 .font(.system(.callout, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
 
             Spacer()
         }

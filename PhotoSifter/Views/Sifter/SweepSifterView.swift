@@ -1,5 +1,6 @@
 import SwiftUI
 import Photos
+import PostHog
 
 struct SweepSifterView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
@@ -53,7 +54,7 @@ struct SweepSifterView: View {
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                                    .stroke(Color.appForeground.opacity(0.06), lineWidth: 1)
                             )
                             .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
                             .padding(.horizontal, 20)
@@ -67,7 +68,6 @@ struct SweepSifterView: View {
         .interactiveBackSwipe(enabled: !vm.hasPendingDecisions && !vm.isApplying)
         .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -77,7 +77,7 @@ struct SweepSifterView: View {
                             .font(.system(.body, weight: .semibold))
                         Text("Library").font(.system(.body))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.appForeground)
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -88,7 +88,7 @@ struct SweepSifterView: View {
                             .foregroundStyle(.appDelete)
                         Text("\(vm.sessionDeletedCount)")
                             .font(.system(.footnote, design: .rounded, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.appForeground)
                     }
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
@@ -96,7 +96,7 @@ struct SweepSifterView: View {
                             .foregroundStyle(.appKeep)
                         Text("\(vm.sessionKeptCount)")
                             .font(.system(.footnote, design: .rounded, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.appForeground)
                     }
                 }
             }
@@ -211,7 +211,7 @@ struct SweepSifterView: View {
 
             Text("Library swept.")
                 .font(.system(.title, design: .rounded, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.appForeground)
 
             HStack(spacing: 28) {
                 VStack(spacing: 4) {
@@ -254,7 +254,7 @@ struct SweepSifterView: View {
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: [.appKeep, .appKeepDeep],
+                            colors: [.appKeepFill, .appKeepDeep],
                             startPoint: .leading, endPoint: .trailing
                         ),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -317,6 +317,14 @@ struct SweepSifterView: View {
             SoundManager.shared.playFailure()
         }
         let isSuccess = snapshot.outcome == .committed || snapshot.outcome == .nothingToDelete
+        if isSuccess {
+            PostHogSDK.shared.capture("sweep_batch_applied", properties: [
+                "source_group_count": snapshot.sourceGroupIDs.count,
+                "deleted_photo_count": snapshot.deletedIDs.count,
+                "kept_photo_count": snapshot.keptIDs.count,
+                "freed_bytes": snapshot.deletedBytes
+            ])
+        }
         if vm.isQueueExhausted && isSuccess {
             // Queue done — finishedContent is the landing screen, no overlay needed
             return
