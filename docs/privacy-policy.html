@@ -25,12 +25,23 @@
 <body>
 
 <h1>Privacy Policy</h1>
-<p class="meta">FlickPic &mdash; Last updated: May 2025</p>
+<p class="meta">FlickPic &mdash; Last updated: November 2026</p>
 
 <p>FlickPic ("the app") is a photo-culling app that helps you find and delete near-duplicate photos from your iOS photo library. Your privacy is important to us. This policy explains what the app does and does not do with your data.</p>
 
 <h2>What we collect</h2>
-<p><strong>Nothing is collected, transmitted, or stored outside your device.</strong> The app never sends any data to a server. There are no analytics SDKs, no advertising networks, and no third-party services embedded in the app.</p>
+<p><strong>Your photos never leave your device.</strong> To understand how the app is used and to fix bugs, FlickPic sends a small amount of anonymous usage data to <a href="https://posthog.com/privacy">PostHog</a>, an analytics service. The data is stored on PostHog's servers in the United States.</p>
+<p>What is sent:</p>
+<ul>
+  <li><strong>Usage events</strong>, such as "app opened", "screen viewed", "review session started" or "review session finished".</li>
+  <li><strong>Counts</strong> attached to those events, such as how many photos were in a group, how many you kept or deleted, and how much storage was freed.</li>
+  <li><strong>Crash and error reports</strong>, and short diagnostic log lines (for example, "library scan finished, 1,200 photos").</li>
+  <li><strong>Basic device information</strong>: device model, iOS version, app version, language and time zone.</li>
+  <li><strong>A random anonymous ID</strong> created when you first open the app. It is not tied to your name, email, Apple ID or advertising ID. Deleting the app removes it.</li>
+</ul>
+<p>Like any internet request, PostHog receives your IP address, which it may use to estimate your approximate country or city.</p>
+<p>What is <strong>never</strong> sent: your photos, thumbnails, photo metadata (such as location or dates), photo identifiers, file names, or anything else that identifies you personally.</p>
+<p>We do not use this data to track you across other apps or websites, we do not use it for advertising, and we do not sell it. There are no advertising networks in the app.</p>
 
 <h2>Photo library access</h2>
 <p>FlickPic requests access to your photo library solely to:</p>
@@ -50,10 +61,10 @@
 <p>This data never leaves your device and can be fully removed by deleting the app.</p>
 
 <h2>iCloud</h2>
-<p>The app does not use iCloud or any cloud storage. If you have iCloud Photos enabled, the app can optionally pre-filter cloud-only assets (photos not yet downloaded to your device) to avoid triggering downloads. No data is read from or written to iCloud by the app itself.</p>
+<p>The app has no cloud storage of its own. If you use iCloud Photos, some photos may exist only in iCloud. By default, the app asks iOS to download those photos so it can compare them. You can turn this off in Settings; the app then skips photos that are not already on your device. Downloads go through Apple's Photos framework. The app never uploads anything to iCloud.</p>
 
 <h2>Children's privacy</h2>
-<p>The app does not knowingly collect any information from anyone, including children under 13.</p>
+<p>The app does not knowingly collect personal information from anyone, including children under 13. The anonymous usage data described above is the same for every user.</p>
 
 <h2>Changes to this policy</h2>
 <p>If this policy changes materially, the updated version will be posted at this URL with a revised date at the top.</p>
