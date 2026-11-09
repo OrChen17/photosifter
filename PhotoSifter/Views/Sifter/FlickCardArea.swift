@@ -79,6 +79,12 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                                 onSwipeRight: {},
                                 onSwipeLeft: {}
                             )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color.black.opacity(behindCardDim))
+                            )
+                            .scaleEffect(behindCardScale)
+                            .animation(.interactiveSpring(response: 0.28, dampingFraction: 0.86), value: behindCardReveal)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                             .id(next.localIdentifier)
@@ -150,6 +156,16 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
         .onChange(of: groupID) { _, _ in cardAppearWobble = 1.875 }
     }
 
+    /// 0 at rest, 1 once the top card is past the throw threshold.
+    private var behindCardReveal: Double { min(1, abs(dragProgress)) }
+
+    private var behindCardScale: CGFloat {
+        reduceMotion ? 1 : BehindCard.restScale + (1 - BehindCard.restScale) * behindCardReveal
+    }
+
+    /// A dim overlay instead of a blur: same depth cue, no per-frame blur pass.
+    private var behindCardDim: Double { BehindCard.restDim * (1 - behindCardReveal) }
+
     private func triggerFlash() { flashCounter += 1 }
 
     private var showsSwipeHint: Bool { hintSwipeCount < SwipeHintView.swipesUntilHidden }
@@ -158,6 +174,11 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
         guard showsSwipeHint else { return }
         hintSwipeCount += 1
     }
+}
+
+private enum BehindCard {
+    static let restScale: CGFloat = 0.93
+    static let restDim: Double = 0.35
 }
 
 /// First-run swipe hint. Shown in the middle of the skip / undo row for the

@@ -46,7 +46,7 @@ struct SweepBannerView: View {
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleButtonStyle(pressedScale: PressScale.card))
         .accessibilityIdentifier("sweepBanner")
     }
 

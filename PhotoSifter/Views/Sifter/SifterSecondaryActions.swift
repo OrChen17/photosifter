@@ -68,14 +68,9 @@ struct SifterSecondaryActions: View {
                 .font(.system(size: 18, weight: .heavy))
                 .foregroundStyle(isEnabled ? enabledTint : Color.appForeground.opacity(0.3))
                 .frame(width: 44, height: 44)
-                .background(
-                    Circle()
-                        .fill(Color.appCard)
-                        .overlay(Circle().stroke(Color.appForeground.opacity(0.08), lineWidth: 1))
-                        .opacity(isEnabled ? 1 : 0.5)
-                )
+                .appGlass(in: Circle(), interactive: isEnabled)
         }
-        .buttonStyle(SpringPressButtonStyle())
+        .buttonStyle(PressScaleButtonStyle())
         .disabled(!isEnabled)
         .accessibilityLabel(accessibilityLabel)
     }
@@ -118,7 +113,7 @@ struct SifterSecondaryActions: View {
                 in: Capsule(style: .continuous)
             )
         }
-        .buttonStyle(SpringPressButtonStyle())
+        .buttonStyle(PressScaleButtonStyle())
         .disabled(!config.isEnabled)
         .opacity(config.isEnabled ? 1.0 : 0.55)
         .animation(.easeOut(duration: 0.2), value: config.isEnabled)
@@ -126,7 +121,7 @@ struct SifterSecondaryActions: View {
 }
 
 /// Revert side-button. Owns a per-tap 360° spin on the arrow so the action
-/// reads as "rewind"; still picks up the SpringPressButtonStyle scale for the
+/// reads as "rewind"; still picks up the PressScaleButtonStyle scale for the
 /// press-in feel shared with skip/apply.
 private struct RevertButton: View {
     let isEnabled: Bool
@@ -148,29 +143,10 @@ private struct RevertButton: View {
                 .foregroundStyle(isEnabled ? Color.appRevert : Color.appForeground.opacity(0.3))
                 .rotationEffect(.degrees(spin))
                 .frame(width: 44, height: 44)
-                .background(
-                    Circle()
-                        .fill(Color.appCard)
-                        .overlay(Circle().stroke(Color.appForeground.opacity(0.08), lineWidth: 1))
-                        .opacity(isEnabled ? 1 : 0.5)
-                )
+                .appGlass(in: Circle(), interactive: isEnabled)
         }
-        .buttonStyle(SpringPressButtonStyle())
+        .buttonStyle(PressScaleButtonStyle())
         .disabled(!isEnabled)
         .accessibilityLabel("Revert last action")
-    }
-}
-
-/// Squeezes the button to ~0.82 on press, then springs back when released.
-private struct SpringPressButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.82 : 1.0)
-            .animation(
-                configuration.isPressed
-                    ? .easeOut(duration: 0.1)
-                    : .spring(response: 0.35, dampingFraction: 0.55),
-                value: configuration.isPressed
-            )
     }
 }

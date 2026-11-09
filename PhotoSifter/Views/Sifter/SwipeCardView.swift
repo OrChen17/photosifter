@@ -15,6 +15,12 @@ private actor GeoCache {
 
 enum ThrowDirection { case left, right }
 
+private enum CardGlow {
+    static let cornerRadius: CGFloat = 20
+    static let maxTint: Double = 0.18
+    static let shadowOpacity: Double = 0.55
+}
+
 extension DynamicTypeSize {
     static let cardOverlayMax: DynamicTypeSize = .xxxLarge
 }
@@ -86,9 +92,11 @@ struct SwipeCardView: View {
     private var horizontalProgress: Double {
         max(-1, min(1, Double(offset.width) / Double(snapThreshold)))
     }
-    private var dragFillProgress: Double {
-        min(0.8, abs(Double(offset.width)) / Double(snapThreshold))
+    /// 0 at rest, 1 at the throw threshold. Drives the edge glow and the light tint.
+    private var edgeGlow: Double {
+        min(1, abs(Double(offset.width)) / Double(snapThreshold))
     }
+    private var skipOpacity: Double { max(0, min(1, Double(-offset.height / 50))) }
     private var dragFillColor: Color {
         offset.width >= 0 ? .appKeep : .appDelete
     }
@@ -98,8 +106,10 @@ struct SwipeCardView: View {
             ZStack {
                 cardPhoto(size: geo.size)
 
-                // Drag-direction color fill, capped at 80% opacity
-                dragFillColor.opacity(dragFillProgress)
+                // Light tint only, so the photo stays readable at the moment of decision.
+                dragFillColor.opacity(edgeGlow * CardGlow.maxTint)
+
+                edgeGlowRim
 
                 // KEEP badge — top left when dragging right
                 VStack {
@@ -123,28 +133,13 @@ struct SwipeCardView: View {
                     Spacer()
                 }
 
-                // SKIP badge — appears on upward drag
+                // SKIP chip — appears on upward drag
                 if onSkip != nil {
-                    let skipOpacity = max(0, min(1, Double(-offset.height / 50)))
                     VStack {
+                        DecisionBadgeView(kind: .skip, opacity: skipOpacity)
+                            .padding(24)
+                            .accessibilityHidden(true)
                         Spacer()
-                        HStack {
-                            Spacer()
-                            Text("SKIP")
-                                .font(.system(.title2, design: .rounded, weight: .black))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .stroke(.white, lineWidth: 2.5)
-                                )
-                                .rotationEffect(.degrees(10))
-                                .opacity(skipOpacity)
-                                .padding(24)
-                                .accessibilityHidden(true)
-                            Spacer()
-                        }
                     }
                 }
 
@@ -153,8 +148,13 @@ struct SwipeCardView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .dynamicTypeSize(...DynamicTypeSize.cardOverlayMax)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .shadow(color: .black.opacity(0.4), radius: 16, x: 0, y: 8)
+            .clipShape(RoundedRectangle(cornerRadius: CardGlow.cornerRadius, style: .continuous))
+            .background {
+                RoundedRectangle(cornerRadius: CardGlow.cornerRadius, style: .continuous)
+                    .fill(Color.black)
+                    .shadow(color: .black.opacity(0.4), radius: 16, x: 0, y: 8)
+                    .shadow(color: dragFillColor.opacity(edgeGlow * CardGlow.shadowOpacity), radius: 28)
+            }
             .offset(x: offset.width, y: offset.height * 0.4)
             .rotationEffect(.degrees(Double(offset.width) / 22))
             .opacity(throwFade)
@@ -269,6 +269,20 @@ struct SwipeCardView: View {
         }
     }
 
+    // MARK: - Edge glow
+
+    /// Three nested strokes fake a soft inner glow without a blur pass.
+    private var edgeGlowRim: some View {
+        let shape = RoundedRectangle(cornerRadius: CardGlow.cornerRadius, style: .continuous)
+        return ZStack {
+            shape.strokeBorder(dragFillColor.opacity(0.14), lineWidth: 26)
+            shape.strokeBorder(dragFillColor.opacity(0.35), lineWidth: 11)
+            shape.strokeBorder(dragFillColor, lineWidth: 3)
+        }
+        .opacity(edgeGlow)
+        .allowsHitTesting(false)
+    }
+
     // MARK: - Metadata overlay
 
     private var metadataOverlay: some View {
@@ -299,7 +313,9 @@ struct SwipeCardView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
+            .appGlass(in: Capsule(style: .continuous))
+            .padding(.horizontal, 10)
+            .padding(.bottom, 10)
         }
     }
 

@@ -1,30 +1,30 @@
 import SwiftUI
 
 extension View {
-    /// Turns a tap-gesture card into one VoiceOver button. Used where a real
-    /// `Button` would lose its tap to a surrounding scroll view.
+    /// Turns a card into one button: a single VoiceOver element plus the shared
+    /// press-down shrink (`PressScaleButtonStyle`).
     /// Without `label`, VoiceOver reads the card's own text.
     func cardButton(
         label: String? = nil,
         hint: String? = nil,
+        pressedScale: CGFloat = PressScale.card,
         action: @escaping () -> Void
     ) -> some View {
-        modifier(CardButtonModifier(label: label, hint: hint, action: action))
+        modifier(CardButtonModifier(label: label, hint: hint, pressedScale: pressedScale, action: action))
     }
 }
 
 private struct CardButtonModifier: ViewModifier {
     let label: String?
     let hint: String?
+    let pressedScale: CGFloat
     let action: () -> Void
 
     func body(content: Content) -> some View {
-        let element = content
-            .contentShape(Rectangle())
-            .onTapGesture(perform: action)
+        let element = Button(action: action) { content.contentShape(Rectangle()) }
+            .buttonStyle(PressScaleButtonStyle(pressedScale: pressedScale))
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
-            .accessibilityAction { action() }
             .accessibilityHint(hint ?? "")
         if let label {
             element.accessibilityLabel(label)

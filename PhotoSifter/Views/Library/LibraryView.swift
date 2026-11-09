@@ -359,21 +359,14 @@ private struct EndlessModeButton: View {
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(LinearGradient(
-                        colors: [.appKeepFill, .appKeepDeep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
-                    .frame(width: 60, height: 60)
-                    .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
-
-                Image(systemName: "infinity")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(.appOnKeep)
-            }
+            Image(systemName: "infinity")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(.appOnKeep)
+                .frame(width: 60, height: 60)
+                .appGlass(in: Circle(), tint: .appKeepFill, interactive: true)
+                .shadow(color: .appKeepDeep.opacity(0.35), radius: 12, y: 4)
         }
+        .buttonStyle(PressScaleButtonStyle())
     }
 }
 

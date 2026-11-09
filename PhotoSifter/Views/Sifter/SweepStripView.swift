@@ -35,7 +35,7 @@ struct SweepStripView: View {
                         count: assets.count,
                         decision: decisions[asset.localIdentifier],
                         isCurrent: asset.localIdentifier == currentAssetID
-                    )) {
+                    ), pressedScale: PressScale.thumbnail) {
                         HapticManager.shared.playDragTick()
                         onTap(asset)
                     }

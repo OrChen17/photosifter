@@ -91,7 +91,7 @@ struct BatchStripView: View {
             count: group.assets.count,
             decision: decision,
             isCurrent: isCurrent
-        )) { onTap?(asset) }
+        ), pressedScale: PressScale.thumbnail) { onTap?(asset) }
         .accessibilityIdentifier("stripThumb_\(asset.localIdentifier)")
     }
 
