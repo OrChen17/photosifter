@@ -313,7 +313,7 @@ struct SwipeCardView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .appGlass(in: Capsule(style: .continuous))
+            .appGlass(in: Capsule(style: .continuous), interactive: false)
             .padding(.horizontal, 10)
             .padding(.bottom, 10)
         }

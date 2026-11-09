@@ -23,9 +23,10 @@ actor PhotoLibraryService {
     /// When `cutoff` is provided, only assets with `modificationDate > cutoff` are returned.
     /// Using modificationDate (rather than creationDate) means photos restored from
     /// Recently Deleted are re-fetched if iOS bumps their modificationDate on restoration.
+    /// Sorted by creationDate so time bucketing doesn't depend on edit order.
     func fetchAllAssets(since cutoff: Date? = nil) -> [PHAsset] {
         let options = PHFetchOptions()
-        options.sortDescriptors = [NSSortDescriptor(key: "modificationDate", ascending: true)]
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         // Only filter by mediaType in the DB predicate — PHQuery doesn't support
         // bitwise operators (&), so screenshot/cloud filtering is done in-memory below.
         if let cutoff {
@@ -180,5 +181,56 @@ actor PhotoLibraryService {
         try await PHPhotoLibrary.shared().performChanges {
             PHAssetChangeRequest.deleteAssets(assets as NSArray)
         }
+    }
+}
+
+/// Reports photos that become visible to the app while it runs: new photos,
+/// photos restored from Recently Deleted, and photos the user adds to a
+/// limited-access selection. Limited-access additions keep their original
+/// dates, so the incremental launch scan (which filters on modificationDate)
+/// would never see them.
+final class LibraryInsertionObserver: NSObject, PHPhotoLibraryChangeObserver {
+    private let lock = NSLock()
+    private var fetchResult: PHFetchResult<PHAsset>
+    private let onInsert: @Sendable ([String]) -> Void
+
+    init(onInsert: @escaping @Sendable ([String]) -> Void) {
+        let options = PHFetchOptions()
+        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
+        self.fetchResult = PHAsset.fetchAssets(with: options)
+        self.onInsert = onInsert
+        super.init()
+        PHPhotoLibrary.shared().register(self)
+    }
+
+    deinit {
+        PHPhotoLibrary.shared().unregisterChangeObserver(self)
+    }
+
+    func photoLibraryDidChange(_ changeInstance: PHChange) {
+        lock.lock()
+        guard let details = changeInstance.changeDetails(for: fetchResult) else {
+            lock.unlock()
+            return
+        }
+        let before = fetchResult
+        let after = details.fetchResultAfterChanges
+        fetchResult = after
+        lock.unlock()
+
+        let inserted: [String]
+        if details.hasIncrementalChanges {
+            inserted = details.insertedObjects.map(\.localIdentifier)
+        } else {
+            inserted = Self.identifiers(in: after).subtracting(Self.identifiers(in: before)).map { $0 }
+        }
+        guard !inserted.isEmpty else { return }
+        onInsert(inserted)
+    }
+
+    private static func identifiers(in result: PHFetchResult<PHAsset>) -> Set<String> {
+        var ids = Set<String>(minimumCapacity: result.count)
+        result.enumerateObjects { asset, _, _ in ids.insert(asset.localIdentifier) }
+        return ids
     }
 }

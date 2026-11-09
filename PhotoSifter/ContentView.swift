@@ -3,7 +3,6 @@ import Photos
 
 struct ContentView: View {
     @Environment(LibraryViewModel.self) private var vm
-    @State private var selectedTab: Int = 0
 
     private var isForcedDenied: Bool {
         ProcessInfo.processInfo.arguments.contains("FORCE_DENIED")
@@ -15,15 +14,8 @@ struct ContentView: View {
         } else {
             switch vm.authStatus {
             case .authorized, .limited:
-                TabView(selection: $selectedTab) {
-                    LibraryView()
-                        .tabItem { Label("Flick", systemImage: "photo.stack") }
-                        .tag(0)
-                    HistoryView()
-                        .tabItem { Label("History", systemImage: "checkmark.circle.fill") }
-                        .tag(1)
-                }
-                .tint(.appKeep)
+                HomeView()
+                    .tint(.appKeep)
             case .denied, .restricted:
                 DeniedView()
             default:

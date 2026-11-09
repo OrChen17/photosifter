@@ -1,5 +1,50 @@
 import SwiftUI
 
+extension View {
+    /// Liquid Glass on iOS 26, a thin material with a hairline on older systems.
+    /// `tint` colours the glass; leave it nil for the clear, neutral look.
+    @ViewBuilder
+    func appGlass<S: InsettableShape>(
+        in shape: S,
+        tint: Color? = nil,
+        interactive: Bool = true
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(Self.glass(tint: tint, interactive: interactive), in: shape)
+        } else {
+            self
+                .background {
+                    shape.fill(.ultraThinMaterial)
+                    if let tint { shape.fill(tint.opacity(0.35)) }
+                }
+                .overlay(shape.strokeBorder(Color.appForeground.opacity(0.08), lineWidth: 1))
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private static func glass(tint: Color?, interactive: Bool) -> Glass {
+        var glass = Glass.regular
+        if let tint { glass = glass.tint(tint) }
+        if interactive { glass = glass.interactive() }
+        return glass
+    }
+}
+
+/// Groups glass shapes so they blend and morph into each other on iOS 26.
+/// A plain container on older systems.
+struct AppGlassGroup<Content: View>: View {
+    var spacing: CGFloat = 12
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content() }
+        } else {
+            content()
+        }
+    }
+}
+
 /// How far a control shrinks while the finger is down. Bigger surfaces move
 /// less so a card press doesn't feel like a jump.
 enum PressScale {
@@ -36,32 +81,3 @@ private struct PressScaleBody: View {
     }
 }
 
-extension View {
-    /// Liquid Glass on iOS 26, a material surface before that. Use for controls
-    /// that float over content (buttons, chips, overlays), not for content cards.
-    func appGlass<S: Shape>(in shape: S, tint: Color? = nil, interactive: Bool = false) -> some View {
-        modifier(AppGlassModifier(shape: shape, tint: tint, interactive: interactive))
-    }
-}
-
-private struct AppGlassModifier<S: Shape>: ViewModifier {
-    let shape: S
-    let tint: Color?
-    let interactive: Bool
-
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content.glassEffect(.regular.tint(tint).interactive(interactive), in: shape)
-        } else {
-            content
-                .background {
-                    if let tint {
-                        shape.fill(tint)
-                    } else {
-                        shape.fill(.ultraThinMaterial)
-                    }
-                }
-                .overlay(shape.stroke(Color.white.opacity(0.18), lineWidth: 1))
-        }
-    }
-}

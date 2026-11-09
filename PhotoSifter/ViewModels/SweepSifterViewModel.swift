@@ -7,7 +7,7 @@ import SwiftUI
 @Observable
 @MainActor
 final class SweepSifterViewModel {
-    let sourceGroups: [PhotoGroup]
+    private(set) var sourceGroups: [PhotoGroup]
 
     private(set) var queue: [PHAsset]
     private(set) var currentIndex: Int = 0
@@ -22,7 +22,10 @@ final class SweepSifterViewModel {
 
     /// Reverse lookup `localIdentifier -> source group id`, used by the strip
     /// to draw cross-memory boundary dividers.
-    private let groupIDByAsset: [String: UUID]
+    private var groupIDByAsset: [String: UUID]
+    /// Every group ever offered to this session, including ones applied and
+    /// removed from the queue, so a later library update can't re-add them.
+    private var knownGroupIDs: Set<UUID>
 
     private var skippedIDs: Set<String> = []
     /// Per-action undo log. `decision == nil` denotes a skip; otherwise a keep/delete.
@@ -42,6 +45,55 @@ final class SweepSifterViewModel {
         }
         self.queue = flatQueue
         self.groupIDByAsset = lookup
+        self.knownGroupIDs = Set(groups.map(\.id))
+    }
+
+    /// Appends groups the scan found after the session started. Groups already
+    /// seen and photos already in the queue are ignored. When the queue was
+    /// used up, the cursor lands on the first new photo.
+    func appendGroups(_ groups: [PhotoGroup]) {
+        var added = false
+        for group in groups where !knownGroupIDs.contains(group.id) {
+            knownGroupIDs.insert(group.id)
+            let fresh = group.assets.filter { groupIDByAsset[$0.localIdentifier] == nil }
+            guard !fresh.isEmpty else { continue }
+            sourceGroups.append(group)
+            for asset in fresh {
+                queue.append(asset)
+                groupIDByAsset[asset.localIdentifier] = group.id
+            }
+            added = true
+        }
+        guard added else { return }
+        // A finished queue has currentIndex == old count, which is now the first
+        // new photo. Move past any decided ones, like a normal advance would.
+        while currentIndex < queue.count && decisions[queue[currentIndex].localIdentifier] != nil {
+            currentIndex += 1
+        }
+    }
+
+    /// Removes photos that left the library groups elsewhere (for example a
+    /// group flicked from Memories), so the deck never offers them again.
+    func dropAssets(notIn liveIDs: Set<String>) {
+        let gone = Set(queue.map(\.localIdentifier).filter { !liveIDs.contains($0) })
+        guard !gone.isEmpty else { return }
+        let priorCurrentID = currentAsset?.localIdentifier
+        let removedBeforeCursor = queue.prefix(currentIndex).filter { gone.contains($0.localIdentifier) }.count
+        queue.removeAll { gone.contains($0.localIdentifier) }
+        for id in gone {
+            groupIDByAsset[id] = nil
+            decisions[id] = nil
+            skippedIDs.remove(id)
+        }
+        actionHistory.removeAll { gone.contains($0.assetID) }
+        if let pid = priorCurrentID, let idx = queue.firstIndex(where: { $0.localIdentifier == pid }) {
+            currentIndex = idx
+        } else {
+            currentIndex = max(0, min(currentIndex - removedBeforeCursor, queue.count))
+            while currentIndex < queue.count && decisions[queue[currentIndex].localIdentifier] != nil {
+                currentIndex += 1
+            }
+        }
     }
 
     // MARK: - Cursor

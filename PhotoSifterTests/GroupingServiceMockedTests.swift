@@ -103,7 +103,90 @@ final class GroupingServiceMockedTests: XCTestCase {
         }
     }
 
+    // MARK: - Scan pipeline: concurrency, order, progress
+
+    func testScan_computesSignaturesConcurrently() async throws {
+        let assets = try requireAssetsInSameBucket(count: 6)
+        let mock = MockSimilarityService()
+        mock.signatureDelay = .milliseconds(50)
+
+        let service = GroupingService(similarity: mock)
+        for await _ in await service.streamGroups(from: assets) {}
+
+        XCTAssertGreaterThan(mock.maxInFlight, 1, "Signatures should be computed in parallel")
+        XCTAssertLessThanOrEqual(mock.maxInFlight, GroupingService.maxConcurrentSignatures)
+    }
+
+    func testScan_startsWithTheNewestBuckets() async throws {
+        let buckets = try requireBuckets(moreThan: GroupingService.maxConcurrentWorkItems)
+        let mock = MockSimilarityService()
+
+        let service = GroupingService(similarity: mock)
+        for await _ in await service.streamGroups(from: buckets.flatMap { $0 }) {}
+
+        // Only the first `maxConcurrentWorkItems` items start right away, and
+        // the plan orders them newest first. Which of those runs first is up
+        // to the scheduler.
+        let newestIDs = Set(buckets.suffix(GroupingService.maxConcurrentWorkItems).flatMap { $0.map(\.localIdentifier) })
+        let first = try XCTUnwrap(mock.requestedIDs.first)
+        XCTAssertTrue(newestIDs.contains(first), "The scan must start with the newest time buckets")
+    }
+
+    func testScan_progressEndsFinishedWithEverythingChecked() async throws {
+        let assets = try requirePhotoAssets(minimum: 4)
+        let mock = MockSimilarityService()
+
+        let service = GroupingService(similarity: mock)
+        var updates: [ScanProgress] = []
+        for await event in await service.scan(from: assets) {
+            if case .progress(let p) = event { updates.append(p) }
+        }
+
+        let last = try XCTUnwrap(updates.last)
+        XCTAssertEqual(last.phase, .finished)
+        XCTAssertEqual(last.total, assets.count)
+        XCTAssertEqual(last.checked, last.total)
+        XCTAssertEqual(last.fraction, 1)
+        let checked = updates.map(\.checked)
+        XCTAssertEqual(checked, checked.sorted(), "Checked count must never go backwards")
+    }
+
+    func testScan_skipsKnownIDs() async throws {
+        let assets = try requireAssetsInSameBucket(count: 3)
+        let mock = MockSimilarityService()
+        mock.similarPairs = [[assets[0].localIdentifier, assets[1].localIdentifier]]
+
+        let service = GroupingService(similarity: mock)
+        var total = 0
+        for await event in await service.scan(from: assets, excluding: [assets[0].localIdentifier]) {
+            if case .progress(let p) = event { total = p.total }
+        }
+
+        XCTAssertEqual(total, 2)
+        XCTAssertFalse(mock.requestedIDs.contains(assets[0].localIdentifier))
+    }
+
     // MARK: - Helpers
+
+    /// Time buckets of non-burst photos, oldest first. Skips unless there are
+    /// more than `count`.
+    private func requireBuckets(
+        moreThan count: Int,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) throws -> [[PHAsset]] {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
+        let result = PHAsset.fetchAssets(with: .image, options: options)
+        var all: [PHAsset] = []
+        result.enumerateObjects { a, _, _ in if !a.representsBurst { all.append(a) } }
+
+        let buckets = GroupingService.splitIntoBuckets(all)
+        guard buckets.count > count else {
+            throw XCTSkip("Need more than \(count) time buckets in the library", file: file, line: line)
+        }
+        return buckets
+    }
 
     /// Finds `count` consecutive assets whose creation dates all fall within
     /// one GroupingService time-bucket (5-minute window). Required because the

@@ -2,27 +2,65 @@ import Vision
 import Photos
 import UIKit
 
+/// A per-asset fingerprint. `GroupingService` computes one per photo (many at
+/// once), then compares them pairwise with plain synchronous calls.
+protocol SimilaritySignature: Sendable {
+    /// Smaller = more similar. Throws if the two signatures can't be compared.
+    func distance(to other: any SimilaritySignature) throws -> Float
+}
+
 /// Abstracts the asset-similarity capability so tests can plug in a
 /// deterministic mock — useful on iOS Simulator, where the CoreML/espresso
 /// runtime can't load the VNGenerateImageFeaturePrintRequest model.
 protocol SimilarityProviding: Sendable {
-    /// Returns the feature-print distance between two assets.
-    /// Smaller = more similar. Throws if either asset's print can't be computed.
-    func distance(between a: PHAsset, and b: PHAsset) async throws -> Float
+    /// Computes the asset's signature. Throws if it can't be computed; the
+    /// asset is then left out of grouping.
+    func signature(for asset: PHAsset) async throws -> any SimilaritySignature
+}
+
+extension SimilarityProviding {
+    func distance(between a: PHAsset, and b: PHAsset) async throws -> Float {
+        let sa = try await signature(for: a)
+        let sb = try await signature(for: b)
+        return try sa.distance(to: sb)
+    }
+}
+
+/// `VNFeaturePrintObservation` is immutable once Vision returns it.
+struct FeaturePrintSignature: SimilaritySignature, @unchecked Sendable {
+    let observation: VNFeaturePrintObservation
+
+    func distance(to other: any SimilaritySignature) throws -> Float {
+        guard let other = other as? FeaturePrintSignature else {
+            throw SimilarityError.incompatibleSignature
+        }
+        var dist: Float = 0
+        try observation.computeDistance(&dist, to: other.observation)
+        return dist
+    }
 }
 
 actor SimilarityService: SimilarityProviding {
     static let shared = SimilarityService()
 
+    private static let imageTargetSize = CGSize(width: 512, height: 512)
+
     private var cache: [String: VNFeaturePrintObservation] = [:]
 
+    /// Cached lookup for tests and diagnostics. The scan uses `signature(for:)`.
     func featurePrint(for asset: PHAsset) async throws -> VNFeaturePrintObservation {
         if let cached = cache[asset.localIdentifier] { return cached }
-
-        let image = try await loadImage(for: asset)
-        let observation = try await computeFeaturePrint(for: image)
+        let observation = try await Self.computeFeaturePrint(for: asset)
         cache[asset.localIdentifier] = observation
         return observation
+    }
+
+    /// Not cached and not isolated to the actor, so the scan can run several
+    /// at once and drop each print as soon as its time bucket is done. The old
+    /// actor-isolated path ran every Vision request one after another and kept
+    /// every print in memory for the whole scan.
+    nonisolated func signature(for asset: PHAsset) async throws -> any SimilaritySignature {
+        FeaturePrintSignature(observation: try await Self.computeFeaturePrint(for: asset))
     }
 
     func distance(
@@ -34,17 +72,17 @@ actor SimilarityService: SimilarityProviding {
         return dist
     }
 
-    func distance(between a: PHAsset, and b: PHAsset) async throws -> Float {
-        let pa = try await featurePrint(for: a)
-        let pb = try await featurePrint(for: b)
-        return try distance(from: pa, to: pb)
-    }
-
     func clearCache() {
         cache.removeAll()
     }
 
-    private func loadImage(for asset: PHAsset) async throws -> CGImage {
+    private static func computeFeaturePrint(for asset: PHAsset) async throws -> VNFeaturePrintObservation {
+        let image = try await loadImage(for: asset)
+        try Task.checkCancellation()
+        return try featurePrint(of: image)
+    }
+
+    private static func loadImage(for asset: PHAsset) async throws -> CGImage {
         try await withCheckedThrowingContinuation { continuation in
             let options = PHImageRequestOptions()
             // .fastFormat returns nil when no fast cache exists (e.g. assets
@@ -53,10 +91,9 @@ actor SimilarityService: SimilarityProviding {
             options.deliveryMode = .highQualityFormat
             options.resizeMode = .fast
             options.isNetworkAccessAllowed = AppSettings.cloudDownloadEnabled
-            let targetSize = CGSize(width: 512, height: 512)
             PHImageManager.default().requestImage(
                 for: asset,
-                targetSize: targetSize,
+                targetSize: imageTargetSize,
                 contentMode: .aspectFill,
                 options: options
             ) { image, info in
@@ -71,38 +108,19 @@ actor SimilarityService: SimilarityProviding {
         }
     }
 
-    private func computeFeaturePrint(for image: CGImage) async throws -> VNFeaturePrintObservation {
-        try await withCheckedThrowingContinuation { continuation in
-            // `perform([request])` invokes the request's completion handler
-            // synchronously *and* may throw — guard against double-resume.
-            final class Once { var fired = false }
-            let once = Once()
-            func resume(_ result: Result<VNFeaturePrintObservation, Error>) {
-                guard !once.fired else { return }
-                once.fired = true
-                switch result {
-                case .success(let v): continuation.resume(returning: v)
-                case .failure(let e): continuation.resume(throwing: e)
-                }
-            }
-            let request = VNGenerateImageFeaturePrintRequest { request, error in
-                if let error { resume(.failure(error)); return }
-                guard let r = request.results?.first as? VNFeaturePrintObservation else {
-                    resume(.failure(SimilarityError.noFeaturePrint)); return
-                }
-                resume(.success(r))
-            }
-            let handler = VNImageRequestHandler(cgImage: image, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                resume(.failure(error))
-            }
+    private static func featurePrint(of image: CGImage) throws -> VNFeaturePrintObservation {
+        let request = VNGenerateImageFeaturePrintRequest()
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        try handler.perform([request])
+        guard let observation = request.results?.first else {
+            throw SimilarityError.noFeaturePrint
         }
+        return observation
     }
 }
 
 enum SimilarityError: Error {
     case imageLoadFailed
     case noFeaturePrint
+    case incompatibleSignature
 }

@@ -34,6 +34,60 @@ final class GroupingServiceTests: XCTestCase {
         XCTAssertEqual(buckets[0].count, 2)
     }
 
+    // MARK: - weightedBuckets(byDates:) — progress weights
+
+    func testWeightedBuckets_weightsPlusLeftoverEqualInputCount() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        let offsets: [TimeInterval] = [
+            0,                      // single, before first bucket → leftover
+            3_600, 3_660,           // bucket A
+            7_200,                  // single → weighted into A
+            10_800, 10_830, 10_860, // bucket B
+            14_400,                 // single → weighted into B
+        ]
+        let dates = offsets.map { base.addingTimeInterval($0) }
+
+        let result = GroupingService.weightedBuckets(byDates: dates)
+
+        XCTAssertEqual(result.buckets.map(\.indices), [[1, 2], [4, 5, 6]])
+        XCTAssertEqual(result.buckets.map(\.weight), [3, 4])
+        XCTAssertEqual(result.leftover, 1)
+        XCTAssertEqual(result.buckets.map(\.weight).reduce(0, +) + result.leftover, dates.count)
+    }
+
+    func testWeightedBuckets_noBuckets_allLeftover() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        let dates = [base, base.addingTimeInterval(3_600), base.addingTimeInterval(7_200)]
+        let result = GroupingService.weightedBuckets(byDates: dates)
+        XCTAssertTrue(result.buckets.isEmpty)
+        XCTAssertEqual(result.leftover, 3)
+    }
+
+    func testWeightedBuckets_emptyInput() {
+        let result = GroupingService.weightedBuckets(byDates: [])
+        XCTAssertTrue(result.buckets.isEmpty)
+        XCTAssertEqual(result.leftover, 0)
+    }
+
+    // MARK: - plan(_:) — needs library assets
+
+    func testPlan_itemsAreNewestFirst_andWeightsSumToTotal() throws {
+        let assets = try requirePhotoAssets(minimum: 2)
+        let plan = GroupingService.plan(assets.shuffled())
+
+        XCTAssertEqual(plan.total, assets.count)
+        let dates = plan.items.map(\.newestDate)
+        XCTAssertEqual(dates, dates.sorted(by: >), "Work items must be ordered newest first")
+
+        let weights = plan.items.reduce(0) { sum, item in
+            switch item {
+            case .burst: return sum + 1
+            case .bucket(_, let weight, _, _): return sum + weight
+            }
+        }
+        XCTAssertEqual(weights + plan.leftover, plan.total)
+    }
+
     // MARK: - splitIntoBuckets(byDates:) — pure, library-independent
 
     func testSplitIntoBucketsByDates_emptyInput() {

@@ -50,7 +50,7 @@ struct DecisionBadgeView: View {
         .foregroundStyle(foreground)
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
-        .appGlass(in: Capsule(style: .continuous), tint: tint)
+        .appGlass(in: Capsule(style: .continuous), tint: tint, interactive: false)
         .scaleEffect(0.8 + 0.2 * opacity)
         .opacity(opacity)
     }

@@ -38,7 +38,7 @@ struct DuplicateGroupSifterView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.backward")
                             .font(.system(.body, weight: .semibold))
-                        Text("Library")
+                        Text("Back")
                             .font(.system(.body))
                     }
                     .foregroundStyle(.appForeground)
@@ -220,7 +220,7 @@ struct DuplicateGroupSifterView: View {
             Spacer()
 
             Button { dismiss() } label: {
-                Text("Back to Library")
+                Text("Done")
                     .font(.system(.body, design: .rounded, weight: .semibold))
                     .foregroundStyle(.appOnKeep)
                     .frame(maxWidth: .infinity)

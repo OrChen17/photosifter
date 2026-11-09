@@ -10,7 +10,7 @@ struct SessionSummaryView: View {
     var onContinue: (() -> Void)? = nil
     var onRetry: (() -> Void)? = nil
     var overrideDeletedCount: Int? = nil
-    var continueLabel: String = "Back to Library"
+    var continueLabel: String = "Done"
     var paintsBackground: Bool = true
     var statsFontSize: CGFloat = 56
 
@@ -225,12 +225,19 @@ struct SessionSummaryView: View {
                     HapticManager.shared.playNavigate()
                     openRecentlyDeleted()
                 } label: {
-                    Label("View Recently Deleted", systemImage: "trash")
-                        .accessibilityIdentifier("viewRecentlyDeletedButton")
-                        .scaledFont(size: 14, weight: .medium, design: .rounded)
-                        .foregroundStyle(.appTextSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                    VStack(spacing: 4) {
+                        Label("Open Photos", systemImage: "photo.on.rectangle")
+                            .scaledFont(size: 14, weight: .medium, design: .rounded)
+                        Text("Deleted photos stay 30 days in Collections → Utilities → Recently Deleted.")
+                            .font(.system(.caption, design: .rounded))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityIdentifier("viewRecentlyDeletedButton")
+                    .foregroundStyle(.appTextSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
                 }
             }
         }
@@ -425,12 +432,11 @@ struct SessionSummaryView: View {
     }
 
     private func openRecentlyDeleted() {
-        if let url = URL(string: "photos-redirect://") {
-            UIApplication.shared.open(url) { success in
-                if !success, let fallback = URL(string: "photos-library://") {
-                    UIApplication.shared.open(fallback)
-                }
-            }
-        }
+        guard let url = URL(string: Self.photosAppURL) else { return }
+        UIApplication.shared.open(url)
     }
+
+    /// Opens the Photos app. iOS has no public link to the Recently Deleted
+    /// album, so the button label tells the user where to find it.
+    private static let photosAppURL = "photos-redirect://"
 }

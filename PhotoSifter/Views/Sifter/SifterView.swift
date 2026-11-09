@@ -206,7 +206,7 @@ struct SifterView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.backward")
                         .font(.system(.body, weight: .semibold))
-                    Text("Library")
+                    Text("Back")
                         .font(.system(.body))
                 }
                 .foregroundStyle(.appForeground)

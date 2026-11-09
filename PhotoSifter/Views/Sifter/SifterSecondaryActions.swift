@@ -25,6 +25,7 @@ struct SifterSecondaryActions: View {
     }
 
     var body: some View {
+        AppGlassGroup {
         HStack(alignment: .center, spacing: 12) {
             sideButton(
                 icon: "arrow.up",
@@ -54,6 +55,7 @@ struct SifterSecondaryActions: View {
             RevertButton(isEnabled: isRevertEnabled, action: onRevert)
                 .accessibilityIdentifier("revertButton")
         }
+        }
     }
 
     private func sideButton(
@@ -67,7 +69,7 @@ struct SifterSecondaryActions: View {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .heavy))
                 .foregroundStyle(isEnabled ? enabledTint : Color.appForeground.opacity(0.3))
-                .frame(width: 44, height: 44)
+                .frame(width: 50, height: 50)
                 .appGlass(in: Circle(), interactive: isEnabled)
         }
         .buttonStyle(PressScaleButtonStyle())
@@ -100,22 +102,22 @@ struct SifterSecondaryActions: View {
             }
             .font(.system(.subheadline, design: .rounded, weight: .semibold))
             .foregroundStyle(config.isEnabled ? Color.appOnKeep : Color.appForeground)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 20)
+            .frame(minHeight: 50)
             .background(
-                config.isEnabled
-                    ? AnyShapeStyle(LinearGradient(
-                        colors: [.appKeepFill, .appKeepDeep],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                      ))
-                    : AnyShapeStyle(Color.appForeground.opacity(0.08)),
+                LinearGradient(
+                    colors: [.appKeepFill, .appKeepDeep],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .opacity(config.isEnabled ? 1 : 0),
                 in: Capsule(style: .continuous)
             )
+            .appGlass(in: Capsule(style: .continuous))
         }
         .buttonStyle(PressScaleButtonStyle())
         .disabled(!config.isEnabled)
-        .opacity(config.isEnabled ? 1.0 : 0.55)
+        .opacity(config.isEnabled ? 1.0 : 0.75)
         .animation(.easeOut(duration: 0.2), value: config.isEnabled)
     }
 }
@@ -142,7 +144,7 @@ private struct RevertButton: View {
                 .font(.system(size: 18, weight: .heavy))
                 .foregroundStyle(isEnabled ? Color.appRevert : Color.appForeground.opacity(0.3))
                 .rotationEffect(.degrees(spin))
-                .frame(width: 44, height: 44)
+                .frame(width: 50, height: 50)
                 .appGlass(in: Circle(), interactive: isEnabled)
         }
         .buttonStyle(PressScaleButtonStyle())

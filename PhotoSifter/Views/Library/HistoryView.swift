@@ -7,35 +7,33 @@ struct HistoryView: View {
 
     var body: some View {
         @Bindable var vm = vm
-        NavigationStack {
-            ZStack {
-                Color.appBackground.ignoresSafeArea()
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
 
-                if vm.completedBatches.isEmpty {
-                    emptyState
-                } else {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            statsSection
+            if vm.completedBatches.isEmpty {
+                emptyState
+            } else {
+                ScrollView {
+                    VStack(spacing: 24) {
+                        statsSection
 
-                            if !vm.revisitableBatches.isEmpty {
-                                revisitSection
-                            }
-                            if !vm.historyOnlyBatches.isEmpty {
-                                historySection
-                            }
+                        if !vm.revisitableBatches.isEmpty {
+                            revisitSection
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                        .padding(.bottom, 32)
+                        if !vm.historyOnlyBatches.isEmpty {
+                            historySection
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32)
                 }
             }
-            .navigationTitle("History")
-            .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(item: $vm.selectedRestoreSession) { session in
-                SifterView(group: session.group)
-            }
+        }
+        .navigationTitle("History")
+        .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(item: $vm.selectedRestoreSession) { session in
+            SifterView(group: session.group)
         }
     }
 
