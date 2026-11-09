@@ -33,3 +33,9 @@ func requirePhotoGroup(assetCount: Int = 3, file: StaticString = #file, line: UI
     let assets = try requirePhotoAssets(minimum: assetCount, file: file, line: line)
     return PhotoGroup(id: UUID(), assets: assets)
 }
+
+func requireRealVision(file: StaticString = #file, line: UInt = #line) throws {
+    #if targetEnvironment(simulator)
+    throw XCTSkip("Vision feature prints need a device. The simulator cannot load the model.", file: file, line: line)
+    #endif
+}

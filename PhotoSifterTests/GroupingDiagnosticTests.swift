@@ -63,6 +63,7 @@ final class GroupingDiagnosticTests: XCTestCase {
     }
 
     func testDiagnose_endToEnd() async throws {
+        try requireRealVision()
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         print("AUTH status: \(status.rawValue) (\(status))")
         try XCTSkipIf(

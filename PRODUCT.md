@@ -31,7 +31,7 @@ FlickPic finds groups of near-duplicate photos and lets the user keep the best a
 ## Capabilities and Constraints
 
 - iOS 17+, SwiftUI, no third-party dependencies.
-- Everything runs on the device. No account, no server, no analytics, no ads (see `docs/privacy-policy.html`).
+- Photos and grouping stay on the device. No account, no server of our own, no ads. Anonymous usage events, crash reports and diagnostic logs go to PostHog (see `docs/privacy-policy.html`).
 - User-facing name is **FlickPic**; the main tab is **Flick** ("flicked" in copy). Code and Xcode target still use `PhotoSifter` / `Sifter`.
 - **Open decision: pricing.** Current idea: free up to some amount of storage cleaned (X GB, undecided), then $5/month. Premium may add features such as video compression. Not built yet; nothing in the UI should promise a price or a premium feature until decided.
 

@@ -16,8 +16,13 @@ final class LibraryViewModelTests: XCTestCase {
         XCTAssertNil(vm.error)
     }
 
-    func testSortOrder_defaultIsOldestBiggest() {
-        XCTAssertEqual(LibraryViewModel().sortOrder, .oldestBiggest)
+    func testSortOrder_defaultIsRandom() {
+        let defaults = UserDefaults.standard
+        let saved = defaults.string(forKey: LibraryViewModel.sortOrderKey)
+        defaults.removeObject(forKey: LibraryViewModel.sortOrderKey)
+        defer { defaults.set(saved, forKey: LibraryViewModel.sortOrderKey) }
+
+        XCTAssertEqual(LibraryViewModel().sortOrder, .random)
     }
 
     // MARK: - Inserted-photo neighbours
@@ -141,19 +146,20 @@ final class LibraryViewModelTests: XCTestCase {
 
     // MARK: - Sort
 
-    func testApplySort_biggestFirst_largestGroupFirst() throws {
+    func testApplySort_biggestFirst_mostBytesFirst() throws {
         let vm = LibraryViewModel()
-        let small  = try requirePhotoGroup(assetCount: 2)
-        let large  = try requirePhotoGroup(assetCount: 4)
-        let medium = try requirePhotoGroup(assetCount: 3)
+        var small  = try requirePhotoGroup(assetCount: 2)
+        var large  = try requirePhotoGroup(assetCount: 2)
+        var medium = try requirePhotoGroup(assetCount: 2)
+        small.totalFileBytes = 1_000
+        large.totalFileBytes = 9_000
+        medium.totalFileBytes = 5_000
         vm.groups = [small, large, medium]
 
         vm.sortOrder = .biggestFirst
         vm.applySort()
 
-        XCTAssertEqual(vm.groups[0].assets.count, 4)
-        XCTAssertEqual(vm.groups[1].assets.count, 3)
-        XCTAssertEqual(vm.groups[2].assets.count, 2)
+        XCTAssertEqual(vm.groups.map(\.totalFileBytes), [9_000, 5_000, 1_000])
     }
 
     func testApplySort_random_preservesGroupCount() throws {

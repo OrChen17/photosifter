@@ -48,7 +48,7 @@ final class LibraryViewModel {
         didSet { UserDefaults.standard.set(sortOrder.rawValue, forKey: Self.sortOrderKey) }
     }
 
-    private static let sortOrderKey = "library.groupSortOrder"
+    static let sortOrderKey = "library.groupSortOrder"
     /// Streamed groups are added to the grid in small animated batches.
     private static let flushBatchSize = 8
     private static let flushInterval: TimeInterval = 0.4

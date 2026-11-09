@@ -230,16 +230,18 @@ final class SifterViewModelTests: XCTestCase {
 
     // MARK: - Skip
 
-    func testSkipCurrent_movesAssetToEndOfDisplayOrder() throws {
+    func testSkipCurrent_keepsOrderAndAdvancesToNextUndecided() throws {
         let group = try requirePhotoGroup(assetCount: 3)
         let vm = SifterViewModel(group: group, deletionService: mockDeletion)
-        let firstID = group.assets[0].localIdentifier
+        let orderBefore = vm.displayOrder.map(\.localIdentifier)
+        let firstID = orderBefore[0]
 
         vm.skipCurrent()
 
-        XCTAssertEqual(vm.displayOrder.last?.localIdentifier, firstID)
+        XCTAssertEqual(vm.displayOrder.map(\.localIdentifier), orderBefore, "Skip keeps the photo in place")
+        XCTAssertEqual(vm.currentIndex, 1)
         XCTAssertNotEqual(vm.currentAsset?.localIdentifier, firstID)
-        XCTAssertEqual(vm.currentIndex, 0, "Index stays the same after skip")
+        XCTAssertNil(vm.group.decisions[firstID], "Skip records no decision")
     }
 
     func testSkipCurrent_cannotSkipSameAssetTwice() throws {

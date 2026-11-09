@@ -56,7 +56,6 @@
 		X022 /* SweepStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX22 /* SweepStripView.swift */; };
 		X023 /* SweepSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX23 /* SweepSifterView.swift */; };
 		X032 /* FlickCardArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX33 /* FlickCardArea.swift */; };
-		X040 /* SifterPrimaryActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX40 /* SifterPrimaryActions.swift */; };
 		X041 /* SifterSecondaryActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX41 /* SifterSecondaryActions.swift */; };
 		X030 /* CoverageBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX30 /* CoverageBarView.swift */; };
 		X031 /* HistoryRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX31 /* HistoryRowView.swift */; };
@@ -144,7 +143,6 @@
 		BX22 /* SweepStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepStripView.swift; sourceTree = "<group>"; };
 		BX23 /* SweepSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterView.swift; sourceTree = "<group>"; };
 		BX33 /* FlickCardArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickCardArea.swift; sourceTree = "<group>"; };
-		BX40 /* SifterPrimaryActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterPrimaryActions.swift; sourceTree = "<group>"; };
 		BX41 /* SifterSecondaryActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterSecondaryActions.swift; sourceTree = "<group>"; };
 		BX30 /* CoverageBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageBarView.swift; sourceTree = "<group>"; };
 		BX31 /* HistoryRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryRowView.swift; sourceTree = "<group>"; };
@@ -360,7 +358,6 @@
 				BX22 /* SweepStripView.swift */,
 				BX23 /* SweepSifterView.swift */,
 				BX33 /* FlickCardArea.swift */,
-				BX40 /* SifterPrimaryActions.swift */,
 				BX41 /* SifterSecondaryActions.swift */,
 			);
 			path = Sifter;
@@ -605,7 +602,6 @@
 				X022 /* SweepStripView.swift in Sources */,
 				X023 /* SweepSifterView.swift in Sources */,
 				X032 /* FlickCardArea.swift in Sources */,
-				X040 /* SifterPrimaryActions.swift in Sources */,
 				X041 /* SifterSecondaryActions.swift in Sources */,
 				X030 /* CoverageBarView.swift in Sources */,
 				X031 /* HistoryRowView.swift in Sources */,

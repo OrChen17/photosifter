@@ -7,6 +7,10 @@ final class SimilarityServiceTests: XCTestCase {
 
     private let service = SimilarityService.shared
 
+    override func setUpWithError() throws {
+        try requireRealVision()
+    }
+
     // MARK: - Feature print computation
 
     func testFeaturePrint_returnsSameResultForSameAsset() async throws {

@@ -33,35 +33,26 @@ final class PhotoLibraryServiceTests: XCTestCase {
         )
     }
 
-    /// Picks the median asset's creationDate as a real-world cutoff and verifies
-    /// that fetching with that cutoff returns strictly newer assets only.
-    func testFetchAllAssets_withMidLibraryCutoff_returnsOnlyAssetsCreatedAfterCutoff() async throws {
+    func testFetchAllAssets_withMidLibraryCutoff_returnsOnlyAssetsModifiedAfterCutoff() async throws {
         _ = try requirePhotoAssets(minimum: 3)
         let service = PhotoLibraryService.shared
         let baseline = await service.fetchAllAssets()
-        try XCTSkipIf(baseline.count < 3, "Need ≥3 assets to pick a meaningful mid-cutoff")
+        try XCTSkipIf(baseline.count < 3, "Need at least 3 assets to pick a mid-library cutoff")
 
-        let dates = baseline.compactMap { $0.creationDate }.sorted()
+        let dates = baseline.compactMap { $0.modificationDate }.sorted()
         try XCTSkipIf(
             Set(dates).count < 2,
-            "Need assets with distinct creation dates to test cutoff filtering"
+            "Need assets with distinct modification dates to test cutoff filtering"
         )
         let median = dates[dates.count / 2]
 
         let newer = await service.fetchAllAssets(since: median)
         for asset in newer {
-            if let d = asset.creationDate {
-                XCTAssertGreaterThan(
-                    d, median,
-                    "Every returned asset must have creationDate strictly after the cutoff"
-                )
+            if let d = asset.modificationDate {
+                XCTAssertGreaterThan(d, median, "Every returned asset must be modified strictly after the cutoff")
             }
         }
-        // Strict inequality means the cutoff itself is excluded — counts should differ.
-        XCTAssertLessThan(
-            newer.count, baseline.count,
-            "Filtering by a mid-library cutoff must drop at least one asset"
-        )
+        XCTAssertLessThan(newer.count, baseline.count, "A mid-library cutoff must drop at least one asset")
     }
 
     // MARK: - loadThumbnailStream — progressive delivery

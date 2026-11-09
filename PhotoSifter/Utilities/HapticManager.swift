@@ -6,9 +6,13 @@ final class HapticManager {
     static let shared = HapticManager()
 
     private var engine: CHHapticEngine?
+    private let rigid = UIImpactFeedbackGenerator(style: .rigid)
+    private let heavy = UIImpactFeedbackGenerator(style: .heavy)
+    private let medium = UIImpactFeedbackGenerator(style: .medium)
 
     private init() {
         prepareEngine()
+        [rigid, heavy, medium].forEach { $0.prepare() }
     }
 
     func prepareEngine() {
@@ -21,15 +25,18 @@ final class HapticManager {
     }
 
     func playKeep() {
-        UIImpactFeedbackGenerator(style: .rigid).impactOccurred(intensity: 0.9)
+        rigid.impactOccurred(intensity: 0.9)
+        rigid.prepare()
     }
 
     func playDelete() {
-        UIImpactFeedbackGenerator(style: .heavy).impactOccurred(intensity: 1.0)
+        heavy.impactOccurred(intensity: 1.0)
+        heavy.prepare()
     }
 
     func playUndo() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 1.0)
+        medium.impactOccurred(intensity: 1.0)
+        medium.prepare()
     }
 
     func playBatchComplete() {
