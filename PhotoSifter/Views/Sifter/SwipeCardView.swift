@@ -73,6 +73,8 @@ struct SwipeCardView: View {
 
     @State private var offset: CGSize = .zero
     @State private var isThrown: Bool = false
+    @State private var isDragging = false
+    @State private var grabAnchor: UnitPoint = .center
     /// With Reduce Motion on, a thrown card fades out in place instead of flying off.
     @State private var throwFade: Double = 1
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -158,10 +160,11 @@ struct SwipeCardView: View {
                     .shadow(color: dragFillColor.opacity(edgeGlow * CardGlow.shadowOpacity), radius: 28)
             }
             .scaleEffect(scale)
+            .rotationEffect(.degrees(spinDegrees), anchor: grabAnchor)
+            .rotation3DEffect(.degrees(tiltDegrees), axis: (x: 0, y: 1, z: 0), perspective: CardTilt.perspective)
             .offset(x: offset.width, y: offset.height * 0.4)
-            .rotationEffect(.degrees(Double(offset.width) / 22))
             .opacity(throwFade)
-            .gesture(swipeDrag)
+            .gesture(swipeDrag(in: geo.frame(in: .global)))
             .allowsHitTesting(!isThrown)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isImage)
@@ -216,6 +219,7 @@ struct SwipeCardView: View {
         }
         .onChange(of: throwCommand) { _, newValue in
             guard let cmd = newValue, !isThrown else { return }
+            grabAnchor = .center
             let direction: CGFloat = (cmd.direction == .right) ? 1 : -1
             throwCard(
                 direction: direction,
@@ -353,13 +357,28 @@ struct SwipeCardView: View {
 
     // MARK: - Gesture
 
-    private var swipeDrag: some Gesture {
+    private var spinDegrees: Double {
+        let side: Double = grabAnchor.y > 0.5 ? -1 : 1
+        return side * Double(offset.width) / CardTilt.spinDivisor
+    }
+
+    private var tiltDegrees: Double {
+        guard !reduceMotion else { return 0 }
+        return max(-CardTilt.maxDegrees, min(CardTilt.maxDegrees, Double(offset.width) / CardTilt.tiltDivisor))
+    }
+
+    private func swipeDrag(in frame: CGRect) -> some Gesture {
         DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onChanged { value in
                 guard !isThrown, value.startLocation.x > backSwipeEdgeWidth else { return }
+                if !isDragging {
+                    isDragging = true
+                    grabAnchor = Self.unitPoint(of: value.startLocation, in: frame)
+                }
                 offset = value.translation
             }
             .onEnded { value in
+                isDragging = false
                 guard !isThrown, value.startLocation.x > backSwipeEdgeWidth else { return }
 
                 let dx = value.translation.width
@@ -385,6 +404,14 @@ struct SwipeCardView: View {
                     }
                 }
             }
+    }
+
+    private static func unitPoint(of point: CGPoint, in frame: CGRect) -> UnitPoint {
+        guard frame.width > 0, frame.height > 0 else { return .center }
+        return UnitPoint(
+            x: min(1, max(0, (point.x - frame.minX) / frame.width)),
+            y: min(1, max(0, (point.y - frame.minY) / frame.height))
+        )
     }
 
     private func throwCard(direction: CGFloat, velocity: CGSize? = nil, then action: @escaping () -> Void) {
@@ -444,4 +471,11 @@ struct SwipeCardView: View {
 
 enum CardThrow {
     static let buttonSpeed: CGFloat = 1400
+}
+
+private enum CardTilt {
+    static let spinDivisor: Double = 22
+    static let tiltDivisor: Double = 30
+    static let maxDegrees: Double = 8
+    static let perspective: CGFloat = 0.5
 }
