@@ -59,4 +59,28 @@ final class SweepSifterViewModelTests: XCTestCase {
         XCTAssertEqual(vm.queue.count, 4)
         XCTAssertEqual(vm.groupID(for: first.assets[0]), first.id)
     }
+
+    func testDropAssets_removesGroupFlickedElsewhereAndKeepsCursorOnSamePhoto() throws {
+        let (first, second) = try twoGroups()
+        let vm = SweepSifterViewModel(groups: [first, second])
+        vm.swipeRight()
+        vm.swipeLeft()
+        XCTAssertEqual(vm.currentAsset?.localIdentifier, second.assets[0].localIdentifier)
+
+        vm.dropAssets(notIn: Set(second.assets.map(\.localIdentifier)))
+
+        XCTAssertEqual(vm.queue.map(\.localIdentifier), second.assets.map(\.localIdentifier))
+        XCTAssertEqual(vm.currentAsset?.localIdentifier, second.assets[0].localIdentifier)
+        XCTAssertFalse(vm.hasPendingDecisions, "Decisions on dropped photos must not be applied")
+    }
+
+    func testDropAssets_currentPhotoGone_movesToNextRemainingPhoto() throws {
+        let (first, second) = try twoGroups()
+        let vm = SweepSifterViewModel(groups: [first, second])
+
+        vm.dropAssets(notIn: Set(second.assets.map(\.localIdentifier)))
+
+        XCTAssertEqual(vm.currentIndex, 0)
+        XCTAssertEqual(vm.currentAsset?.localIdentifier, second.assets[0].localIdentifier)
+    }
 }

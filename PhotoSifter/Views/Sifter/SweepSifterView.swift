@@ -65,6 +65,9 @@ struct SweepSifterView: View {
         // open; feed them into the deck so it never runs dry mid-scan.
         .onChange(of: libraryVM.groups.map(\.id)) { _, _ in
             let wasExhausted = vm.isQueueExhausted
+            if !vm.isApplying {
+                vm.dropAssets(notIn: Set(libraryVM.groups.flatMap { $0.assets.map(\.localIdentifier) }))
+            }
             vm.appendGroups(libraryVM.groups)
             if wasExhausted && !vm.isQueueExhausted { preloadUpcomingImages() }
         }

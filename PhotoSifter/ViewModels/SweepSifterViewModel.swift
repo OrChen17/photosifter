@@ -72,6 +72,30 @@ final class SweepSifterViewModel {
         }
     }
 
+    /// Removes photos that left the library groups elsewhere (for example a
+    /// group flicked from Memories), so the deck never offers them again.
+    func dropAssets(notIn liveIDs: Set<String>) {
+        let gone = Set(queue.map(\.localIdentifier).filter { !liveIDs.contains($0) })
+        guard !gone.isEmpty else { return }
+        let priorCurrentID = currentAsset?.localIdentifier
+        let removedBeforeCursor = queue.prefix(currentIndex).filter { gone.contains($0.localIdentifier) }.count
+        queue.removeAll { gone.contains($0.localIdentifier) }
+        for id in gone {
+            groupIDByAsset[id] = nil
+            decisions[id] = nil
+            skippedIDs.remove(id)
+        }
+        actionHistory.removeAll { gone.contains($0.assetID) }
+        if let pid = priorCurrentID, let idx = queue.firstIndex(where: { $0.localIdentifier == pid }) {
+            currentIndex = idx
+        } else {
+            currentIndex = max(0, min(currentIndex - removedBeforeCursor, queue.count))
+            while currentIndex < queue.count && decisions[queue[currentIndex].localIdentifier] != nil {
+                currentIndex += 1
+            }
+        }
+    }
+
     // MARK: - Cursor
 
     var currentAsset: PHAsset? {

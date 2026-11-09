@@ -18,6 +18,7 @@
 		A008 /* SifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B008 /* SifterViewModel.swift */; };
 		A009 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009 /* PermissionView.swift */; };
 		A010 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B010 /* HomeView.swift */; };
+		MM01 /* MemoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MM02 /* MemoriesView.swift */; };
 		A011 /* SifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B011 /* SifterView.swift */; };
 		A012 /* SwipeCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B012 /* SwipeCardView.swift */; };
 		A013 /* BatchStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B013 /* BatchStripView.swift */; };
@@ -109,6 +110,7 @@
 		B008 /* SifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterViewModel.swift; sourceTree = "<group>"; };
 		B009 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		B010 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		MM02 /* MemoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoriesView.swift; sourceTree = "<group>"; };
 		B011 /* SifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterView.swift; sourceTree = "<group>"; };
 		B012 /* SwipeCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeCardView.swift; sourceTree = "<group>"; };
 		B013 /* BatchStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchStripView.swift; sourceTree = "<group>"; };
@@ -309,6 +311,7 @@
 			isa = PBXGroup;
 			children = (
 				B010 /* HomeView.swift */,
+				MM02 /* MemoriesView.swift */,
 				BX05 /* CompletedBatchCardView.swift */,
 				BX10 /* HistoryView.swift */,
 				BX30 /* CoverageBarView.swift */,
@@ -561,6 +564,7 @@
 				A008 /* SifterViewModel.swift in Sources */,
 				A009 /* PermissionView.swift in Sources */,
 				A010 /* HomeView.swift in Sources */,
+				MM01 /* MemoriesView.swift in Sources */,
 				A011 /* SifterView.swift in Sources */,
 				A012 /* SwipeCardView.swift in Sources */,
 				A013 /* BatchStripView.swift in Sources */,

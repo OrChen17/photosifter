@@ -8,6 +8,7 @@ struct HomeView: View {
     @Environment(AppSettings.self) private var appSettings
     @State private var sweepVM = SweepSifterViewModel(groups: [])
     @State private var showingHistory = false
+    @State private var showingMemories = false
     @State private var showingSettings = false
 
     var body: some View {
@@ -20,6 +21,9 @@ struct HomeView: View {
                 }
                 .navigationDestination(isPresented: $showingHistory) {
                     HistoryView()
+                }
+                .navigationDestination(isPresented: $showingMemories) {
+                    MemoriesView()
                 }
                 .navigationDestination(item: $vm.selectedQuickWin) { win in
                     SifterView(group: win.group, mode: .screenshots)
@@ -40,6 +44,13 @@ struct HomeView: View {
     private var menu: some View {
         Menu {
             Section {
+                Button(action: openMemories) {
+                    Label("Memories", systemImage: "square.grid.2x2")
+                    if !vm.groups.isEmpty {
+                        Text("\(vm.groups.count) groups")
+                    }
+                }
+                .accessibilityIdentifier("menuMemories")
                 Button(action: openHistory) {
                     Label("History", systemImage: "clock.arrow.circlepath")
                 }
@@ -112,6 +123,11 @@ struct HomeView: View {
                 sweepVM = SweepSifterViewModel(groups: vm.groups)
             }
         )
+    }
+
+    private func openMemories() {
+        HapticManager.shared.playNavigate()
+        showingMemories = true
     }
 
     private func openHistory() {
