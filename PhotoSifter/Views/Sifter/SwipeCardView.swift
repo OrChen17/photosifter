@@ -56,6 +56,7 @@ struct SwipeCardView: View {
     var onThrowLeft: (() -> Void)? = nil
     var onThrowUp: (() -> Void)? = nil
     var commitsImmediately = false
+    var scale: CGFloat = 1
     /// Set by the parent to programmatically throw the card (used by on-screen
     /// keep/delete buttons). Fresh UUID per command so consecutive throws fire.
     var throwCommand: ThrowCommand? = nil
@@ -145,7 +146,7 @@ struct SwipeCardView: View {
                 }
 
                 // Metadata strip at bottom
-                metadataOverlay
+                metadataOverlay(cardWidth: geo.size.width)
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .dynamicTypeSize(...DynamicTypeSize.cardOverlayMax)
@@ -156,6 +157,7 @@ struct SwipeCardView: View {
                     .shadow(color: .black.opacity(0.4), radius: 16, x: 0, y: 8)
                     .shadow(color: dragFillColor.opacity(edgeGlow * CardGlow.shadowOpacity), radius: 28)
             }
+            .scaleEffect(scale)
             .offset(x: offset.width, y: offset.height * 0.4)
             .rotationEffect(.degrees(Double(offset.width) / 22))
             .opacity(throwFade)
@@ -287,7 +289,7 @@ struct SwipeCardView: View {
 
     // MARK: - Metadata overlay
 
-    private var metadataOverlay: some View {
+    private func metadataOverlay(cardWidth: CGFloat) -> some View {
         VStack {
             Spacer()
             HStack(spacing: 10) {
@@ -315,10 +317,15 @@ struct SwipeCardView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .appGlass(in: Capsule(style: .continuous), interactive: false)
-            .padding(.horizontal, 10)
-            .padding(.bottom, 10)
+            .appFrostedGlass(in: Capsule(style: .continuous))
+            .frame(width: max(0, cardWidth * scale - 2 * MetadataRow.inset))
+            .scaleEffect(1 / scale, anchor: .bottom)
+            .padding(.bottom, MetadataRow.inset / scale)
         }
+    }
+
+    private enum MetadataRow {
+        static let inset: CGFloat = 10
     }
 
     private func resolveLocationLabel(_ loc: CLLocation) async {

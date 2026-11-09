@@ -60,6 +60,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     @State private var isTopCardThrown: Bool = false
     @State private var thrownCardID: String?
     @State private var exitOffset: CGSize = .zero
+    @State private var settledCardID: String?
     @State private var cardAppearWobble: Double = 1.875
     @AppStorage(SwipeHintView.storageKey) private var hintSwipeCount: Int = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -79,13 +80,13 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                                 asset: next,
                                 preloadedImage: imageCache.image(for: next.localIdentifier),
                                 onSwipeRight: {},
-                                onSwipeLeft: {}
+                                onSwipeLeft: {},
+                                scale: behindCardScale
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                                     .fill(Color.black.opacity(behindCardDim))
                             )
-                            .scaleEffect(behindCardScale)
                             .animation(.interactiveSpring(response: 0.28, dampingFraction: 0.86), value: behindCardReveal)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
@@ -130,6 +131,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                                 markThrown(asset, exit: CGSize(width: 0, height: -CardExit.distance))
                             },
                             commitsImmediately: true,
+                            scale: topCardScale(for: asset),
                             throwCommand: throwCommand
                         )
                         .id(asset.localIdentifier)
@@ -137,6 +139,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                         .transition(topCardTransition)
                         .rotationEffect(.degrees(reduceMotion ? 0 : cardAppearWobble))
                         .onAppear {
+                            settle(asset)
                             guard cardAppearWobble != 0 else { return }
                             Task {
                                 try? await Task.sleep(for: .milliseconds(120))
@@ -188,7 +191,15 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     private var topCardTransition: AnyTransition {
         reduceMotion
             ? .opacity
-            : .asymmetric(insertion: .scale(scale: CardExit.insertScale), removal: .offset(exitOffset))
+            : .asymmetric(insertion: .identity, removal: .offset(exitOffset))
+    }
+
+    private func topCardScale(for asset: PHAsset) -> CGFloat {
+        reduceMotion || settledCardID == asset.localIdentifier ? 1 : CardExit.insertScale
+    }
+
+    private func settle(_ asset: PHAsset) {
+        withAnimation(cardSwapAnimation) { settledCardID = asset.localIdentifier }
     }
 
     private var cardSwapAnimation: Animation {

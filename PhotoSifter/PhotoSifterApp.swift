@@ -101,6 +101,8 @@ struct PhotoSifterApp: App {
                 // If access was already granted, load immediately.
                 // If not determined, PermissionView shows and the button triggers the request.
                 .task {
+                    SoundManager.warmUp()
+                    _ = HapticManager.shared
                     if libraryViewModel.authStatus == .authorized || libraryViewModel.authStatus == .limited {
                         await libraryViewModel.load()
                     }

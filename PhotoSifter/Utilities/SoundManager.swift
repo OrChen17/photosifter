@@ -20,6 +20,7 @@ final class SoundManager: @unchecked Sendable {
 
     static let shared = SoundManager()
     private var players: [BundledSound: AVAudioPlayer] = [:]
+    private let playbackQueue = DispatchQueue(label: "com.flickpic.sound", qos: .userInteractive)
 
     private init() {
         try? AVAudioSession.sharedInstance().setCategory(.ambient, options: .mixWithOthers)
@@ -34,12 +35,18 @@ final class SoundManager: @unchecked Sendable {
     }
 
     private func play(_ sound: BundledSound) {
-        guard let player = players[sound] else {
-            AudioServicesPlaySystemSound(sound.fallbackSystemSound)
-            return
+        playbackQueue.async { [players] in
+            guard let player = players[sound] else {
+                AudioServicesPlaySystemSound(sound.fallbackSystemSound)
+                return
+            }
+            player.currentTime = 0
+            player.play()
         }
-        player.currentTime = 0
-        player.play()
+    }
+
+    static func warmUp() {
+        Task.detached(priority: .utility) { _ = shared }
     }
 
     func playKeep() {

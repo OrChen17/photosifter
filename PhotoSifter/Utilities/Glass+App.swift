@@ -12,13 +12,17 @@ extension View {
         if #available(iOS 26.0, *) {
             self.glassEffect(Self.glass(tint: tint, interactive: interactive), in: shape)
         } else {
-            self
-                .background {
-                    shape.fill(.ultraThinMaterial)
-                    if let tint { shape.fill(tint.opacity(0.35)) }
-                }
-                .overlay(shape.strokeBorder(Color.appForeground.opacity(0.08), lineWidth: 1))
+            self.appFrostedGlass(in: shape, tint: tint)
         }
+    }
+
+    func appFrostedGlass<S: InsettableShape>(in shape: S, tint: Color? = nil) -> some View {
+        self
+            .background {
+                shape.fill(.ultraThinMaterial)
+                if let tint { shape.fill(tint.opacity(0.35)) }
+            }
+            .overlay(shape.strokeBorder(Color.appForeground.opacity(0.08), lineWidth: 1))
     }
 
     @available(iOS 26.0, *)
