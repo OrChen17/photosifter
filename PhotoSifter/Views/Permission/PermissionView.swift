@@ -79,6 +79,7 @@ private struct FeatureRow: View {
             Text(text)
                 .font(.system(.callout, design: .rounded))
                 .foregroundStyle(.appForeground)
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer()
         }

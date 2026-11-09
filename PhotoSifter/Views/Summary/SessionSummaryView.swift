@@ -24,6 +24,8 @@ struct SessionSummaryView: View {
     @State private var nextThumbnails: [UIImage] = []
     @State private var countdown: Int = 5
     @State private var autoTask: Task<Void, Never>?
+    @State private var burstStart: Date?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var deletedCount: Int { overrideDeletedCount ?? group?.deletedAssets.count ?? 0 }
     private var isCancelledOrFailed: Bool {
@@ -32,32 +34,23 @@ struct SessionSummaryView: View {
         return false
     }
 
-    private static let headlinePool: [String] = [
-        "Nice work.",
+    private static let savedHeadlines: [String] = [
         "Cleaned up.",
-        "Crisp.",
-        "Sifted.",
         "Space restored.",
-        "Storage thanks you.",
+        "Bytes back.",
         "Lighter library.",
         "Goodbye, doubles.",
-        "Decisively curated.",
-        "Quality wins.",
-        "Bytes back.",
-        "Batch banished.",
-        "Mission complete.",
-        "On a roll.",
-        "Past you smiles.",
-        "Pruning paid off.",
-        "Album, refined.",
         "Less is more.",
-        "iCloud breathes easier.",
-        "Decisive.",
         "Curated, not hoarded.",
-        "Photographer mode: on.",
-        "Tidy hands.",
         "Future you waves.",
         "Done and dusted.",
+        "On a roll.",
+    ]
+
+    private static let keptAllHeadlines: [String] = [
+        "All keepers.",
+        "Every shot stays.",
+        "Good eye.",
     ]
 
     var body: some View {
@@ -103,11 +96,17 @@ struct SessionSummaryView: View {
     }
 
     private func runCommittedAnimation() async {
-        headline = Self.headlinePool.randomElement() ?? "Done."
+        let pool = deletedCount > 0 ? Self.savedHeadlines : Self.keptAllHeadlines
+        headline = pool.randomElement() ?? "Done."
         totalBytes = deletedBytes
         animatedCount = 0
         animatedBytes = 0
+        if totalBytes > 0 && !reduceMotion { burstStart = .now }
         await tickUp(count: deletedCount, bytes: totalBytes, duration: 1.0)
+        if burstStart != nil {
+            try? await Task.sleep(for: .milliseconds(200))
+            burstStart = nil
+        }
         if nextGroup != nil { startCountdown() }
     }
 
@@ -176,6 +175,14 @@ struct SessionSummaryView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
+                    .overlay {
+                        if let burstStart {
+                            SavedBytesBurst(start: burstStart)
+                                .frame(width: SavedBytesBurst.side, height: SavedBytesBurst.side)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
                 Text("space saved")
                     .font(.system(.footnote, design: .rounded, weight: .medium))
                     .foregroundStyle(.appTextSecondary)
@@ -440,3 +447,89 @@ struct SessionSummaryView: View {
     /// album, so the button label tells the user where to find it.
     private static let photosAppURL = "photos-redirect://"
 }
+
+private struct SavedBytesBurst: View {
+    static let side: CGFloat = 420
+
+    private struct Particle {
+        let angle: Double
+        let distance: CGFloat
+        let delay: Double
+        let size: CGFloat
+        let swirl: Double
+    }
+
+    private enum Burst {
+        static let count = 28
+        static let travel: Double = 0.55
+        static let spread: Double = 0.5
+        static let trail: Double = 0.12
+        static var total: Double { travel + spread }
+    }
+
+    let start: Date
+
+    private let particles: [Particle] = (0..<Burst.count).map { i in
+        var rng = SplitMix(seed: UInt64(i) &* 0x9E37_79B9_7F4A_7C15)
+        return Particle(
+            angle: rng.unit() * 2 * .pi,
+            distance: 90 + CGFloat(rng.unit()) * 80,
+            delay: rng.unit() * Burst.spread,
+            size: 3 + CGFloat(rng.unit()) * 3,
+            swirl: (rng.unit() - 0.5) * 1.2
+        )
+    }
+
+    var body: some View {
+        TimelineView(.animation) { context in
+            let elapsed = context.date.timeIntervalSince(start)
+            Canvas { canvas, size in
+                let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                for p in particles {
+                    let t = (elapsed - p.delay) / Burst.travel
+                    guard t >= 0, t <= 1 else { continue }
+                    let head = position(of: p, at: t, center: center)
+                    let tail = position(of: p, at: max(0, t - Burst.trail), center: center)
+                    let fade = min(1, t * 5) * (1 - pow(t, 6))
+                    let width = p.size * (0.5 + 0.5 * (1 - t))
+
+                    var streak = Path()
+                    streak.move(to: tail)
+                    streak.addLine(to: head)
+                    canvas.opacity = fade * 0.25
+                    canvas.stroke(streak, with: .color(.appAccent), style: StrokeStyle(lineWidth: width * 2.4, lineCap: .round))
+                    canvas.opacity = fade
+                    canvas.stroke(streak, with: .color(.appAccent), style: StrokeStyle(lineWidth: width, lineCap: .round))
+                }
+            }
+            .opacity(elapsed > Burst.total ? 0 : 1)
+        }
+    }
+
+    private func position(of p: Particle, at t: Double, center: CGPoint) -> CGPoint {
+        let eased = t * t
+        let remaining = 1 - eased
+        let angle = p.angle + p.swirl * eased
+        return CGPoint(
+            x: center.x + cos(angle) * p.distance * remaining,
+            y: center.y + sin(angle) * p.distance * remaining
+        )
+    }
+}
+
+private struct SplitMix {
+    private var state: UInt64
+
+    init(seed: UInt64) { state = seed }
+
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
+
+    mutating func unit() -> Double { Double(next() >> 11) / Double(1 << 53) }
+}
+
