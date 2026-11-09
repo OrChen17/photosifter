@@ -54,6 +54,8 @@ struct SwipeCardView: View {
     /// Fires at throw start (before the animation completes) — use for immediate haptic/flash feedback.
     var onThrowRight: (() -> Void)? = nil
     var onThrowLeft: (() -> Void)? = nil
+    var onThrowUp: (() -> Void)? = nil
+    var commitsImmediately = false
     /// Set by the parent to programmatically throw the card (used by on-screen
     /// keep/delete buttons). Fresh UUID per command so consecutive throws fire.
     var throwCommand: ThrowCommand? = nil
@@ -75,7 +77,6 @@ struct SwipeCardView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var imageState: CardImageState = .loading
     @State private var locationLabel: String?
-    @State private var hasCrossedBadgeThreshold: Bool = false
     @State private var captureDate: Date? = nil
     @State private var fileSizeLabel: String? = nil
 
@@ -159,6 +160,7 @@ struct SwipeCardView: View {
             .rotationEffect(.degrees(Double(offset.width) / 22))
             .opacity(throwFade)
             .gesture(swipeDrag)
+            .allowsHitTesting(!isThrown)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isImage)
             .accessibilityActions {
@@ -349,19 +351,9 @@ struct SwipeCardView: View {
             .onChanged { value in
                 guard !isThrown, value.startLocation.x > backSwipeEdgeWidth else { return }
                 offset = value.translation
-
-                // Haptic fires exactly once when crossing the badge threshold (#14 fix)
-                let crossedNow = abs(value.translation.width) > badgeThreshold
-                if crossedNow && !hasCrossedBadgeThreshold {
-                    hasCrossedBadgeThreshold = true
-                    HapticManager.shared.playDragTick()
-                } else if !crossedNow && hasCrossedBadgeThreshold {
-                    hasCrossedBadgeThreshold = false
-                }
             }
             .onEnded { value in
                 guard !isThrown, value.startLocation.x > backSwipeEdgeWidth else { return }
-                hasCrossedBadgeThreshold = false
 
                 let dx = value.translation.width
                 let predictedDx = value.predictedEndTranslation.width
@@ -401,7 +393,15 @@ struct SwipeCardView: View {
                 offset = CGSize(width: direction * 600, height: -50)
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { action() }
+        commit(after: 0.15, action)
+    }
+
+    private func commit(after delay: TimeInterval, _ action: @escaping () -> Void) {
+        if commitsImmediately {
+            DispatchQueue.main.async { action() }
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { action() }
+        }
     }
 
     private var rightActionName: String {
@@ -422,6 +422,7 @@ struct SwipeCardView: View {
 
     private func throwCardUp(then action: @escaping () -> Void) {
         isThrown = true
+        onThrowUp?()
         if reduceMotion {
             withAnimation(.easeOut(duration: 0.15)) { throwFade = 0 }
         } else {
@@ -429,6 +430,6 @@ struct SwipeCardView: View {
                 offset = CGSize(width: 0, height: -700)
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.13) { action() }
+        commit(after: 0.13, action)
     }
 }

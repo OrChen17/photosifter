@@ -58,6 +58,8 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     @State private var flashTint: Color = .appKeep
     @State private var flashCounter: Int = 0
     @State private var isTopCardThrown: Bool = false
+    @State private var thrownCardID: String?
+    @State private var exitOffset: CGSize = .zero
     @State private var cardAppearWobble: Double = 1.875
     @AppStorage(SwipeHintView.storageKey) private var hintSwipeCount: Int = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -88,6 +90,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                             .id(next.localIdentifier)
+                            .zIndex(0)
                         }
 
                         SwipeCardView(
@@ -108,6 +111,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                             },
                             onProgressChange: onProgressChange,
                             onThrowRight: {
+                                markThrown(asset, exit: CGSize(width: CardExit.distance, height: CardExit.lift))
                                 isTopCardThrown = true
                                 flashTint = .appKeep
                                 triggerFlash()
@@ -115,15 +119,22 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                                 SoundManager.shared.playKeep()
                             },
                             onThrowLeft: {
+                                markThrown(asset, exit: CGSize(width: -CardExit.distance, height: CardExit.lift))
                                 isTopCardThrown = true
                                 flashTint = .appDelete
                                 triggerFlash()
                                 HapticManager.shared.playDelete()
                                 SoundManager.shared.playDelete()
                             },
+                            onThrowUp: {
+                                markThrown(asset, exit: CGSize(width: 0, height: -CardExit.distance))
+                            },
+                            commitsImmediately: true,
                             throwCommand: throwCommand
                         )
                         .id(asset.localIdentifier)
+                        .zIndex(thrownCardID == asset.localIdentifier ? 2 : 1)
+                        .transition(topCardTransition)
                         .rotationEffect(.degrees(reduceMotion ? 0 : cardAppearWobble))
                         .onAppear {
                             guard cardAppearWobble != 0 else { return }
@@ -134,6 +145,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                         }
                         .accessibilityIdentifier("photoCard")
                     }
+                    .animation(cardSwapAnimation, value: asset.localIdentifier)
                     .overlay(alignment: .bottom) {
                         primaryActions()
                             .padding(.bottom, 44)
@@ -168,12 +180,33 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
 
     private func triggerFlash() { flashCounter += 1 }
 
+    private func markThrown(_ asset: PHAsset, exit: CGSize) {
+        thrownCardID = asset.localIdentifier
+        exitOffset = exit
+    }
+
+    private var topCardTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .asymmetric(insertion: .scale(scale: CardExit.insertScale), removal: .offset(exitOffset))
+    }
+
+    private var cardSwapAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.3, bounce: 0.08)
+    }
+
     private var showsSwipeHint: Bool { hintSwipeCount < SwipeHintView.swipesUntilHidden }
 
     private func recordHintSwipe() {
         guard showsSwipeHint else { return }
         hintSwipeCount += 1
     }
+}
+
+private enum CardExit {
+    static let distance: CGFloat = 520
+    static let lift: CGFloat = -40
+    static let insertScale: CGFloat = 0.96
 }
 
 private enum BehindCard {

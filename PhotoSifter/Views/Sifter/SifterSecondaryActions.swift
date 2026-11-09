@@ -70,7 +70,7 @@ struct SifterSecondaryActions: View {
                 .font(.system(size: 18, weight: .heavy))
                 .foregroundStyle(isEnabled ? enabledTint : Color.appForeground.opacity(0.3))
                 .frame(width: 50, height: 50)
-                .appGlass(in: Circle(), interactive: isEnabled)
+                .appGlass(in: Circle(), interactive: false)
         }
         .buttonStyle(PressScaleButtonStyle())
         .disabled(!isEnabled)
@@ -113,7 +113,7 @@ struct SifterSecondaryActions: View {
                 .opacity(config.isEnabled ? 1 : 0),
                 in: Capsule(style: .continuous)
             )
-            .appGlass(in: Capsule(style: .continuous), interactive: config.isEnabled)
+            .appGlass(in: Capsule(style: .continuous), interactive: false)
         }
         .buttonStyle(PressScaleButtonStyle())
         .disabled(!config.isEnabled)
@@ -144,7 +144,7 @@ private struct RevertButton: View {
                 .foregroundStyle(isEnabled ? Color.appRevert : Color.appForeground.opacity(0.3))
                 .rotationEffect(.degrees(spin))
                 .frame(width: 50, height: 50)
-                .appGlass(in: Circle(), interactive: isEnabled)
+                .appGlass(in: Circle(), interactive: false)
         }
         .buttonStyle(PressScaleButtonStyle())
         .disabled(!isEnabled)

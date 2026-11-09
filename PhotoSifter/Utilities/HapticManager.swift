@@ -29,7 +29,7 @@ final class HapticManager {
     }
 
     func playUndo() {
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.7)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 1.0)
     }
 
     func playBatchComplete() {
