@@ -1,3 +1,4 @@
+import Foundation
 import Photos
 @testable import PhotoSifter
 
@@ -21,13 +22,47 @@ final class MockSimilarityService: SimilarityProviding, @unchecked Sendable {
     /// Optional error injection — keys are localIdentifiers that should fail.
     var failingAssets: Set<String> = []
 
+    /// Simulated cost of one signature, to observe concurrency and ordering.
+    var signatureDelay: Duration = .zero
+
     enum MockError: Error { case injected }
 
-    func distance(between a: PHAsset, and b: PHAsset) async throws -> Float {
-        if failingAssets.contains(a.localIdentifier) || failingAssets.contains(b.localIdentifier) {
-            throw MockError.injected
+    private let lock = NSLock()
+    private var inFlight = 0
+    private var _maxInFlight = 0
+    private var _requestedIDs: [String] = []
+
+    /// Highest number of signatures computed at the same time.
+    var maxInFlight: Int { lock.withLock { _maxInFlight } }
+    /// Asset IDs in the order their signatures were requested.
+    var requestedIDs: [String] { lock.withLock { _requestedIDs } }
+
+    struct Signature: SimilaritySignature {
+        let id: String
+        let owner: MockSimilarityService
+
+        func distance(to other: any SimilaritySignature) throws -> Float {
+            guard let other = other as? Signature else { throw MockError.injected }
+            return owner.distance(id, other.id)
         }
-        let key: Set<String> = [a.localIdentifier, b.localIdentifier]
-        return similarPairs.contains(key) ? similarDistance : dissimilarDistance
+    }
+
+    func signature(for asset: PHAsset) async throws -> any SimilaritySignature {
+        let id = asset.localIdentifier
+        lock.withLock {
+            _requestedIDs.append(id)
+            inFlight += 1
+            _maxInFlight = max(_maxInFlight, inFlight)
+        }
+        defer { lock.withLock { inFlight -= 1 } }
+        if signatureDelay > .zero {
+            try await Task.sleep(for: signatureDelay)
+        }
+        if failingAssets.contains(id) { throw MockError.injected }
+        return Signature(id: id, owner: self)
+    }
+
+    fileprivate func distance(_ a: String, _ b: String) -> Float {
+        similarPairs.contains([a, b]) ? similarDistance : dissimilarDistance
     }
 }

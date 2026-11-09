@@ -26,7 +26,9 @@ struct SweepSifterView: View {
             Color.appBackground.ignoresSafeArea()
 
             if !vm.isApplying {
-                if vm.isQueueExhausted {
+                if vm.isQueueExhausted && libraryVM.isScanning {
+                    waitingContent
+                } else if vm.isQueueExhausted {
                     finishedContent
                 } else {
                     mainContent
@@ -115,7 +117,17 @@ struct SweepSifterView: View {
         } message: {
             Text("Going back will lose your pending choices unless you apply them first.")
         }
-        .task { preloadUpcomingImages() }
+        .task {
+            vm.appendGroups(libraryVM.groups)
+            preloadUpcomingImages()
+        }
+        // The scan keeps streaming groups into the library while Forever is
+        // open; feed them into the deck so it never runs dry mid-scan.
+        .onChange(of: libraryVM.groups.map(\.id)) { _, _ in
+            let wasExhausted = vm.isQueueExhausted
+            vm.appendGroups(libraryVM.groups)
+            if wasExhausted && !vm.isQueueExhausted { preloadUpcomingImages() }
+        }
         .onChange(of: vm.currentIndex) { _, _ in
             preloadUpcomingImages()
         }
@@ -201,6 +213,27 @@ struct SweepSifterView: View {
     }
 
     // MARK: - States
+
+    /// Deck is used up but the scan is still finding groups. New photos slide
+    /// in as soon as the library gets them.
+    private var waitingContent: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            ScanProgressView(
+                progress: libraryVM.scanProgress,
+                style: .hero,
+                title: String(localized: "Finding more photos")
+            )
+            if vm.sessionDeletedCount + vm.sessionKeptCount > 0 {
+                Text("\(vm.sessionDeletedCount) deleted · \(vm.sessionKeptCount) kept so far")
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.appTextSecondary)
+            }
+            Spacer()
+        }
+        .transition(.opacity)
+    }
 
     private var finishedContent: some View {
         VStack(spacing: 24) {

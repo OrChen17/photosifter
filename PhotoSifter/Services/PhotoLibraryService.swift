@@ -23,9 +23,10 @@ actor PhotoLibraryService {
     /// When `cutoff` is provided, only assets with `modificationDate > cutoff` are returned.
     /// Using modificationDate (rather than creationDate) means photos restored from
     /// Recently Deleted are re-fetched if iOS bumps their modificationDate on restoration.
+    /// Sorted by creationDate so time bucketing doesn't depend on edit order.
     func fetchAllAssets(since cutoff: Date? = nil) -> [PHAsset] {
         let options = PHFetchOptions()
-        options.sortDescriptors = [NSSortDescriptor(key: "modificationDate", ascending: true)]
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         // Only filter by mediaType in the DB predicate — PHQuery doesn't support
         // bitwise operators (&), so screenshot/cloud filtering is done in-memory below.
         if let cutoff {

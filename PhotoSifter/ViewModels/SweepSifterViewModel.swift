@@ -7,7 +7,7 @@ import SwiftUI
 @Observable
 @MainActor
 final class SweepSifterViewModel {
-    let sourceGroups: [PhotoGroup]
+    private(set) var sourceGroups: [PhotoGroup]
 
     private(set) var queue: [PHAsset]
     private(set) var currentIndex: Int = 0
@@ -22,7 +22,10 @@ final class SweepSifterViewModel {
 
     /// Reverse lookup `localIdentifier -> source group id`, used by the strip
     /// to draw cross-memory boundary dividers.
-    private let groupIDByAsset: [String: UUID]
+    private var groupIDByAsset: [String: UUID]
+    /// Every group ever offered to this session, including ones applied and
+    /// removed from the queue, so a later library update can't re-add them.
+    private var knownGroupIDs: Set<UUID>
 
     private var skippedIDs: Set<String> = []
     /// Per-action undo log. `decision == nil` denotes a skip; otherwise a keep/delete.
@@ -42,6 +45,31 @@ final class SweepSifterViewModel {
         }
         self.queue = flatQueue
         self.groupIDByAsset = lookup
+        self.knownGroupIDs = Set(groups.map(\.id))
+    }
+
+    /// Appends groups the scan found after the session started. Groups already
+    /// seen and photos already in the queue are ignored. When the queue was
+    /// used up, the cursor lands on the first new photo.
+    func appendGroups(_ groups: [PhotoGroup]) {
+        var added = false
+        for group in groups where !knownGroupIDs.contains(group.id) {
+            knownGroupIDs.insert(group.id)
+            let fresh = group.assets.filter { groupIDByAsset[$0.localIdentifier] == nil }
+            guard !fresh.isEmpty else { continue }
+            sourceGroups.append(group)
+            for asset in fresh {
+                queue.append(asset)
+                groupIDByAsset[asset.localIdentifier] = group.id
+            }
+            added = true
+        }
+        guard added else { return }
+        // A finished queue has currentIndex == old count, which is now the first
+        // new photo. Move past any decided ones, like a normal advance would.
+        while currentIndex < queue.count && decisions[queue[currentIndex].localIdentifier] != nil {
+            currentIndex += 1
+        }
     }
 
     // MARK: - Cursor

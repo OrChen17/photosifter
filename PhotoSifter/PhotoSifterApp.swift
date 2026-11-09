@@ -14,11 +14,21 @@ enum PostHogAppLogger {
         )
     }
 
-    static func libraryScanCompleted(assetCount: Int, groupCount: Int) {
-        PostHogSDK.shared.logger?.info(
-            "photo library scan completed",
-            attributes: ["asset_count": assetCount, "group_count": groupCount]
-        )
+    static func libraryScanCompleted(
+        assetCount: Int,
+        groupCount: Int,
+        durationMs: Int,
+        firstGroupMs: Int?,
+        cloudSkippedCount: Int
+    ) {
+        var attributes: [String: Any] = [
+            "asset_count": assetCount,
+            "group_count": groupCount,
+            "duration_ms": durationMs,
+            "cloud_skipped_count": cloudSkippedCount,
+        ]
+        if let firstGroupMs { attributes["first_group_ms"] = firstGroupMs }
+        PostHogSDK.shared.logger?.info("photo library scan completed", attributes: attributes)
     }
 }
 

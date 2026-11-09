@@ -10,6 +10,11 @@ struct LibraryView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var stripCollapsed = false
     @State private var showingSettings = false
+    @State private var showScanCard = false
+
+    /// A quick incremental scan on a warm launch finishes in well under this,
+    /// so the progress card only appears when a scan actually takes a while.
+    private static let scanCardDelay: Duration = .milliseconds(600)
 
     /// Cap the prefetch window so we don't try to warm thousands of thumbnails at once.
     /// 30 groups × 2 representatives = 60 thumbnails, plenty for the visible window
@@ -33,11 +38,14 @@ struct LibraryView: View {
 
                 if !vm.groups.isEmpty {
                     groupList
-                } else if !vm.isScanning {
+                } else if vm.isScanning {
+                    ScanProgressView(progress: vm.scanProgress, style: .hero)
+                        .transition(.opacity)
+                } else {
                     emptyState
                 }
 
-                if vm.groups.count >= 2 {
+                if !vm.groups.isEmpty {
                     EndlessModeButton {
                         PostHogSDK.shared.capture("sweep_started", properties: [
                             "group_count": vm.groups.count,
@@ -95,11 +103,6 @@ struct LibraryView: View {
                         .foregroundStyle(.appTextSecondary)
                     }
                 }
-                if vm.isScanning {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        ScanningBadge()
-                    }
-                }
             }
             .navigationDestination(item: $vm.selectedGroup) { group in
                 SifterView(group: group)
@@ -114,6 +117,15 @@ struct LibraryView: View {
                 SweepSifterView(groups: session.groups)
             }
             .toolbar(isSiftingActive ? .hidden : .visible, for: .tabBar)
+            .task(id: vm.isScanning) {
+                guard vm.isScanning else {
+                    withAnimation(.easeOut(duration: 0.3)) { showScanCard = false }
+                    return
+                }
+                try? await Task.sleep(for: Self.scanCardDelay)
+                guard !Task.isCancelled, vm.isScanning else { return }
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { showScanCard = true }
+            }
         }
     }
 
@@ -148,6 +160,13 @@ struct LibraryView: View {
                     .frame(height: stripCollapsed ? 0 : nil)
                     .clipped()
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: stripCollapsed)
+                }
+
+                if showScanCard {
+                    ScanProgressView(progress: vm.scanProgress, groupCount: vm.groups.count)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 LazyVGrid(
@@ -374,29 +393,5 @@ private struct EndlessModeButton: View {
                     .foregroundStyle(.appOnKeep)
             }
         }
-    }
-}
-
-// MARK: - Scanning Badge
-
-struct ScanningBadge: View {
-    @State private var isAnimating = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(.appAccent)
-                .frame(width: 8, height: 8)
-                .scaleEffect(isAnimating ? 1.3 : 0.8)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.7).repeatForever(), value: isAnimating)
-                .padding(.leading, 2)
-
-            Text("Scanning")
-                .font(.system(.footnote, design: .rounded, weight: .medium))
-                .foregroundStyle(.appTextSecondary)
-        }
-        .onAppear { isAnimating = !reduceMotion }
-        .onChange(of: reduceMotion) { _, reduce in isAnimating = !reduce }
     }
 }

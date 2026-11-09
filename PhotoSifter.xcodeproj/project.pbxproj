@@ -27,6 +27,9 @@
 		A017 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B017 /* SoundManager.swift */; };
 		A0F1 /* InteractiveBackSwipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F1 /* InteractiveBackSwipe.swift */; };
 		A0F3 /* Accessibility+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F3 /* Accessibility+App.swift */; };
+		A0F4 /* AsyncLimiter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F4 /* AsyncLimiter.swift */; };
+		A0F5 /* ScanProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F5 /* ScanProgressView.swift */; };
+		T020 /* SweepSifterViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S020 /* SweepSifterViewModelTests.swift */; };
 		A0F2 /* Font+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F2 /* Font+App.swift */; };
 		A018 /* Color+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018 /* Color+App.swift */; };
 		A01A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01A /* AppSettings.swift */; };
@@ -118,6 +121,9 @@
 		B017 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		B0F1 /* InteractiveBackSwipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteractiveBackSwipe.swift; sourceTree = "<group>"; };
 		B0F3 /* Accessibility+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Accessibility+App.swift"; sourceTree = "<group>"; };
+		B0F4 /* AsyncLimiter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncLimiter.swift; sourceTree = "<group>"; };
+		B0F5 /* ScanProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanProgressView.swift; sourceTree = "<group>"; };
+		S020 /* SweepSifterViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterViewModelTests.swift; sourceTree = "<group>"; };
 		B0F2 /* Font+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+App.swift"; sourceTree = "<group>"; };
 		B018 /* Color+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+App.swift"; sourceTree = "<group>"; };
 		B01A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -248,6 +254,7 @@
 				S012 /* CompletedBatchStoreTests.swift */,
 				S013 /* QuickWinsServiceTests.swift */,
 				S014 /* DuplicateGroupSifterViewModelTests.swift */,
+				S020 /* SweepSifterViewModelTests.swift */,
 				S015 /* AppSettingsTests.swift */,
 				S016 /* PhotoLibraryServiceTests.swift */,
 				BX32 /* CompletedBatchRestoreTests.swift */,
@@ -277,6 +284,7 @@
 				B0F1 /* InteractiveBackSwipe.swift */,
 				B0F2 /* Font+App.swift */,
 				B0F3 /* Accessibility+App.swift */,
+				B0F4 /* AsyncLimiter.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -314,6 +322,7 @@
 				BX24 /* SweepBannerView.swift */,
 				BX30 /* CoverageBarView.swift */,
 				BX31 /* HistoryRowView.swift */,
+				B0F5 /* ScanProgressView.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -572,6 +581,8 @@
 				A01A /* AppSettings.swift in Sources */,
 				A0F1 /* InteractiveBackSwipe.swift in Sources */,
 				A0F3 /* Accessibility+App.swift in Sources */,
+				A0F4 /* AsyncLimiter.swift in Sources */,
+				A0F5 /* ScanProgressView.swift in Sources */,
 				A0F2 /* Font+App.swift in Sources */,
 				A01B /* SettingsView.swift in Sources */,
 				X001 /* CompletedBatch.swift in Sources */,
@@ -615,6 +626,7 @@
 				T012 /* CompletedBatchStoreTests.swift in Sources */,
 				T013 /* QuickWinsServiceTests.swift in Sources */,
 				T014 /* DuplicateGroupSifterViewModelTests.swift in Sources */,
+				T020 /* SweepSifterViewModelTests.swift in Sources */,
 				T015 /* AppSettingsTests.swift in Sources */,
 				T016 /* PhotoLibraryServiceTests.swift in Sources */,
 				T030 /* CompletedBatchRestoreTests.swift in Sources */,

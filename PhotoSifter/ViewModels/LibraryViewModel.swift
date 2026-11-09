@@ -26,7 +26,7 @@ final class LibraryViewModel {
     var selectedGroup: PhotoGroup?
     var authStatus: PHAuthorizationStatus
     var isScanning: Bool = false
-    var scanProgress: (current: Int, total: Int) = (0, 0)
+    var scanProgress: ScanProgress = .idle
     var error: String?
     var completedBatches: [CompletedBatch] = []
     var quickWins: [QuickWin] = []
@@ -50,6 +50,9 @@ final class LibraryViewModel {
     }
 
     private static let sortOrderKey = "library.groupSortOrder"
+    /// Streamed groups are added to the grid in small animated batches.
+    private static let flushBatchSize = 8
+    private static let flushInterval: TimeInterval = 0.4
 
     var totalDeletedCount: Int { completedBatches.reduce(0) { $0 + $1.deletedCount } }
     var totalSavedBytes: Int64 { completedBatches.reduce(Int64(0)) { $0 + $1.savedBytes } }
@@ -179,51 +182,72 @@ final class LibraryViewModel {
         // Fetch by modificationDate so edits and restorations from Recently Deleted are
         // picked up. The small carry-back window (bucketGap) provides a safety buffer
         // around the cutoff boundary.
+        scanProgress = ScanProgress(phase: .reading)
         let cutoff = await groupingService.loadScanCutoff()
         let fetchSince = cutoff.map { $0.addingTimeInterval(-GroupingService.timeBucketGap) }
         let assets = await photoService.fetchAllAssets(since: fetchSince)
         elapsed("fetchAllAssets done — \(assets.count) assets, \(knownIDs.count) already known")
         PostHogAppLogger.libraryScanStarted(assetCount: assets.count)
-        scanProgress = (0, assets.count)
 
-        var allGroups = baseGroups
         var batchBuffer: [PhotoGroup] = []
         var lastFlushDate = Date()
         var streamedGroupCount = 0
+        var firstGroupMs: Int?
 
         func flushBatch() {
             guard !batchBuffer.isEmpty else { return }
             let batch = batchBuffer
             batchBuffer = []
             lastFlushDate = Date()
+            // Merge into the live list, not a scan-local copy: groups finished
+            // or trimmed while the scan runs (Forever, Sifter) must stay gone.
             withAnimation(.spring(duration: 0.35)) {
                 if sortOrder == .random {
                     groups.append(contentsOf: batch)
                 } else {
-                    groups = sorted(allGroups)
+                    groups = sorted(groups + batch)
                 }
             }
         }
 
-        for await group in await groupingService.streamGroups(from: assets, excluding: knownIDs) {
-            let hydrated = GroupingService.hydrateGroup(group, using: rawDecisions)
-            guard !completedGroupIDs.contains(hydrated.id) else { continue }
-            guard hydrated.assets.filter({ !flickedIDs.contains($0.localIdentifier) }).count >= 2 else { continue }
-            allGroups.append(hydrated)
-            batchBuffer.append(hydrated)
-            streamedGroupCount += 1
-            if batchBuffer.count >= 8 || Date().timeIntervalSince(lastFlushDate) >= 0.4 {
-                elapsed("  flush #\(streamedGroupCount) groups so far")
-                flushBatch()
+        for await event in await groupingService.scan(from: assets, excluding: knownIDs) {
+            switch event {
+            case .progress(let progress):
+                scanProgress = progress
+                // Progress ticks keep coming while groups trickle in, so a lone
+                // buffered group is shown within the flush window, not held
+                // until the next group arrives.
+                if Date().timeIntervalSince(lastFlushDate) >= Self.flushInterval { flushBatch() }
+            case .group(let group):
+                let hydrated = GroupingService.hydrateGroup(group, using: rawDecisions)
+                guard !completedGroupIDs.contains(hydrated.id) else { continue }
+                guard hydrated.assets.filter({ !flickedIDs.contains($0.localIdentifier) }).count >= 2 else { continue }
+                batchBuffer.append(hydrated)
+                streamedGroupCount += 1
+                if firstGroupMs == nil {
+                    firstGroupMs = Int(Date().timeIntervalSince(scanStartDate) * 1000)
+                    elapsed("first new group")
+                }
+                if batchBuffer.count >= Self.flushBatchSize || Date().timeIntervalSince(lastFlushDate) >= Self.flushInterval {
+                    elapsed("  flush #\(streamedGroupCount) groups so far")
+                    flushBatch()
+                }
             }
         }
         flushBatch()
         elapsed("scan complete — \(streamedGroupCount) new groups found")
 
         isScanning = false
+        scanProgress.phase = .finished
         await groupingService.saveScanCutoff(scanStartDate)
         await groupingService.persistGroups(groups)
-        PostHogAppLogger.libraryScanCompleted(assetCount: assets.count, groupCount: groups.count)
+        PostHogAppLogger.libraryScanCompleted(
+            assetCount: assets.count,
+            groupCount: groups.count,
+            durationMs: Int(Date().timeIntervalSince(scanStartDate) * 1000),
+            firstGroupMs: firstGroupMs,
+            cloudSkippedCount: scanProgress.cloudSkipped
+        )
 
         // Quick wins fetch runs at utility priority after scan — doesn't block the grid
         Task(priority: .utility) {
