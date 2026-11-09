@@ -110,6 +110,10 @@ final class LibraryViewModel {
     private let photoService = PhotoLibraryService.shared
     private let groupingService = GroupingService.shared
     private var completedGroupIDs: Set<UUID> = []
+    private var insertionObserver: LibraryInsertionObserver?
+    /// Photos that became visible while a scan was running. They are scanned
+    /// as soon as that scan ends.
+    private var pendingInsertedIDs: Set<String> = []
 
     init() {
         // Read current status synchronously so ContentView shows the correct
@@ -134,6 +138,7 @@ final class LibraryViewModel {
         guard !isScanning else { return }
         error = nil
         isScanning = true
+        startObservingInsertions()
 
         #if DEBUG
         let t0 = Date()
@@ -181,13 +186,134 @@ final class LibraryViewModel {
         // Fetch by modificationDate so edits and restorations from Recently Deleted are
         // picked up. The small carry-back window (bucketGap) provides a safety buffer
         // around the cutoff boundary.
+        // With limited access, photos the user adds to the selection keep
+        // their old dates, so the cutoff would hide them. Limited selections
+        // are small, so scan all of it.
         scanProgress = ScanProgress(phase: .reading)
-        let cutoff = await groupingService.loadScanCutoff()
+        let isLimited = PHPhotoLibrary.authorizationStatus(for: .readWrite) == .limited
+        let cutoff = isLimited ? nil : await groupingService.loadScanCutoff()
         let fetchSince = cutoff.map { $0.addingTimeInterval(-GroupingService.timeBucketGap) }
         let assets = await photoService.fetchAllAssets(since: fetchSince)
         elapsed("fetchAllAssets done — \(assets.count) assets, \(knownIDs.count) already known")
         PostHogAppLogger.libraryScanStarted(assetCount: assets.count)
 
+        let result = await runScan(
+            of: assets,
+            excluding: knownIDs,
+            flickedIDs: flickedIDs,
+            rawDecisions: rawDecisions,
+            startedAt: scanStartDate
+        )
+        let firstGroupMs = result.firstGroupMs
+        elapsed("scan complete — \(result.groupCount) new groups found")
+
+        isScanning = false
+        scanProgress.phase = .finished
+        await groupingService.saveScanCutoff(scanStartDate)
+        await groupingService.persistGroups(groups)
+        PostHogAppLogger.libraryScanCompleted(
+            assetCount: assets.count,
+            groupCount: groups.count,
+            durationMs: Int(Date().timeIntervalSince(scanStartDate) * 1000),
+            firstGroupMs: firstGroupMs,
+            cloudSkippedCount: scanProgress.cloudSkipped
+        )
+
+        refreshQuickWins()
+        await scanInsertedAssets()
+    }
+
+    /// Quick wins fetch runs at utility priority after a scan — doesn't block the grid.
+    private func refreshQuickWins() {
+        Task(priority: .utility) {
+            let wins = await QuickWinsService.shared.fetchAll()
+            await MainActor.run { self.quickWins = wins }
+        }
+    }
+
+    // MARK: - Photos added while the app runs
+
+    private func startObservingInsertions() {
+        guard insertionObserver == nil else { return }
+        insertionObserver = LibraryInsertionObserver { ids in
+            Task { @MainActor [weak self] in self?.libraryGainedAssets(ids) }
+        }
+    }
+
+    private func libraryGainedAssets(_ ids: [String]) {
+        pendingInsertedIDs.formUnion(ids)
+        guard !isScanning else { return }
+        Task { await scanInsertedAssets() }
+    }
+
+    /// Scans photos that became visible after the last scan, together with
+    /// their neighbours in time, so a new photo can group with an older single.
+    /// Photos already in a group or already flicked are skipped.
+    func scanInsertedAssets() async {
+        while !isScanning, !pendingInsertedIDs.isEmpty {
+            let ids = pendingInsertedIDs
+            pendingInsertedIDs = []
+            isScanning = true
+            scanProgress = ScanProgress(phase: .reading)
+
+            let flickedIDs = await groupingService.loadFlickedIdentifiers()
+            let rawDecisions = await groupingService.loadRawDecisions()
+            let all = await photoService.fetchAllAssets()
+            let insertedDates = all
+                .filter { ids.contains($0.localIdentifier) }
+                .compactMap(\.creationDate)
+                .sorted()
+            let candidates = all.filter { asset in
+                ids.contains(asset.localIdentifier)
+                    || asset.creationDate.map {
+                        Self.isNear($0, sortedDates: insertedDates, within: GroupingService.timeBucketGap)
+                    } ?? false
+            }
+            let knownIDs = Set(groups.flatMap { $0.assets.map(\.localIdentifier) }).union(flickedIDs)
+
+            let result = await runScan(
+                of: candidates,
+                excluding: knownIDs,
+                flickedIDs: flickedIDs,
+                rawDecisions: rawDecisions,
+                startedAt: Date()
+            )
+            #if DEBUG
+            print("[PhotoSifter] inserted scan — \(ids.count) new photos, \(candidates.count) candidates, \(result.groupCount) new groups")
+            #endif
+
+            isScanning = false
+            scanProgress.phase = .finished
+            await groupingService.persistGroups(groups)
+            refreshQuickWins()
+        }
+    }
+
+    /// True when `date` is within `gap` of any date in `sortedDates`.
+    nonisolated static func isNear(_ date: Date, sortedDates: [Date], within gap: TimeInterval) -> Bool {
+        var low = 0
+        var high = sortedDates.count
+        while low < high {
+            let mid = (low + high) / 2
+            if sortedDates[mid] < date { low = mid + 1 } else { high = mid }
+        }
+        if low < sortedDates.count, sortedDates[low].timeIntervalSince(date) <= gap { return true }
+        if low > 0, date.timeIntervalSince(sortedDates[low - 1]) <= gap { return true }
+        return false
+    }
+
+    // MARK: - Scan runner
+
+    /// Runs one grouping scan and merges its groups into `groups` in small
+    /// animated batches. Returns how many groups were added and how long the
+    /// first one took, measured from `startedAt`.
+    private func runScan(
+        of assets: [PHAsset],
+        excluding knownIDs: Set<String>,
+        flickedIDs: Set<String>,
+        rawDecisions: [String: [String: String]],
+        startedAt: Date
+    ) async -> (groupCount: Int, firstGroupMs: Int?) {
         var batchBuffer: [PhotoGroup] = []
         var lastFlushDate = Date()
         var streamedGroupCount = 0
@@ -224,35 +350,15 @@ final class LibraryViewModel {
                 batchBuffer.append(hydrated)
                 streamedGroupCount += 1
                 if firstGroupMs == nil {
-                    firstGroupMs = Int(Date().timeIntervalSince(scanStartDate) * 1000)
-                    elapsed("first new group")
+                    firstGroupMs = Int(Date().timeIntervalSince(startedAt) * 1000)
                 }
                 if batchBuffer.count >= Self.flushBatchSize || Date().timeIntervalSince(lastFlushDate) >= Self.flushInterval {
-                    elapsed("  flush #\(streamedGroupCount) groups so far")
                     flushBatch()
                 }
             }
         }
         flushBatch()
-        elapsed("scan complete — \(streamedGroupCount) new groups found")
-
-        isScanning = false
-        scanProgress.phase = .finished
-        await groupingService.saveScanCutoff(scanStartDate)
-        await groupingService.persistGroups(groups)
-        PostHogAppLogger.libraryScanCompleted(
-            assetCount: assets.count,
-            groupCount: groups.count,
-            durationMs: Int(Date().timeIntervalSince(scanStartDate) * 1000),
-            firstGroupMs: firstGroupMs,
-            cloudSkippedCount: scanProgress.cloudSkipped
-        )
-
-        // Quick wins fetch runs at utility priority after scan — doesn't block the grid
-        Task(priority: .utility) {
-            let wins = await QuickWinsService.shared.fetchAll()
-            await MainActor.run { self.quickWins = wins }
-        }
+        return (streamedGroupCount, firstGroupMs)
     }
 
     func applySort() {

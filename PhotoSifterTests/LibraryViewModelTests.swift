@@ -20,6 +20,23 @@ final class LibraryViewModelTests: XCTestCase {
         XCTAssertEqual(LibraryViewModel().sortOrder, .oldestBiggest)
     }
 
+    // MARK: - Inserted-photo neighbours
+
+    func testIsNear_matchesDatesWithinGapOnEitherSide() {
+        let base = Date(timeIntervalSince1970: 1_000_000)
+        let dates = [base, base.addingTimeInterval(3_600)]
+        let gap: TimeInterval = 300
+
+        XCTAssertTrue(LibraryViewModel.isNear(base, sortedDates: dates, within: gap))
+        XCTAssertTrue(LibraryViewModel.isNear(base.addingTimeInterval(-300), sortedDates: dates, within: gap))
+        XCTAssertTrue(LibraryViewModel.isNear(base.addingTimeInterval(299), sortedDates: dates, within: gap))
+        XCTAssertTrue(LibraryViewModel.isNear(base.addingTimeInterval(3_400), sortedDates: dates, within: gap))
+        XCTAssertFalse(LibraryViewModel.isNear(base.addingTimeInterval(1_800), sortedDates: dates, within: gap))
+        XCTAssertFalse(LibraryViewModel.isNear(base.addingTimeInterval(-301), sortedDates: dates, within: gap))
+        XCTAssertFalse(LibraryViewModel.isNear(base.addingTimeInterval(3_901), sortedDates: dates, within: gap))
+        XCTAssertFalse(LibraryViewModel.isNear(base, sortedDates: [], within: gap))
+    }
+
     // MARK: - markGroupComplete
 
     func testMarkGroupComplete_removesGroupFromList() throws {
