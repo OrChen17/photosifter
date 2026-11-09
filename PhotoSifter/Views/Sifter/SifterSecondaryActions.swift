@@ -101,7 +101,7 @@ struct SifterSecondaryActions: View {
                 }
             }
             .font(.system(.subheadline, design: .rounded, weight: .semibold))
-            .foregroundStyle(config.isEnabled ? Color.appOnKeep : Color.appForeground)
+            .foregroundStyle(config.isEnabled ? Color.appOnKeep : Color.appForeground.opacity(0.3))
             .padding(.horizontal, 20)
             .frame(minHeight: 50)
             .background(
@@ -113,11 +113,10 @@ struct SifterSecondaryActions: View {
                 .opacity(config.isEnabled ? 1 : 0),
                 in: Capsule(style: .continuous)
             )
-            .appGlass(in: Capsule(style: .continuous))
+            .appGlass(in: Capsule(style: .continuous), interactive: config.isEnabled)
         }
         .buttonStyle(PressScaleButtonStyle())
         .disabled(!config.isEnabled)
-        .opacity(config.isEnabled ? 1.0 : 0.75)
         .animation(.easeOut(duration: 0.2), value: config.isEnabled)
     }
 }
