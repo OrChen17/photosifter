@@ -60,6 +60,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     @State private var isTopCardThrown: Bool = false
     @State private var thrownCardID: String?
     @State private var exitOffset: CGSize = .zero
+    @State private var exitSpeed: CGFloat = 0
     @State private var settledCardID: String?
     @State private var cardAppearWobble: Double = 1.875
     @AppStorage(SwipeHintView.storageKey) private var hintSwipeCount: Int = 0
@@ -111,16 +112,16 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                                 { isTopCardThrown = false; recordHintSwipe(); action() }
                             },
                             onProgressChange: onProgressChange,
-                            onThrowRight: {
-                                markThrown(asset, exit: CGSize(width: CardExit.distance, height: CardExit.lift))
+                            onThrowRight: { velocity in
+                                markThrown(asset, direction: 1, velocity: velocity)
                                 isTopCardThrown = true
                                 flashTint = .appKeep
                                 triggerFlash()
                                 HapticManager.shared.playKeep()
                                 SoundManager.shared.playKeep()
                             },
-                            onThrowLeft: {
-                                markThrown(asset, exit: CGSize(width: -CardExit.distance, height: CardExit.lift))
+                            onThrowLeft: { velocity in
+                                markThrown(asset, direction: -1, velocity: velocity)
                                 isTopCardThrown = true
                                 flashTint = .appDelete
                                 triggerFlash()
@@ -128,7 +129,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                                 SoundManager.shared.playDelete()
                             },
                             onThrowUp: {
-                                markThrown(asset, exit: CGSize(width: 0, height: -CardExit.distance))
+                                markThrown(asset, exit: CGSize(width: 0, height: -CardExit.distance), speed: 0)
                             },
                             commitsImmediately: true,
                             scale: topCardScale(for: asset),
@@ -183,15 +184,32 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
 
     private func triggerFlash() { flashCounter += 1 }
 
-    private func markThrown(_ asset: PHAsset, exit: CGSize) {
+    private func markThrown(_ asset: PHAsset, direction: CGFloat, velocity: CGSize) {
+        let slope = velocity.height / max(abs(velocity.width), 1)
+        let drop = max(-CardExit.maxDrop, min(CardExit.maxDrop, slope * CardExit.distance))
+        markThrown(
+            asset,
+            exit: CGSize(width: direction * CardExit.distance, height: CardExit.lift + drop),
+            speed: hypot(velocity.width, velocity.height)
+        )
+    }
+
+    private func markThrown(_ asset: PHAsset, exit: CGSize, speed: CGFloat) {
         thrownCardID = asset.localIdentifier
         exitOffset = exit
+        exitSpeed = speed
     }
 
     private var topCardTransition: AnyTransition {
         reduceMotion
             ? .opacity
-            : .asymmetric(insertion: .identity, removal: .offset(exitOffset))
+            : .asymmetric(insertion: .identity, removal: .offset(exitOffset).animation(exitAnimation))
+    }
+
+    private var exitAnimation: Animation {
+        let distance = max(1, hypot(exitOffset.width, exitOffset.height))
+        let launch = min(CardExit.maxLaunch, max(CardExit.minLaunch, exitSpeed / distance))
+        return .interpolatingSpring(duration: CardExit.duration, bounce: 0, initialVelocity: launch)
     }
 
     private func topCardScale(for asset: PHAsset) -> CGFloat {
@@ -218,6 +236,10 @@ private enum CardExit {
     static let distance: CGFloat = 520
     static let lift: CGFloat = -40
     static let insertScale: CGFloat = 0.96
+    static let maxDrop: CGFloat = 260
+    static let duration: TimeInterval = 0.32
+    static let minLaunch: Double = 1.5
+    static let maxLaunch: Double = 10
 }
 
 private enum BehindCard {

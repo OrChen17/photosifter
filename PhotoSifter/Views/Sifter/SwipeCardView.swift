@@ -52,8 +52,8 @@ struct SwipeCardView: View {
     /// drive a screen-wide vignette. -1 = full left (delete), +1 = full right (keep).
     var onProgressChange: ((Double) -> Void)? = nil
     /// Fires at throw start (before the animation completes) — use for immediate haptic/flash feedback.
-    var onThrowRight: (() -> Void)? = nil
-    var onThrowLeft: (() -> Void)? = nil
+    var onThrowRight: ((CGSize) -> Void)? = nil
+    var onThrowLeft: ((CGSize) -> Void)? = nil
     var onThrowUp: (() -> Void)? = nil
     var commitsImmediately = false
     var scale: CGFloat = 1
@@ -374,7 +374,7 @@ struct SwipeCardView: View {
 
                 if crossedDistance || flickedHorizontal {
                     let direction: CGFloat = (crossedDistance ? dx : predictedDx) > 0 ? 1 : -1
-                    throwCard(direction: direction, velocity: value.velocity.width, then: direction > 0 ? onSwipeRight : onSwipeLeft)
+                    throwCard(direction: direction, velocity: value.velocity, then: direction > 0 ? onSwipeRight : onSwipeLeft)
                 } else if let onSkip,
                           (dy < -80 || (predictedDy < -flickPredictedThreshold && dy < -flickMinTranslation)) {
                     // Upward flick = skip
@@ -387,14 +387,15 @@ struct SwipeCardView: View {
             }
     }
 
-    private func throwCard(direction: CGFloat, velocity: CGFloat = 800, then action: @escaping () -> Void) {
+    private func throwCard(direction: CGFloat, velocity: CGSize? = nil, then action: @escaping () -> Void) {
         isThrown = true
-        if direction > 0 { onThrowRight?() } else { onThrowLeft?() }
+        let velocity = velocity ?? CGSize(width: direction * CardThrow.buttonSpeed, height: 0)
+        if direction > 0 { onThrowRight?(velocity) } else { onThrowLeft?(velocity) }
         // Scale duration with gesture speed: hard flick (~1200 pts/s) → 0.15s, slow push → 0.38s
         if reduceMotion {
             withAnimation(.easeOut(duration: 0.2)) { throwFade = 0 }
         } else {
-            let normalizedSpeed = min(1.0, abs(velocity) / 1200.0)
+            let normalizedSpeed = min(1.0, abs(velocity.width) / 1200.0)
             let duration = 0.38 - 0.23 * normalizedSpeed
             withAnimation(.spring(duration: duration, bounce: 0.08)) {
                 offset = CGSize(width: direction * 600, height: -50)
@@ -439,4 +440,8 @@ struct SwipeCardView: View {
         }
         commit(after: 0.13, action)
     }
+}
+
+enum CardThrow {
+    static let buttonSpeed: CGFloat = 1400
 }
