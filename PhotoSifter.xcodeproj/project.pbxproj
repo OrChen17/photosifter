@@ -41,6 +41,9 @@
 		ASND1 /* keep.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND1 /* keep.caf */; };
 		ASND2 /* delete.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND2 /* delete.caf */; };
 		ASND3 /* finish.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND3 /* finish.caf */; };
+		ASND4 /* finish-kept.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND4 /* finish-kept.caf */; };
+		ASND5 /* skip.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND5 /* skip.caf */; };
+		ASND6 /* undo.caf in Resources */ = {isa = PBXBuildFile; fileRef = BSND6 /* undo.caf */; };
 		X001 /* CompletedBatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX01 /* CompletedBatch.swift */; };
 		X002 /* CompletedBatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX02 /* CompletedBatchStore.swift */; };
 		X003 /* QuickWin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX03 /* QuickWin.swift */; };
@@ -151,6 +154,9 @@
 		BSND1 /* keep.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = keep.caf; sourceTree = "<group>"; };
 		BSND2 /* delete.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = delete.caf; sourceTree = "<group>"; };
 		BSND3 /* finish.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = finish.caf; sourceTree = "<group>"; };
+		BSND4 /* finish-kept.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = finish-kept.caf; sourceTree = "<group>"; };
+		BSND5 /* skip.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = skip.caf; sourceTree = "<group>"; };
+		BSND6 /* undo.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = undo.caf; sourceTree = "<group>"; };
 		PROD /* PhotoSifter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoSifter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		R001 /* PhotoSifterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSifterUITests.swift; sourceTree = "<group>"; };
 		R002 /* PermissionFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionFlowUITests.swift; sourceTree = "<group>"; };
@@ -291,6 +297,9 @@
 				BSND1 /* keep.caf */,
 				BSND2 /* delete.caf */,
 				BSND3 /* finish.caf */,
+				BSND4 /* finish-kept.caf */,
+				BSND5 /* skip.caf */,
+				BSND6 /* undo.caf */,
 			);
 			path = Sounds;
 			sourceTree = "<group>";
@@ -524,6 +533,9 @@
 				ASND1 /* keep.caf in Resources */,
 				ASND2 /* delete.caf in Resources */,
 				ASND3 /* finish.caf in Resources */,
+				ASND4 /* finish-kept.caf in Resources */,
+				ASND5 /* skip.caf in Resources */,
+				ASND6 /* undo.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

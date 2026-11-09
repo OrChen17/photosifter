@@ -5,7 +5,10 @@ final class SoundManager: @unchecked Sendable {
     private enum BundledSound: String, CaseIterable {
         case keep
         case delete
+        case skip
+        case undo
         case finish
+        case finishAllKept = "finish-kept"
 
         static let fileExtension = "caf"
 
@@ -13,7 +16,9 @@ final class SoundManager: @unchecked Sendable {
             switch self {
             case .keep: 1104
             case .delete: 1105
-            case .finish: 1001
+            case .skip: 1306
+            case .undo: 1057
+            case .finish, .finishAllKept: 1001
             }
         }
     }
@@ -61,17 +66,19 @@ final class SoundManager: @unchecked Sendable {
         play(.finish)
     }
 
+    func playAllKept() {
+        play(.finishAllKept)
+    }
+
     func playFailure() {
         AudioServicesPlaySystemSound(1519)
     }
 
-    /// Light "tick" for skip — a forward step.
     func playSkip() {
-        AudioServicesPlaySystemSound(1306)
+        play(.skip)
     }
 
-    /// Short rewind-y tone for revert/undo.
     func playUndo() {
-        AudioServicesPlaySystemSound(1057)
+        play(.undo)
     }
 }

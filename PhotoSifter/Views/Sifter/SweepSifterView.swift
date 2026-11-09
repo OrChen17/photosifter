@@ -391,6 +391,7 @@ struct SweepSifterView: View {
             SoundManager.shared.playSuccess()
             HapticManager.shared.playBatchComplete()
         case .nothingToDelete:
+            SoundManager.shared.playAllKept()
             // All keeps, no deletes — still hand the snapshot off so each
             // touched memory either becomes its own Revisit row (full
             // resolution) or stays in the queue with kept assets marked.

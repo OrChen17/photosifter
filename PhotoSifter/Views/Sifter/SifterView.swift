@@ -296,6 +296,7 @@ struct SifterView: View {
             libraryVM.markGroupComplete(vm.group)
             captureCompletedSession()
         case .nothingToDelete:
+            SoundManager.shared.playAllKept()
             pendingNextGroup = libraryVM.nextIncompleteGroup(after: vm.group)
             let keptIDs = vm.group.assets.map { $0.localIdentifier }
             await libraryVM.recordCompletedBatch(CompletedBatch(
