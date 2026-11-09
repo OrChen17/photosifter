@@ -23,7 +23,7 @@ struct HomeView: View {
                     HistoryView()
                 }
                 .navigationDestination(isPresented: $showingMemories) {
-                    MemoriesView(backdropAsset: sweepVM.currentAsset)
+                    MemoriesView()
                 }
                 .navigationDestination(item: $vm.selectedQuickWin) { win in
                     SifterView(group: win.group, mode: .screenshots)

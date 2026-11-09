@@ -5,8 +5,6 @@ import PostHog
 /// Grid of every open group. Tapping one flicks just that group, as an
 /// alternative to the endless Flick Forever deck on the home screen.
 struct MemoriesView: View {
-    let backdropAsset: PHAsset?
-
     @Environment(LibraryViewModel.self) private var vm
     @Environment(\.displayScale) private var displayScale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -18,7 +16,7 @@ struct MemoriesView: View {
 
     var body: some View {
         ZStack {
-            AmbientBackdrop(asset: backdropAsset)
+            Color.appBackground.ignoresSafeArea()
 
             if !vm.groups.isEmpty {
                 grid

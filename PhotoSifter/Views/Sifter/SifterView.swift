@@ -33,7 +33,7 @@ struct SifterView: View {
 
     var body: some View {
         ZStack {
-            Color.appBackground.ignoresSafeArea()
+            AmbientBackdrop(asset: vm.currentAsset)
 
             if !vm.isComplete {
                 mainContent
