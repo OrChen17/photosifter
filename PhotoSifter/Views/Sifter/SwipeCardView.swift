@@ -75,9 +75,15 @@ struct SwipeCardView: View {
     @State private var isThrown: Bool = false
     @State private var isDragging = false
     @State private var grabAnchor: UnitPoint = .center
+    @State private var isFocusing = false
+    @State private var focusSession = false
+    @State private var focusAnchor: UnitPoint = .center
+    @State private var focusImage: UIImage?
+    @State private var pressTask: Task<Void, Never>?
     /// With Reduce Motion on, a thrown card fades out in place instead of flying off.
     @State private var throwFade: Double = 1
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.displayScale) private var displayScale
     @State private var imageState: CardImageState = .loading
     @State private var locationLabel: String?
     @State private var captureDate: Date? = nil
@@ -149,6 +155,7 @@ struct SwipeCardView: View {
 
                 // Metadata strip at bottom
                 metadataOverlay(cardWidth: geo.size.width)
+                    .opacity(isFocusing ? 0 : 1)
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .dynamicTypeSize(...DynamicTypeSize.cardOverlayMax)
@@ -165,6 +172,7 @@ struct SwipeCardView: View {
             .offset(x: offset.width, y: offset.height * 0.4)
             .opacity(throwFade)
             .gesture(swipeDrag(in: geo.frame(in: .global)))
+            .simultaneousGesture(focusGesture(in: geo.frame(in: .global)))
             .allowsHitTesting(!isThrown)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isImage)
@@ -241,10 +249,11 @@ struct SwipeCardView: View {
                     .frame(width: size.width, height: size.height)
                     .blur(radius: 28, opaque: true)
                     .brightness(-0.08)
-                Image(uiImage: image)
+                Image(uiImage: isFocusing ? focusImage ?? image : image)
                     .resizable()
                     .scaledToFit()
                     .frame(width: size.width, height: size.height)
+                    .scaleEffect(isFocusing ? focusScale(for: size) : 1, anchor: focusAnchor)
             }
         case .iCloudOnly:
             Color.appCard.overlay {
@@ -370,8 +379,12 @@ struct SwipeCardView: View {
     private func swipeDrag(in frame: CGRect) -> some Gesture {
         DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onChanged { value in
-                guard !isThrown, value.startLocation.x > backSwipeEdgeWidth else { return }
+                guard !isThrown, !isFocusing, value.startLocation.x > backSwipeEdgeWidth else { return }
                 if !isDragging {
+                    if focusSession {
+                        focusSession = false
+                        return
+                    }
                     isDragging = true
                     grabAnchor = Self.unitPoint(of: value.startLocation, in: frame)
                 }
@@ -379,6 +392,10 @@ struct SwipeCardView: View {
             }
             .onEnded { value in
                 isDragging = false
+                if isFocusing || focusSession {
+                    focusSession = false
+                    return
+                }
                 guard !isThrown, value.startLocation.x > backSwipeEdgeWidth else { return }
 
                 let dx = value.translation.width
@@ -404,6 +421,60 @@ struct SwipeCardView: View {
                     }
                 }
             }
+    }
+
+    private func focusScale(for size: CGSize) -> CGFloat {
+        guard asset.pixelWidth > 0, asset.pixelHeight > 0, size.width > 0, size.height > 0 else { return FocusZoom.minScale }
+        let aspect = CGFloat(asset.pixelWidth) / CGFloat(asset.pixelHeight)
+        let fittedWidth = min(size.width, size.height * aspect)
+        let actualSize = CGFloat(asset.pixelWidth) / displayScale
+        return min(FocusZoom.maxScale, max(FocusZoom.minScale, actualSize / fittedWidth))
+    }
+
+    private func focusGesture(in frame: CGRect) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+            .onChanged { value in
+                if isFocusing {
+                    focusAnchor = Self.unitPoint(of: value.location, in: frame)
+                    return
+                }
+                if hypot(value.translation.width, value.translation.height) > FocusZoom.slop {
+                    pressTask?.cancel()
+                }
+                guard pressTask == nil, !isThrown, case .loaded = imageState else { return }
+                let start = Self.unitPoint(of: value.startLocation, in: frame)
+                pressTask = Task { @MainActor in
+                    try? await Task.sleep(for: FocusZoom.hold)
+                    guard !Task.isCancelled, !isDragging, !isThrown else { return }
+                    beginFocus(at: start)
+                }
+            }
+            .onEnded { _ in
+                pressTask?.cancel()
+                pressTask = nil
+                endFocus()
+            }
+    }
+
+    private func beginFocus(at anchor: UnitPoint) {
+        focusAnchor = anchor
+        focusSession = true
+        withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.3, bounce: 0.1)) {
+            isFocusing = true
+        }
+        HapticManager.shared.playTick()
+        guard focusImage == nil else { return }
+        Task {
+            let image = await PhotoLibraryService.shared.loadFocusImage(for: asset)
+            focusImage = image
+        }
+    }
+
+    private func endFocus() {
+        guard isFocusing else { return }
+        withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.3, bounce: 0)) {
+            isFocusing = false
+        }
     }
 
     private static func unitPoint(of point: CGPoint, in frame: CGRect) -> UnitPoint {
@@ -478,4 +549,11 @@ private enum CardTilt {
     static let tiltDivisor: Double = 30
     static let maxDegrees: Double = 8
     static let perspective: CGFloat = 0.5
+}
+
+private enum FocusZoom {
+    static let hold: Duration = .milliseconds(300)
+    static let slop: CGFloat = 10
+    static let minScale: CGFloat = 2
+    static let maxScale: CGFloat = 8
 }

@@ -109,6 +109,14 @@ actor PhotoLibraryService {
         await loadFullImage(for: asset, targetSize: PHImageManagerMaximumSize)
     }
 
+    func loadFocusImage(for asset: PHAsset) async -> UIImage? {
+        let side = PhotoLibraryService.focusImageMaxSide
+        guard case .loaded(let image) = await loadFullImage(for: asset, targetSize: CGSize(width: side, height: side)) else { return nil }
+        return image
+    }
+
+    static let focusImageMaxSide: CGFloat = 4096
+
     private func loadFullImage(for asset: PHAsset, targetSize: CGSize) async -> FullImageResult {
         await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
