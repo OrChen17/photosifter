@@ -33,9 +33,6 @@ struct HomeView: View {
                         .presentationDetents([.medium])
                 }
         }
-        .onChange(of: vm.groups.map(\.id), initial: true) { _, _ in
-            sweepVM.sync(with: vm.groups)
-        }
     }
 
     // MARK: - Menu

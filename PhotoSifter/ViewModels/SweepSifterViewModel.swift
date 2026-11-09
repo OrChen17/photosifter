@@ -7,6 +7,8 @@ import SwiftUI
 @Observable
 @MainActor
 final class SweepSifterViewModel {
+    private(set) var sourceGroups: [PhotoGroup]
+
     private(set) var queue: [PHAsset]
     private(set) var currentIndex: Int = 0
     private(set) var decisions: [String: Decision] = [:]
@@ -20,10 +22,10 @@ final class SweepSifterViewModel {
 
     /// Reverse lookup `localIdentifier -> source group id`, used by the strip
     /// to draw cross-memory boundary dividers.
-    private var groupIDByAsset: [String: UUID] = [:]
-    /// Every asset this session has ever queued, applied ones included, so a
-    /// later `sync` never puts a resolved photo back in the queue.
-    private var knownAssetIDs: Set<String> = []
+    private var groupIDByAsset: [String: UUID]
+    /// Every group ever offered to this session, including ones applied and
+    /// removed from the queue, so a later library update can't re-add them.
+    private var knownGroupIDs: Set<UUID>
 
     private var skippedIDs: Set<String> = []
     /// Per-action undo log. `decision == nil` denotes a skip; otherwise a keep/delete.
@@ -32,23 +34,41 @@ final class SweepSifterViewModel {
     private var actionHistory: [(assetID: String, decision: Decision?)] = []
 
     init(groups: [PhotoGroup]) {
-        self.queue = []
-        sync(with: groups)
-    }
-
-    /// Appends assets from groups that arrived after the session started (the
-    /// scan streams groups in while the user is already flicking). Assets the
-    /// session already knows only get their group mapping refreshed, because a
-    /// rescan regenerates `PhotoGroup.id`.
-    func sync(with groups: [PhotoGroup]) {
+        self.sourceGroups = groups
+        var flatQueue: [PHAsset] = []
+        var lookup: [String: UUID] = [:]
         for group in groups {
             for asset in group.assets {
-                let id = asset.localIdentifier
-                groupIDByAsset[id] = group.id
-                if knownAssetIDs.insert(id).inserted {
-                    queue.append(asset)
-                }
+                flatQueue.append(asset)
+                lookup[asset.localIdentifier] = group.id
             }
+        }
+        self.queue = flatQueue
+        self.groupIDByAsset = lookup
+        self.knownGroupIDs = Set(groups.map(\.id))
+    }
+
+    /// Appends groups the scan found after the session started. Groups already
+    /// seen and photos already in the queue are ignored. When the queue was
+    /// used up, the cursor lands on the first new photo.
+    func appendGroups(_ groups: [PhotoGroup]) {
+        var added = false
+        for group in groups where !knownGroupIDs.contains(group.id) {
+            knownGroupIDs.insert(group.id)
+            let fresh = group.assets.filter { groupIDByAsset[$0.localIdentifier] == nil }
+            guard !fresh.isEmpty else { continue }
+            sourceGroups.append(group)
+            for asset in fresh {
+                queue.append(asset)
+                groupIDByAsset[asset.localIdentifier] = group.id
+            }
+            added = true
+        }
+        guard added else { return }
+        // A finished queue has currentIndex == old count, which is now the first
+        // new photo. Move past any decided ones, like a normal advance would.
+        while currentIndex < queue.count && decisions[queue[currentIndex].localIdentifier] != nil {
+            currentIndex += 1
         }
     }
 

@@ -12,11 +12,14 @@ final class LibraryUITests: PhotoSifterUITestCase {
                       "Library navigation bar should appear after launch")
     }
 
-    func testLibraryScreen_scanningBadge_appearsWhileProcessing() {
+    func testLibraryScreen_scanProgress_appearsWhileProcessing() {
         launchAuthorized()
 
-        // "Scanning" text should appear during the background scan
-        let scanning = app.staticTexts["Scanning"]
+        // The progress hero (no groups yet) or card (above the grid) shows
+        // during the scan.
+        let scanning = app.otherElements.matching(
+            NSPredicate(format: "identifier IN %@", ["scanProgressHero", "scanProgressCard"])
+        ).firstMatch
         // It's transient — we just check it appears at some point within 10s
         let appeared = scanning.waitForExistence(timeout: 10)
         // Note: may already be gone on a fast device — not a hard failure

@@ -57,7 +57,17 @@ struct SweepSifterView: View {
                 ToolbarItem(placement: .topBarTrailing) { sessionCounts }
             }
         }
-        .task { preloadUpcomingImages() }
+        .task {
+            vm.appendGroups(libraryVM.groups)
+            preloadUpcomingImages()
+        }
+        // The scan keeps streaming groups into the library while Forever is
+        // open; feed them into the deck so it never runs dry mid-scan.
+        .onChange(of: libraryVM.groups.map(\.id)) { _, _ in
+            let wasExhausted = vm.isQueueExhausted
+            vm.appendGroups(libraryVM.groups)
+            if wasExhausted && !vm.isQueueExhausted { preloadUpcomingImages() }
+        }
         .onChange(of: vm.currentIndex) { _, _ in
             preloadUpcomingImages()
         }
@@ -191,17 +201,23 @@ struct SweepSifterView: View {
 
     // MARK: - Idle states
 
+    /// The deck is empty while the scan runs. New photos slide in as soon as
+    /// the library gets them.
     private var scanningContent: some View {
-        StatusPanel(
-            symbol: "sparkle.magnifyingglass",
-            symbolColor: .appKeep,
-            title: hasSessionActivity ? "Looking for more" : "Finding look-alikes",
-            message: "Similar photos show up here as soon as they are found."
-        ) {
-            ProgressView()
-                .controlSize(.large)
-                .tint(.appKeep)
+        VStack(spacing: 24) {
+            ScanProgressView(
+                progress: libraryVM.scanProgress,
+                style: .hero,
+                title: hasSessionActivity ? String(localized: "Finding more photos") : nil
+            )
+            if hasSessionActivity {
+                Text("\(vm.sessionDeletedCount) deleted · \(vm.sessionKeptCount) kept so far")
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.appTextSecondary)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var emptyContent: some View {

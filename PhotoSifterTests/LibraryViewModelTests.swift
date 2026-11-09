@@ -11,7 +11,7 @@ final class LibraryViewModelTests: XCTestCase {
         let vm = LibraryViewModel()
         XCTAssertTrue(vm.groups.isEmpty)
         XCTAssertFalse(vm.isScanning)
-        XCTAssertEqual(vm.scanProgress.current, 0)
+        XCTAssertEqual(vm.scanProgress.checked, 0)
         XCTAssertEqual(vm.scanProgress.total, 0)
         XCTAssertNil(vm.error)
     }

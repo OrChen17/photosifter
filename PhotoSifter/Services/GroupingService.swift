@@ -1,6 +1,40 @@
 import Photos
 import Foundation
 
+/// What the scan has done so far. Drives the progress UI.
+struct ScanProgress: Equatable, Sendable {
+    enum Phase: Equatable, Sendable {
+        case idle
+        /// Fetching the asset list from Photos. Total not known yet.
+        case reading
+        case comparing
+        case finished
+    }
+
+    var phase: Phase = .idle
+    /// Photos the scan has looked at, out of `total`.
+    var checked: Int = 0
+    var total: Int = 0
+    /// Photos left out because they are only in iCloud and download is off.
+    var cloudSkipped: Int = 0
+    /// Oldest capture date reached so far. The scan walks newest to oldest.
+    var reachedDate: Date?
+
+    static let idle = ScanProgress()
+
+    var fraction: Double {
+        guard total > 0 else { return phase == .finished ? 1 : 0 }
+        return min(1, Double(checked) / Double(total))
+    }
+
+    var isActive: Bool { phase == .reading || phase == .comparing }
+}
+
+enum ScanEvent: Sendable {
+    case group(PhotoGroup)
+    case progress(ScanProgress)
+}
+
 actor GroupingService {
     #if DEBUG && targetEnvironment(simulator)
     // Simulator's Vision/CoreML can't load the feature-print model, so use a
@@ -46,23 +80,38 @@ actor GroupingService {
     private static let similarityThreshold: Float = 0.5
     static let timeBucketGap: TimeInterval = 5 * 60   // 5 minutes
 
+    /// Time buckets (and bursts) processed at the same time.
+    static let maxConcurrentWorkItems = 4
+    /// Vision feature prints in flight across all buckets. Loading the image
+    /// from Photos is most of the cost, so a few in parallel hide that wait.
+    static let maxConcurrentSignatures = min(4, max(2, ProcessInfo.processInfo.activeProcessorCount - 2))
+    /// iCloud checks are cheap I/O probes, so they can run wider.
+    static let maxConcurrentLocalChecks = 8
+    /// Progress events are throttled so a large library doesn't flood the main actor.
+    static let progressInterval: TimeInterval = 0.1
+
     // MARK: - Public API
 
-    /// Streams PhotoGroups as they are found, skipping assets already in a cached
-    /// group (`knownIDs`). Burst groups are emitted first (instant, no Vision
-    /// needed), then Vision-based groups stream in afterwards.
-    func streamGroups(
+    /// Scans `assets` for groups, newest photos first, and reports progress.
+    ///
+    /// - Assets in `knownIDs` (cached or already flicked) are skipped. The scan
+    ///   cutoff is not applied here: singles from a previous scan must still be
+    ///   re-checked because new photos could pair with them.
+    /// - Bursts and time buckets form one work queue, ordered newest first, and
+    ///   up to `maxConcurrentWorkItems` run at once. Groups are emitted as soon as
+    ///   their bucket is done, so the first ones show up after a couple of
+    ///   feature prints instead of after a pass over the whole library.
+    /// - iCloud-only photos are filtered per bucket, only for photos that have a
+    ///   neighbour within `timeBucketGap`. Singles are never probed.
+    func scan(
         from assets: [PHAsset],
         excluding knownIDs: Set<String> = []
-    ) -> AsyncStream<PhotoGroup> {
-        // Pre-filter before any ML work: skip only assets already in a cached group.
-        // The cutoff is intentionally NOT applied here — photos that weren't grouped
-        // on a previous scan (singletons) must still be re-evaluated since they could
-        // form a group with newly imported photos or with each other in a future run.
-        let toScan = assets.filter { !knownIDs.contains($0.localIdentifier) }
+    ) -> AsyncStream<ScanEvent> {
+        let similarity = self.similarity
+        let cloudFilter = !AppSettings.cloudDownloadEnabled
 
         return AsyncStream { continuation in
-            let task = Task(priority: .background) {
+            let task = Task(priority: .userInitiated) {
                 #if DEBUG
                 let t0 = Date()
                 func log(_ msg: String) {
@@ -73,47 +122,72 @@ actor GroupingService {
                 @inline(__always) func log(_ _: String) {}
                 #endif
 
-                // Phase 1: Burst groups — skip representatives already grouped
-                let burstGroups = await Self.fetchBurstGroups(excluding: knownIDs)
-                let burstIDs = Set(burstGroups.flatMap { $0.assets.map { $0.localIdentifier } })
-                for g in burstGroups { continuation.yield(self.byteFilled(g)) }
-                log("burst done — \(burstGroups.count) groups")
+                let plan = Self.plan(assets.filter { !knownIDs.contains($0.localIdentifier) })
+                var progress = ScanProgress(phase: .comparing, checked: 0, total: plan.total)
+                continuation.yield(.progress(progress))
+                log("plan: \(plan.total) photos, \(plan.items.count) work items, \(plan.leftover) old singles")
 
-                // Phase 2: Vision clustering on new non-burst assets only
-                let nonBurst = toScan.filter { !burstIDs.contains($0.localIdentifier) }
-                let toCluster: [PHAsset]
-                if !AppSettings.cloudDownloadEnabled {
-                    toCluster = await withTaskGroup(of: (PHAsset, Bool).self) { group in
-                        for asset in nonBurst {
-                            group.addTask { (asset, await PhotoLibraryService.shared.isLocallyAvailable(asset)) }
+                let limiter = AsyncLimiter(limit: Self.maxConcurrentSignatures)
+                var lastProgressAt = Date()
+                var emitted = 0
+
+                await withTaskGroup(of: WorkResult.self) { group in
+                    var next = 0
+                    func enqueue() {
+                        let item = plan.items[next]
+                        next += 1
+                        group.addTask {
+                            await Self.process(item, similarity: similarity, limiter: limiter, cloudFilter: cloudFilter)
                         }
-                        var local: [PHAsset] = []
-                        for await (asset, available) in group where available { local.append(asset) }
-                        return local.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
                     }
-                    log("iCloud pre-filter: \(nonBurst.count - toCluster.count) cloud-only assets skipped")
-                } else {
-                    toCluster = nonBurst
-                }
-                let buckets = Self.splitIntoBuckets(toCluster)
-                log("buckets: \(buckets.count), sizes: \(buckets.map(\.count).sorted(by: >).prefix(10))")
+                    while next < min(Self.maxConcurrentWorkItems, plan.items.count) { enqueue() }
 
-                for (i, bucket) in buckets.enumerated() {
-                    guard !Task.isCancelled else { break }
-                    let bt = Date()
-                    let groups = (try? await self.clusterBucket(bucket)) ?? []
-                    let bucketMs = Int(Date().timeIntervalSince(bt) * 1000)
-                    if bucketMs > 200 {
-                        log("  bucket[\(i)] \(bucket.count) assets → \(groups.count) groups (\(bucketMs)ms)")
+                    for await result in group {
+                        for g in result.groups {
+                            continuation.yield(.group(self.byteFilled(g)))
+                            emitted += 1
+                            if emitted == 1 { log("first group") }
+                        }
+                        progress.checked += result.weight
+                        progress.cloudSkipped += result.cloudSkipped
+                        progress.reachedDate = [progress.reachedDate, result.oldestDate].compactMap { $0 }.min()
+                        if Date().timeIntervalSince(lastProgressAt) >= Self.progressInterval {
+                            lastProgressAt = Date()
+                            continuation.yield(.progress(progress))
+                        }
+                        if !Task.isCancelled, next < plan.items.count { enqueue() }
                     }
-                    for g in groups { continuation.yield(self.byteFilled(g)) }
                 }
-                log("Vision scan complete")
+
+                if !Task.isCancelled {
+                    progress.checked = progress.total
+                    progress.reachedDate = plan.oldestDate ?? progress.reachedDate
+                }
+                progress.phase = .finished
+                continuation.yield(.progress(progress))
+                log("scan complete — \(emitted) groups, \(progress.cloudSkipped) iCloud-only skipped")
                 self.saveFileSizeCache()
                 continuation.finish()
             }
-            // Cancel the background task when the consumer abandons the stream
+            // Cancel the scan when the consumer abandons the stream
             // (e.g. LibraryViewModel navigates away or starts a new load()).
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Groups only, without progress. Same scan as `scan(from:excluding:)`.
+    func streamGroups(
+        from assets: [PHAsset],
+        excluding knownIDs: Set<String> = []
+    ) -> AsyncStream<PhotoGroup> {
+        let events = scan(from: assets, excluding: knownIDs)
+        return AsyncStream { continuation in
+            let task = Task {
+                for await event in events {
+                    if case .group(let group) = event { continuation.yield(group) }
+                }
+                continuation.finish()
+            }
             continuation.onTermination = { _ in task.cancel() }
         }
     }
@@ -275,62 +349,208 @@ actor GroupingService {
         try? FileManager.default.removeItem(at: scanCutoffURL)
     }
 
-    // MARK: - Burst groups (#16)
+    // MARK: - Scan plan
 
-    /// Returns photo groups formed from iOS burst captures — no Vision needed.
-    /// When cloud download is disabled, filters out any burst assets not stored on device.
-    private static func fetchBurstGroups(excluding knownIDs: Set<String> = []) async -> [PhotoGroup] {
+    /// One unit of scan work. `weight` is how many scanned photos it accounts
+    /// for in progress, including the singles between it and the next newer item.
+    enum WorkItem {
+        case burst(representative: PHAsset, date: Date)
+        case bucket(assets: [PHAsset], weight: Int, newest: Date, oldest: Date)
+
+        var newestDate: Date {
+            switch self {
+            case .burst(_, let date): return date
+            case .bucket(_, _, let newest, _): return newest
+            }
+        }
+    }
+
+    struct ScanPlan {
+        /// Newest first.
+        let items: [WorkItem]
+        let total: Int
+        /// Singles older than the oldest bucket. Counted when the scan ends.
+        let leftover: Int
+        let oldestDate: Date?
+    }
+
+    /// Splits the photos to scan into burst items and time-bucket items, newest
+    /// first. Burst representatives (the only burst member a default fetch
+    /// returns) go to the burst path and are kept out of Vision buckets.
+    static func plan(_ assets: [PHAsset]) -> ScanPlan {
+        // Read creationDate once per asset; each read is an Objective-C call.
+        let dated = assets
+            .map { (asset: $0, date: $0.creationDate ?? .distantPast) }
+            .sorted { $0.date < $1.date }
+
+        var bursts: [WorkItem] = []
+        var regular: [(asset: PHAsset, date: Date)] = []
+        regular.reserveCapacity(dated.count)
+        for entry in dated {
+            if entry.asset.representsBurst, entry.asset.burstIdentifier != nil {
+                bursts.append(.burst(representative: entry.asset, date: entry.date))
+            } else {
+                regular.append(entry)
+            }
+        }
+
+        let weighted = weightedBuckets(byDates: regular.map(\.date))
+        let buckets: [WorkItem] = weighted.buckets.map { bucket in
+            .bucket(
+                assets: bucket.indices.map { regular[$0].asset },
+                weight: bucket.weight,
+                newest: regular[bucket.indices.last!].date,
+                oldest: regular[bucket.indices.first!].date
+            )
+        }
+
+        let items = (bursts + buckets).sorted { $0.newestDate > $1.newestDate }
+        return ScanPlan(items: items, total: dated.count, leftover: weighted.leftover, oldestDate: dated.first?.date)
+    }
+
+    /// Buckets from `splitIntoBuckets(byDates:)`, each with a progress weight:
+    /// its own photos plus the singles after it, up to the next bucket. The
+    /// singles before the first bucket are returned as `leftover`. Weights plus
+    /// leftover always equal `dates.count`. `dates` must be ascending.
+    static func weightedBuckets(byDates dates: [Date]) -> (buckets: [(indices: [Int], weight: Int)], leftover: Int) {
+        let buckets = splitIntoBuckets(byDates: dates)
+        guard let first = buckets.first?.first else { return ([], dates.count) }
+        let weighted = buckets.enumerated().map { k, indices -> (indices: [Int], weight: Int) in
+            let end = k + 1 < buckets.count ? buckets[k + 1][0] : dates.count
+            return (indices, end - indices[0])
+        }
+        return (weighted, first)
+    }
+
+    // MARK: - Work item processing (runs off the actor)
+
+    struct WorkResult {
+        let groups: [PhotoGroup]
+        let weight: Int
+        let cloudSkipped: Int
+        let oldestDate: Date?
+    }
+
+    private static func process(
+        _ item: WorkItem,
+        similarity: any SimilarityProviding,
+        limiter: AsyncLimiter,
+        cloudFilter: Bool
+    ) async -> WorkResult {
+        switch item {
+        case .burst(let representative, let date):
+            return await processBurst(representative, date: date, cloudFilter: cloudFilter)
+        case .bucket(let assets, let weight, _, let oldest):
+            return await processBucket(
+                assets, weight: weight, oldest: oldest,
+                similarity: similarity, limiter: limiter, cloudFilter: cloudFilter
+            )
+        }
+    }
+
+    /// Burst groups come straight from iOS burst captures, no Vision needed.
+    private static func processBurst(_ representative: PHAsset, date: Date, cloudFilter: Bool) async -> WorkResult {
+        func result(_ groups: [PhotoGroup], skipped: Int = 0) -> WorkResult {
+            WorkResult(groups: groups, weight: 1, cloudSkipped: skipped, oldestDate: date)
+        }
+        guard let burstID = representative.burstIdentifier, !Task.isCancelled else { return result([]) }
+
+        // Burst shots are milliseconds apart — if the representative isn't on device,
+        // the rest almost certainly aren't either. Skip the whole burst early.
+        if cloudFilter, await !PhotoLibraryService.shared.isLocallyAvailable(representative) {
+            return result([], skipped: 1)
+        }
+
         let options = PHFetchOptions()
-        // `representsBurst` isn't accepted by PHQuery's predicate parser, so
-        // filter by mediaType at the DB level and check representsBurst in code.
-        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
+        options.includeAllBurstAssets = true
+        let fetched = PHAsset.fetchAssets(withBurstIdentifier: burstID, options: options)
+        var members: [PHAsset] = []
+        members.reserveCapacity(fetched.count)
+        fetched.enumerateObjects { asset, _, _ in members.append(asset) }
 
-        let allImages = PHAsset.fetchAssets(with: options)
-        guard allImages.count > 0 else { return [] }
+        if cloudFilter {
+            // Some burst members may be in cloud even when the representative is local
+            // (e.g. only the starred photo was kept on device). Check each member.
+            members = await localOnly(members)
+        }
+        guard members.count >= 2 else { return result([]) }
+        return result([PhotoGroup(id: UUID(), assets: members)])
+    }
 
-        let filterForLocal = !AppSettings.cloudDownloadEnabled
-        var representatives: [(PHAsset, String)] = []
-        allImages.enumerateObjects { representative, _, _ in
-            guard representative.representsBurst,
-                  let burstID = representative.burstIdentifier,
-                  !knownIDs.contains(representative.localIdentifier) else { return }
-            representatives.append((representative, burstID))
+    /// Vision clustering for one time bucket: filter iCloud-only photos, compute
+    /// one signature per photo (through the shared limiter), then union-find on
+    /// pairwise distances. Signatures are dropped when the bucket is done.
+    private static func processBucket(
+        _ assets: [PHAsset],
+        weight: Int,
+        oldest: Date,
+        similarity: any SimilarityProviding,
+        limiter: AsyncLimiter,
+        cloudFilter: Bool
+    ) async -> WorkResult {
+        var candidates = assets
+        var skipped = 0
+        if cloudFilter {
+            candidates = await localOnly(assets)
+            skipped = assets.count - candidates.count
+        }
+        guard candidates.count >= 2, !Task.isCancelled else {
+            return WorkResult(groups: [], weight: weight, cloudSkipped: skipped, oldestDate: oldest)
         }
 
-        var groups: [PhotoGroup] = []
-        for (representative, burstID) in representatives {
-            // Burst shots are milliseconds apart — if the representative isn't on device,
-            // the rest almost certainly aren't either. Skip the whole burst early.
-            if filterForLocal, await !PhotoLibraryService.shared.isLocallyAvailable(representative) {
-                continue
+        let signatures = await candidates.concurrentMap(limit: maxConcurrentSignatures) { asset in
+            await limiter.run { () async -> (any SimilaritySignature)? in
+                guard !Task.isCancelled else { return nil }
+                return try? await similarity.signature(for: asset)
             }
-
-            let burstOptions = PHFetchOptions()
-            burstOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
-            burstOptions.includeAllBurstAssets = true
-
-            let burstResult = PHAsset.fetchAssets(withBurstIdentifier: burstID, options: burstOptions)
-            var burstAssets: [PHAsset] = []
-            burstResult.enumerateObjects { asset, _, _ in burstAssets.append(asset) }
-
-            if filterForLocal {
-                // Some burst members may be in cloud even when the representative is local
-                // (e.g. only the starred photo was kept on device). Check each member.
-                burstAssets = await withTaskGroup(of: (PHAsset, Bool).self) { group in
-                    for asset in burstAssets {
-                        group.addTask { (asset, await PhotoLibraryService.shared.isLocallyAvailable(asset)) }
-                    }
-                    var local: [PHAsset] = []
-                    for await (asset, available) in group where available { local.append(asset) }
-                    return local.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
-                }
-            }
-
-            guard burstAssets.count >= 2 else { continue }
-            groups.append(PhotoGroup(id: UUID(), assets: burstAssets))
         }
-        return groups
+        let groups = cluster(candidates, signatures: signatures)
+        return WorkResult(groups: groups, weight: weight, cloudSkipped: skipped, oldestDate: oldest)
+    }
+
+    /// Union-find over pairwise distances. `assets` must be in time order; the
+    /// returned groups keep that order. Assets without a signature are left out.
+    static func cluster(_ assets: [PHAsset], signatures: [(any SimilaritySignature)?]) -> [PhotoGroup] {
+        let valid = zip(assets, signatures).compactMap { asset, sig in sig.map { (asset, $0) } }
+        let n = valid.count
+        guard n >= 2 else { return [] }
+
+        var parent = Array(0..<n)
+        func find(_ x: Int) -> Int {
+            var x = x
+            while parent[x] != x { parent[x] = parent[parent[x]]; x = parent[x] }
+            return x
+        }
+
+        for i in 0..<n {
+            if i % 32 == 0, Task.isCancelled { return [] }
+            for j in (i + 1)..<n {
+                guard let dist = try? valid[i].1.distance(to: valid[j].1),
+                      dist < similarityThreshold else { continue }
+                let ri = find(i), rj = find(j)
+                if ri != rj { parent[ri] = rj }
+            }
+        }
+
+        var members: [Int: [PHAsset]] = [:]
+        var roots: [Int] = []
+        for i in 0..<n {
+            let root = find(i)
+            if members[root] == nil { roots.append(root) }
+            members[root, default: []].append(valid[i].0)
+        }
+        return roots
+            .compactMap { members[$0] }
+            .filter { $0.count >= 2 }
+            .map { PhotoGroup(id: UUID(), assets: $0) }
+    }
+
+    private static func localOnly(_ assets: [PHAsset]) async -> [PHAsset] {
+        let flags = await assets.concurrentMap(limit: maxConcurrentLocalChecks) {
+            await PhotoLibraryService.shared.isLocallyAvailable($0)
+        }
+        return zip(assets, flags).filter(\.1).map(\.0)
     }
 
     // MARK: - Time bucket splitting
@@ -357,42 +577,5 @@ actor GroupingService {
         }
         if current.count >= 2 { buckets.append(current) }
         return buckets
-    }
-
-    // MARK: - Vision clustering
-
-    private func clusterBucket(_ bucket: [PHAsset]) async throws -> [PhotoGroup] {
-        var parent: [String: String] = Dictionary(uniqueKeysWithValues: bucket.map { ($0.localIdentifier, $0.localIdentifier) })
-
-        func find(_ x: String) -> String {
-            var x = x
-            while parent[x] != x { parent[x] = parent[parent[x]!]!; x = parent[x]! }
-            return x
-        }
-
-        for i in 0..<bucket.count {
-            for j in (i + 1)..<bucket.count {
-                let a = bucket[i], b = bucket[j]
-                guard let dist = try? await similarity.distance(between: a, and: b),
-                      dist < Self.similarityThreshold
-                else { continue }
-                let ra = find(a.localIdentifier), rb = find(b.localIdentifier)
-                if ra != rb { parent[ra] = rb }
-            }
-        }
-
-        var clusters: [String: [PHAsset]] = [:]
-        for asset in bucket {
-            let root = find(asset.localIdentifier)
-            clusters[root, default: []].append(asset)
-        }
-
-        return clusters.values
-            .filter { $0.count >= 2 }
-            .map { assets in
-                // Sort chronologically so the strip shows photos in time order
-                let sorted = assets.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
-                return PhotoGroup(id: UUID(), assets: sorted)
-            }
     }
 }
