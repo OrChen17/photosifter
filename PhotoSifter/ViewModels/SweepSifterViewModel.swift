@@ -7,8 +7,6 @@ import SwiftUI
 @Observable
 @MainActor
 final class SweepSifterViewModel {
-    let sourceGroups: [PhotoGroup]
-
     private(set) var queue: [PHAsset]
     private(set) var currentIndex: Int = 0
     private(set) var decisions: [String: Decision] = [:]
@@ -22,7 +20,10 @@ final class SweepSifterViewModel {
 
     /// Reverse lookup `localIdentifier -> source group id`, used by the strip
     /// to draw cross-memory boundary dividers.
-    private let groupIDByAsset: [String: UUID]
+    private var groupIDByAsset: [String: UUID] = [:]
+    /// Every asset this session has ever queued, applied ones included, so a
+    /// later `sync` never puts a resolved photo back in the queue.
+    private var knownAssetIDs: Set<String> = []
 
     private var skippedIDs: Set<String> = []
     /// Per-action undo log. `decision == nil` denotes a skip; otherwise a keep/delete.
@@ -31,17 +32,24 @@ final class SweepSifterViewModel {
     private var actionHistory: [(assetID: String, decision: Decision?)] = []
 
     init(groups: [PhotoGroup]) {
-        self.sourceGroups = groups
-        var flatQueue: [PHAsset] = []
-        var lookup: [String: UUID] = [:]
+        self.queue = []
+        sync(with: groups)
+    }
+
+    /// Appends assets from groups that arrived after the session started (the
+    /// scan streams groups in while the user is already flicking). Assets the
+    /// session already knows only get their group mapping refreshed, because a
+    /// rescan regenerates `PhotoGroup.id`.
+    func sync(with groups: [PhotoGroup]) {
         for group in groups {
             for asset in group.assets {
-                flatQueue.append(asset)
-                lookup[asset.localIdentifier] = group.id
+                let id = asset.localIdentifier
+                groupIDByAsset[id] = group.id
+                if knownAssetIDs.insert(id).inserted {
+                    queue.append(asset)
+                }
             }
         }
-        self.queue = flatQueue
-        self.groupIDByAsset = lookup
     }
 
     // MARK: - Cursor

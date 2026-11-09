@@ -17,7 +17,7 @@
 		A007 /* LibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B007 /* LibraryViewModel.swift */; };
 		A008 /* SifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B008 /* SifterViewModel.swift */; };
 		A009 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009 /* PermissionView.swift */; };
-		A010 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B010 /* LibraryView.swift */; };
+		A010 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B010 /* HomeView.swift */; };
 		A011 /* SifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B011 /* SifterView.swift */; };
 		A012 /* SwipeCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B012 /* SwipeCardView.swift */; };
 		A013 /* BatchStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B013 /* BatchStripView.swift */; };
@@ -27,6 +27,7 @@
 		A017 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B017 /* SoundManager.swift */; };
 		A0F1 /* InteractiveBackSwipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F1 /* InteractiveBackSwipe.swift */; };
 		A0F3 /* Accessibility+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F3 /* Accessibility+App.swift */; };
+		GL01 /* Glass+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = GL02 /* Glass+App.swift */; };
 		A0F2 /* Font+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F2 /* Font+App.swift */; };
 		A018 /* Color+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018 /* Color+App.swift */; };
 		A01A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01A /* AppSettings.swift */; };
@@ -41,16 +42,12 @@
 		X003 /* QuickWin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX03 /* QuickWin.swift */; };
 		X004 /* QuickWinsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX04 /* QuickWinsService.swift */; };
 		X005 /* CompletedBatchCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX05 /* CompletedBatchCardView.swift */; };
-		X006 /* CompletedSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX06 /* CompletedSectionView.swift */; };
-		X007 /* QuickWinsStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX07 /* QuickWinsStripView.swift */; };
 		X008 /* DuplicateGroupSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX08 /* DuplicateGroupSifterViewModel.swift */; };
 		X009 /* DuplicateGroupSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX09 /* DuplicateGroupSifterView.swift */; };
 		X010 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX10 /* HistoryView.swift */; };
-		X020 /* SweepSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX20 /* SweepSession.swift */; };
 		X021 /* SweepSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX21 /* SweepSifterViewModel.swift */; };
 		X022 /* SweepStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX22 /* SweepStripView.swift */; };
 		X023 /* SweepSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX23 /* SweepSifterView.swift */; };
-		X024 /* SweepBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX24 /* SweepBannerView.swift */; };
 		X032 /* FlickCardArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX33 /* FlickCardArea.swift */; };
 		X040 /* SifterPrimaryActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX40 /* SifterPrimaryActions.swift */; };
 		X041 /* SifterSecondaryActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX41 /* SifterSecondaryActions.swift */; };
@@ -108,7 +105,7 @@
 		B007 /* LibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViewModel.swift; sourceTree = "<group>"; };
 		B008 /* SifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterViewModel.swift; sourceTree = "<group>"; };
 		B009 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
-		B010 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		B010 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		B011 /* SifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterView.swift; sourceTree = "<group>"; };
 		B012 /* SwipeCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeCardView.swift; sourceTree = "<group>"; };
 		B013 /* BatchStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchStripView.swift; sourceTree = "<group>"; };
@@ -118,6 +115,7 @@
 		B017 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		B0F1 /* InteractiveBackSwipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteractiveBackSwipe.swift; sourceTree = "<group>"; };
 		B0F3 /* Accessibility+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Accessibility+App.swift"; sourceTree = "<group>"; };
+		GL02 /* Glass+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Glass+App.swift"; sourceTree = "<group>"; };
 		B0F2 /* Font+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+App.swift"; sourceTree = "<group>"; };
 		B018 /* Color+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+App.swift"; sourceTree = "<group>"; };
 		B01A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -128,16 +126,12 @@
 		BX03 /* QuickWin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWin.swift; sourceTree = "<group>"; };
 		BX04 /* QuickWinsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsService.swift; sourceTree = "<group>"; };
 		BX05 /* CompletedBatchCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchCardView.swift; sourceTree = "<group>"; };
-		BX06 /* CompletedSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedSectionView.swift; sourceTree = "<group>"; };
-		BX07 /* QuickWinsStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsStripView.swift; sourceTree = "<group>"; };
 		BX08 /* DuplicateGroupSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterViewModel.swift; sourceTree = "<group>"; };
 		BX09 /* DuplicateGroupSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterView.swift; sourceTree = "<group>"; };
 		BX10 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
-		BX20 /* SweepSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSession.swift; sourceTree = "<group>"; };
 		BX21 /* SweepSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterViewModel.swift; sourceTree = "<group>"; };
 		BX22 /* SweepStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepStripView.swift; sourceTree = "<group>"; };
 		BX23 /* SweepSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterView.swift; sourceTree = "<group>"; };
-		BX24 /* SweepBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepBannerView.swift; sourceTree = "<group>"; };
 		BX33 /* FlickCardArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickCardArea.swift; sourceTree = "<group>"; };
 		BX40 /* SifterPrimaryActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterPrimaryActions.swift; sourceTree = "<group>"; };
 		BX41 /* SifterSecondaryActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterSecondaryActions.swift; sourceTree = "<group>"; };
@@ -216,7 +210,6 @@
 				B003 /* PhotoGroup.swift */,
 				BX01 /* CompletedBatch.swift */,
 				BX03 /* QuickWin.swift */,
-				BX20 /* SweepSession.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -277,6 +270,7 @@
 				B0F1 /* InteractiveBackSwipe.swift */,
 				B0F2 /* Font+App.swift */,
 				B0F3 /* Accessibility+App.swift */,
+				GL02 /* Glass+App.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -306,12 +300,9 @@
 		GRP_VLIB /* Library */ = {
 			isa = PBXGroup;
 			children = (
-				B010 /* LibraryView.swift */,
+				B010 /* HomeView.swift */,
 				BX05 /* CompletedBatchCardView.swift */,
-				BX06 /* CompletedSectionView.swift */,
-				BX07 /* QuickWinsStripView.swift */,
 				BX10 /* HistoryView.swift */,
-				BX24 /* SweepBannerView.swift */,
 				BX30 /* CoverageBarView.swift */,
 				BX31 /* HistoryRowView.swift */,
 			);
@@ -560,7 +551,7 @@
 				A007 /* LibraryViewModel.swift in Sources */,
 				A008 /* SifterViewModel.swift in Sources */,
 				A009 /* PermissionView.swift in Sources */,
-				A010 /* LibraryView.swift in Sources */,
+				A010 /* HomeView.swift in Sources */,
 				A011 /* SifterView.swift in Sources */,
 				A012 /* SwipeCardView.swift in Sources */,
 				A013 /* BatchStripView.swift in Sources */,
@@ -572,6 +563,7 @@
 				A01A /* AppSettings.swift in Sources */,
 				A0F1 /* InteractiveBackSwipe.swift in Sources */,
 				A0F3 /* Accessibility+App.swift in Sources */,
+				GL01 /* Glass+App.swift in Sources */,
 				A0F2 /* Font+App.swift in Sources */,
 				A01B /* SettingsView.swift in Sources */,
 				X001 /* CompletedBatch.swift in Sources */,
@@ -579,19 +571,15 @@
 				X003 /* QuickWin.swift in Sources */,
 				X004 /* QuickWinsService.swift in Sources */,
 				X005 /* CompletedBatchCardView.swift in Sources */,
-				X006 /* CompletedSectionView.swift in Sources */,
-				X007 /* QuickWinsStripView.swift in Sources */,
 				X008 /* DuplicateGroupSifterViewModel.swift in Sources */,
 				X009 /* DuplicateGroupSifterView.swift in Sources */,
 				X010 /* HistoryView.swift in Sources */,
-				X020 /* SweepSession.swift in Sources */,
 				X021 /* SweepSifterViewModel.swift in Sources */,
 				X022 /* SweepStripView.swift in Sources */,
 				X023 /* SweepSifterView.swift in Sources */,
 				X032 /* FlickCardArea.swift in Sources */,
 				X040 /* SifterPrimaryActions.swift in Sources */,
 				X041 /* SifterSecondaryActions.swift in Sources */,
-				X024 /* SweepBannerView.swift in Sources */,
 				X030 /* CoverageBarView.swift in Sources */,
 				X031 /* HistoryRowView.swift in Sources */,
 			);

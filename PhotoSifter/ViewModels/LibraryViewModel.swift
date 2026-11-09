@@ -1,5 +1,6 @@
 import Photos
 import SwiftUI
+import PostHog
 
 enum GroupSortOrder: String, CaseIterable {
     case oldestBiggest
@@ -23,7 +24,6 @@ enum GroupSortOrder: String, CaseIterable {
 @MainActor
 final class LibraryViewModel {
     var groups: [PhotoGroup] = []
-    var selectedGroup: PhotoGroup?
     var authStatus: PHAuthorizationStatus
     var isScanning: Bool = false
     var scanProgress: (current: Int, total: Int) = (0, 0)
@@ -32,7 +32,6 @@ final class LibraryViewModel {
     var quickWins: [QuickWin] = []
     var selectedQuickWin: QuickWin?
     var selectedDuplicateSession: DuplicateSession?
-    var selectedSweepSession: SweepSession?
     var selectedRestoreSession: RestoreSession? {
         didSet {
             // Clearing the restore session (user backed out or finished) also clears
@@ -423,14 +422,33 @@ final class LibraryViewModel {
         return groups[(idx + 1)...].first { !$0.isComplete }
     }
 
-    // MARK: - Sweep session
+    // MARK: - Quick wins
 
-    func startSweepSession() {
-        guard groups.count >= 1 else { return }
-        selectedSweepSession = nil
-        Task { @MainActor in
-            selectedSweepSession = SweepSession(groups: groups)
+    /// Total photos per Quick Win category, summed across its batches.
+    func quickWinPhotoCount(_ category: QuickWinCategory) -> Int {
+        quickWins.filter { $0.category == category }.reduce(0) { $0 + $1.photoCount }
+    }
+
+    func openQuickWin(_ category: QuickWinCategory) {
+        switch category {
+        case .screenshots:
+            guard let win = quickWins.first(where: { $0.category == .screenshots }) else { return }
+            PostHogSDK.shared.capture("sifting_started", properties: [
+                "entry_point": "quick_win_screenshots",
+                "photo_count": win.group.assets.count
+            ])
+            selectedQuickWin = win
+        case .duplicates:
+            let groups = quickWins.filter { $0.category == .duplicates }.map(\.group)
+            guard !groups.isEmpty else { return }
+            PostHogSDK.shared.capture("sifting_started", properties: [
+                "entry_point": "quick_win_duplicates",
+                "group_count": groups.count,
+                "photo_count": groups.reduce(0) { $0 + $1.assets.count }
+            ])
+            selectedDuplicateSession = DuplicateSession(groups: groups)
         }
+        HapticManager.shared.playNavigate()
     }
 
     /// Commit the result of a Sweep `Apply`, fanned out per source group.

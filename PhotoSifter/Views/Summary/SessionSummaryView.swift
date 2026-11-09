@@ -10,7 +10,7 @@ struct SessionSummaryView: View {
     var onContinue: (() -> Void)? = nil
     var onRetry: (() -> Void)? = nil
     var overrideDeletedCount: Int? = nil
-    var continueLabel: String = "Back to Library"
+    var continueLabel: String = "Done"
     var paintsBackground: Bool = true
     var statsFontSize: CGFloat = 56
 
