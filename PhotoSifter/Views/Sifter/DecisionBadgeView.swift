@@ -6,6 +6,7 @@ struct DecisionBadgeView: View {
     let kind: Kind
     let opacity: Double
     var label: String? = nil
+    var tint: Color? = nil
 
     private var defaultLabel: String {
         switch kind {
@@ -28,7 +29,7 @@ struct DecisionBadgeView: View {
             .font(.system(.title2, design: .rounded, weight: .black))
             .tracking(1.5)
             .foregroundStyle(.white)
-            .shadow(color: glow.opacity(0.9), radius: 10)
+            .shadow(color: (tint ?? glow).opacity(0.9), radius: 10)
             .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
             .opacity(opacity)
     }

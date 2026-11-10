@@ -49,6 +49,12 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     /// Live horizontal drag progress of the top card in [-1, 1], forwarded from the
     /// parent. Drives the behind card "growing into place" as the top card is flicked.
     var dragProgress: Double = 0
+    /// What a left flick means on this screen. Defaults to delete.
+    var leftTint: Color = .appDelete
+    var leftBadgeLabel: String? = nil
+    var isLeftEnabled = true
+    /// Drawn over the top card's photo (the video player).
+    var topCardContent: AnyView? = nil
     @ViewBuilder let strip: () -> Strip
     /// Overlaid on top of the card, anchored to the bottom — used for the
     /// big keep/delete buttons so the photo can stay full-size.
@@ -123,7 +129,7 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                             onThrowLeft: { velocity in
                                 markThrown(asset, direction: -1, velocity: velocity)
                                 isTopCardThrown = true
-                                flashTint = .appDelete
+                                flashTint = leftTint
                                 triggerFlash()
                                 HapticManager.shared.playDelete()
                                 SoundManager.shared.playDelete()
@@ -133,7 +139,11 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                             },
                             commitsImmediately: true,
                             scale: topCardScale(for: asset),
-                            throwCommand: throwCommand
+                            throwCommand: throwCommand,
+                            leftBadgeLabel: leftBadgeLabel,
+                            leftTint: leftTint,
+                            isLeftEnabled: isLeftEnabled,
+                            content: topCardContent
                         )
                         .id(asset.localIdentifier)
                         .zIndex(thrownCardID == asset.localIdentifier ? 2 : 1)
@@ -162,7 +172,9 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
                 bottomBar()
                     .environment(\.swipeHint, SwipeHintState(
                         isActive: showsSwipeHint && currentAsset != nil,
-                        isDimmed: isTopCardThrown || dragProgress != 0
+                        isDimmed: isTopCardThrown || dragProgress != 0,
+                        leftLabel: leftBadgeLabel ?? CardActionName.delete,
+                        leftTint: leftTint
                     ))
                     .animation(.easeOut(duration: 0.25), value: showsSwipeHint)
             }
@@ -252,11 +264,12 @@ private enum BehindCard {
 struct SwipeHintView: View {
     static let storageKey = "flickHintSwipeCount"
     static let swipesUntilHidden = 3
+    @Environment(\.swipeHint) private var hint
 
     var body: some View {
         HStack(spacing: 16) {
-            Label(CardActionName.delete, systemImage: "arrow.left")
-                .labelStyle(HintLabelStyle(tint: .appDelete, iconLeading: true))
+            Label(hint.leftLabel, systemImage: "arrow.left")
+                .labelStyle(HintLabelStyle(tint: hint.leftTint, iconLeading: true))
             Label(CardActionName.keep, systemImage: "arrow.right")
                 .labelStyle(HintLabelStyle(tint: .appKeep, iconLeading: false))
         }
@@ -275,6 +288,8 @@ struct SwipeHintState: Equatable {
     var isActive = false
     /// True while a card is being dragged or thrown, so the hint gets out of the way.
     var isDimmed = false
+    var leftLabel: String = CardActionName.delete
+    var leftTint: Color = .appDelete
 }
 
 extension EnvironmentValues {

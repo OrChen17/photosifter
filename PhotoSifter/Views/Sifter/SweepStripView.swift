@@ -12,6 +12,9 @@ struct SweepStripView: View {
     /// hairline divider whenever two adjacent cells span a memory boundary.
     let groupID: (PHAsset) -> UUID?
     let onTap: (PHAsset) -> Void
+    /// Extra per-asset states beyond keep / delete (the Videos queue marks
+    /// "compress" this way). Keyed by localIdentifier.
+    var marks: [String: StripMark] = [:]
 
     private let cellSize = StripMetrics.thumbSize
     private let cellSpacing = StripMetrics.spacing
@@ -28,13 +31,15 @@ struct SweepStripView: View {
                         decision: decisions[asset.localIdentifier],
                         isCurrent: asset.localIdentifier == currentAssetID,
                         showDivider: crossesBoundary,
-                        dividerSpacing: cellSpacing
+                        dividerSpacing: cellSpacing,
+                        markTint: marks[asset.localIdentifier]?.tint
                     )
                     .cardButton(label: StripAccessibility.label(
                         position: idx + 1,
                         count: assets.count,
                         decision: decisions[asset.localIdentifier],
-                        isCurrent: asset.localIdentifier == currentAssetID
+                        isCurrent: asset.localIdentifier == currentAssetID,
+                        mark: marks[asset.localIdentifier]?.label
                     ), pressedScale: PressScale.thumbnail) {
                         HapticManager.shared.playDragTick()
                         onTap(asset)
@@ -59,6 +64,12 @@ struct SweepStripView: View {
     }
 }
 
+struct StripMark: Equatable {
+    let tint: Color
+    /// Read by VoiceOver after the position, e.g. "marked to compress".
+    let label: String
+}
+
 private struct SweepStripCell: View {
     let asset: PHAsset
     let size: CGFloat
@@ -66,6 +77,7 @@ private struct SweepStripCell: View {
     let isCurrent: Bool
     var showDivider: Bool = false
     var dividerSpacing: CGFloat = 6
+    var markTint: Color? = nil
 
     @Environment(\.displayScale) private var displayScale
     @State private var thumbnail: UIImage?
@@ -83,9 +95,9 @@ private struct SweepStripCell: View {
                     .frame(width: size, height: size)
             }
 
-            if let decision {
+            if let tint = markTint ?? decision.map({ $0 == .keep ? Color.appKeep : Color.appDelete }) {
                 Rectangle()
-                    .fill((decision == .keep ? Color.appKeep : Color.appDelete).opacity(0.35))
+                    .fill(tint.opacity(0.35))
                     .frame(width: size, height: size)
             }
         }

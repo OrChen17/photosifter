@@ -10,6 +10,7 @@ struct SifterSecondaryActions: View {
         let keepCount: Int
         let isEnabled: Bool
         let action: () -> Void
+        var compressCount = 0
     }
 
     let onSkip: () -> Void
@@ -87,6 +88,14 @@ struct SifterSecondaryActions: View {
                             Image(systemName: "trash.fill")
                                 .font(.system(.caption, weight: .semibold))
                             Text("\(config.deleteCount)")
+                                .monospacedDigit()
+                        }
+                    }
+                    if config.compressCount > 0 {
+                        HStack(spacing: 3) {
+                            Image(systemName: VideoSymbol.compress)
+                                .font(.system(.caption, weight: .semibold))
+                            Text("\(config.compressCount)")
                                 .monospacedDigit()
                         }
                     }

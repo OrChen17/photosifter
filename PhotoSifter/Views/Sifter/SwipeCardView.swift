@@ -63,6 +63,13 @@ struct SwipeCardView: View {
     /// Override the badge labels (defaults: "KEEP" / "DELETE")
     var rightBadgeLabel: String? = nil
     var leftBadgeLabel: String? = nil
+    /// Colour of a left drag: glow, tint and badge. Delete pink unless the
+    /// screen gives left another meaning.
+    var leftTint: Color = .appDelete
+    /// When false, a left drag is damped and springs back instead of throwing.
+    var isLeftEnabled = true
+    /// Drawn over the photo, inside the card. Used for the video player.
+    var content: AnyView? = nil
 
     private enum CardImageState {
         case loading
@@ -108,13 +115,17 @@ struct SwipeCardView: View {
     }
     private var skipOpacity: Double { max(0, min(1, Double(-offset.height / 50))) }
     private var dragFillColor: Color {
-        offset.width >= 0 ? .appKeep : .appDelete
+        offset.width >= 0 ? .appKeep : leftTint
     }
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 cardPhoto(size: geo.size)
+
+                if let content {
+                    content.frame(width: geo.size.width, height: geo.size.height)
+                }
 
                 // Light tint only, so the photo stays readable at the moment of decision.
                 dragFillColor.opacity(edgeGlow * CardGlow.maxTint)
@@ -136,7 +147,7 @@ struct SwipeCardView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        DecisionBadgeView(kind: .delete, opacity: deleteOpacity, label: leftBadgeLabel)
+                        DecisionBadgeView(kind: .delete, opacity: deleteOpacity, label: leftBadgeLabel, tint: leftTint)
                             .padding(24)
                             .accessibilityHidden(true)
                     }
@@ -178,7 +189,9 @@ struct SwipeCardView: View {
             .accessibilityAddTraits(.isImage)
             .accessibilityActions {
                 Button(rightActionName) { accessibilityThrow(.right) }
-                Button(leftActionName) { accessibilityThrow(.left) }
+                if isLeftEnabled {
+                    Button(leftActionName) { accessibilityThrow(.left) }
+                }
                 if let onSkip {
                     Button(CardActionName.skip) {
                         guard !isThrown else { return }
@@ -204,7 +217,9 @@ struct SwipeCardView: View {
             let meta = await Task.detached(priority: .utility) { [asset] in
                 let date = asset.creationDate
                 let location = asset.location
-                let acceptable: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
+let acceptable: Set<PHAssetResourceType> = [
+                    .photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto, .video, .fullSizeVideo,
+                ]
                 let resources = PHAssetResource.assetResources(for: asset)
                 let resource = resources.first { acceptable.contains($0.type) }
                 var size: String? = nil
@@ -388,7 +403,7 @@ struct SwipeCardView: View {
                     isDragging = true
                     grabAnchor = Self.unitPoint(of: value.startLocation, in: frame)
                 }
-                offset = value.translation
+                offset = damped(value.translation)
             }
             .onEnded { value in
                 isDragging = false
@@ -408,8 +423,11 @@ struct SwipeCardView: View {
                     && abs(dx) > flickMinTranslation
                     && (dx == 0 || dx.sign == predictedDx.sign)
 
-                if crossedDistance || flickedHorizontal {
-                    let direction: CGFloat = (crossedDistance ? dx : predictedDx) > 0 ? 1 : -1
+                let throwDirection: CGFloat? = crossedDistance || flickedHorizontal
+                    ? ((crossedDistance ? dx : predictedDx) > 0 ? 1 : -1)
+                    : nil
+
+                if let direction = throwDirection, direction > 0 || isLeftEnabled {
                     throwCard(direction: direction, velocity: value.velocity, then: direction > 0 ? onSwipeRight : onSwipeLeft)
                 } else if let onSkip,
                           (dy < -80 || (predictedDy < -flickPredictedThreshold && dy < -flickMinTranslation)) {
@@ -421,6 +439,11 @@ struct SwipeCardView: View {
                     }
                 }
             }
+    }
+
+    private func damped(_ translation: CGSize) -> CGSize {
+        guard !isLeftEnabled, translation.width < 0 else { return translation }
+        return CGSize(width: translation.width * CardTilt.disabledDragFactor, height: translation.height)
     }
 
     private func focusScale(for size: CGSize) -> CGFloat {
@@ -441,7 +464,7 @@ struct SwipeCardView: View {
                 if hypot(value.translation.width, value.translation.height) > FocusZoom.slop {
                     pressTask?.cancel()
                 }
-                guard pressTask == nil, !isThrown, case .loaded = imageState else { return }
+                guard content == nil, pressTask == nil, !isThrown, case .loaded = imageState else { return }
                 let start = Self.unitPoint(of: value.startLocation, in: frame)
                 pressTask = Task { @MainActor in
                     try? await Task.sleep(for: FocusZoom.hold)
@@ -549,6 +572,7 @@ private enum CardTilt {
     static let tiltDivisor: Double = 30
     static let maxDegrees: Double = 8
     static let perspective: CGFloat = 0.5
+    static let disabledDragFactor: CGFloat = 0.25
 }
 
 private enum FocusZoom {

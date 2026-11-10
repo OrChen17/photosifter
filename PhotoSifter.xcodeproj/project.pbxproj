@@ -19,6 +19,9 @@
 		A009 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B009 /* PermissionView.swift */; };
 		A010 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B010 /* HomeView.swift */; };
 		MM01 /* MemoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MM02 /* MemoriesView.swift */; };
+		VC06 /* VideoTrimBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC56 /* VideoTrimBar.swift */; };
+		VC05 /* VideoSifterControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC55 /* VideoSifterControls.swift */; };
+		VC04 /* VideoSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC54 /* VideoSifterView.swift */; };
 		A011 /* SifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B011 /* SifterView.swift */; };
 		A012 /* SwipeCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B012 /* SwipeCardView.swift */; };
 		A013 /* BatchStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B013 /* BatchStripView.swift */; };
@@ -32,6 +35,7 @@
 		A0F4 /* AsyncLimiter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F4 /* AsyncLimiter.swift */; };
 		A0F5 /* ScanProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F5 /* ScanProgressView.swift */; };
 		T020 /* SweepSifterViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S020 /* SweepSifterViewModelTests.swift */; };
+		VC08 /* VideoCompressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC58 /* VideoCompressionTests.swift */; };
 		A0F2 /* Font+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F2 /* Font+App.swift */; };
 		A018 /* Color+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B018 /* Color+App.swift */; };
 		A01A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01A /* AppSettings.swift */; };
@@ -47,12 +51,16 @@
 		X001 /* CompletedBatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX01 /* CompletedBatch.swift */; };
 		X002 /* CompletedBatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX02 /* CompletedBatchStore.swift */; };
 		X003 /* QuickWin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX03 /* QuickWin.swift */; };
+		VC01 /* VideoCompression.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC51 /* VideoCompression.swift */; };
 		X004 /* QuickWinsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX04 /* QuickWinsService.swift */; };
+		VC03 /* VideoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC53 /* VideoLibraryService.swift */; };
+		VC02 /* VideoTranscoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC52 /* VideoTranscoder.swift */; };
 		X005 /* CompletedBatchCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX05 /* CompletedBatchCardView.swift */; };
 		X008 /* DuplicateGroupSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX08 /* DuplicateGroupSifterViewModel.swift */; };
 		X009 /* DuplicateGroupSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX09 /* DuplicateGroupSifterView.swift */; };
 		X010 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX10 /* HistoryView.swift */; };
 		X021 /* SweepSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX21 /* SweepSifterViewModel.swift */; };
+		VC07 /* VideoSifterViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = VC57 /* VideoSifterViewModel.swift */; };
 		X022 /* SweepStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX22 /* SweepStripView.swift */; };
 		X023 /* SweepSifterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX23 /* SweepSifterView.swift */; };
 		X032 /* FlickCardArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = BX33 /* FlickCardArea.swift */; };
@@ -113,6 +121,9 @@
 		B009 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		B010 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		MM02 /* MemoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoriesView.swift; sourceTree = "<group>"; };
+		VC56 /* VideoTrimBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTrimBar.swift; sourceTree = "<group>"; };
+		VC55 /* VideoSifterControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSifterControls.swift; sourceTree = "<group>"; };
+		VC54 /* VideoSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSifterView.swift; sourceTree = "<group>"; };
 		B011 /* SifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SifterView.swift; sourceTree = "<group>"; };
 		B012 /* SwipeCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeCardView.swift; sourceTree = "<group>"; };
 		B013 /* BatchStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchStripView.swift; sourceTree = "<group>"; };
@@ -126,6 +137,7 @@
 		B0F4 /* AsyncLimiter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncLimiter.swift; sourceTree = "<group>"; };
 		B0F5 /* ScanProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanProgressView.swift; sourceTree = "<group>"; };
 		S020 /* SweepSifterViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterViewModelTests.swift; sourceTree = "<group>"; };
+		VC58 /* VideoCompressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCompressionTests.swift; sourceTree = "<group>"; };
 		B0F2 /* Font+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+App.swift"; sourceTree = "<group>"; };
 		B018 /* Color+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+App.swift"; sourceTree = "<group>"; };
 		B01A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -134,12 +146,16 @@
 		BX01 /* CompletedBatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatch.swift; sourceTree = "<group>"; };
 		BX02 /* CompletedBatchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchStore.swift; sourceTree = "<group>"; };
 		BX03 /* QuickWin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWin.swift; sourceTree = "<group>"; };
+		VC51 /* VideoCompression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCompression.swift; sourceTree = "<group>"; };
 		BX04 /* QuickWinsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsService.swift; sourceTree = "<group>"; };
+		VC53 /* VideoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoLibraryService.swift; sourceTree = "<group>"; };
+		VC52 /* VideoTranscoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTranscoder.swift; sourceTree = "<group>"; };
 		BX05 /* CompletedBatchCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedBatchCardView.swift; sourceTree = "<group>"; };
 		BX08 /* DuplicateGroupSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterViewModel.swift; sourceTree = "<group>"; };
 		BX09 /* DuplicateGroupSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroupSifterView.swift; sourceTree = "<group>"; };
 		BX10 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		BX21 /* SweepSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterViewModel.swift; sourceTree = "<group>"; };
+		VC57 /* VideoSifterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSifterViewModel.swift; sourceTree = "<group>"; };
 		BX22 /* SweepStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepStripView.swift; sourceTree = "<group>"; };
 		BX23 /* SweepSifterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepSifterView.swift; sourceTree = "<group>"; };
 		BX33 /* FlickCardArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickCardArea.swift; sourceTree = "<group>"; };
@@ -222,6 +238,7 @@
 				B003 /* PhotoGroup.swift */,
 				BX01 /* CompletedBatch.swift */,
 				BX03 /* QuickWin.swift */,
+				VC51 /* VideoCompression.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -235,6 +252,8 @@
 				B006D /* DebugSimilarityService.swift */,
 				BX02 /* CompletedBatchStore.swift */,
 				BX04 /* QuickWinsService.swift */,
+				VC53 /* VideoLibraryService.swift */,
+				VC52 /* VideoTranscoder.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -254,6 +273,7 @@
 				S013 /* QuickWinsServiceTests.swift */,
 				S014 /* DuplicateGroupSifterViewModelTests.swift */,
 				S020 /* SweepSifterViewModelTests.swift */,
+				VC58 /* VideoCompressionTests.swift */,
 				S015 /* AppSettingsTests.swift */,
 				S016 /* PhotoLibraryServiceTests.swift */,
 				BX32 /* CompletedBatchRestoreTests.swift */,
@@ -319,6 +339,9 @@
 			children = (
 				B010 /* HomeView.swift */,
 				MM02 /* MemoriesView.swift */,
+				VC56 /* VideoTrimBar.swift */,
+				VC55 /* VideoSifterControls.swift */,
+				VC54 /* VideoSifterView.swift */,
 				BX05 /* CompletedBatchCardView.swift */,
 				BX10 /* HistoryView.swift */,
 				BX30 /* CoverageBarView.swift */,
@@ -335,6 +358,7 @@
 				B008 /* SifterViewModel.swift */,
 				BX08 /* DuplicateGroupSifterViewModel.swift */,
 				BX21 /* SweepSifterViewModel.swift */,
+				VC57 /* VideoSifterViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -574,6 +598,9 @@
 				A009 /* PermissionView.swift in Sources */,
 				A010 /* HomeView.swift in Sources */,
 				MM01 /* MemoriesView.swift in Sources */,
+				VC06 /* VideoTrimBar.swift in Sources */,
+				VC05 /* VideoSifterControls.swift in Sources */,
+				VC04 /* VideoSifterView.swift in Sources */,
 				A011 /* SifterView.swift in Sources */,
 				A012 /* SwipeCardView.swift in Sources */,
 				A013 /* BatchStripView.swift in Sources */,
@@ -593,12 +620,16 @@
 				X001 /* CompletedBatch.swift in Sources */,
 				X002 /* CompletedBatchStore.swift in Sources */,
 				X003 /* QuickWin.swift in Sources */,
+				VC01 /* VideoCompression.swift in Sources */,
 				X004 /* QuickWinsService.swift in Sources */,
+				VC03 /* VideoLibraryService.swift in Sources */,
+				VC02 /* VideoTranscoder.swift in Sources */,
 				X005 /* CompletedBatchCardView.swift in Sources */,
 				X008 /* DuplicateGroupSifterViewModel.swift in Sources */,
 				X009 /* DuplicateGroupSifterView.swift in Sources */,
 				X010 /* HistoryView.swift in Sources */,
 				X021 /* SweepSifterViewModel.swift in Sources */,
+				VC07 /* VideoSifterViewModel.swift in Sources */,
 				X022 /* SweepStripView.swift in Sources */,
 				X023 /* SweepSifterView.swift in Sources */,
 				X032 /* FlickCardArea.swift in Sources */,
@@ -627,6 +658,7 @@
 				T013 /* QuickWinsServiceTests.swift in Sources */,
 				T014 /* DuplicateGroupSifterViewModelTests.swift in Sources */,
 				T020 /* SweepSifterViewModelTests.swift in Sources */,
+				VC08 /* VideoCompressionTests.swift in Sources */,
 				T015 /* AppSettingsTests.swift in Sources */,
 				T016 /* PhotoLibraryServiceTests.swift in Sources */,
 				T030 /* CompletedBatchRestoreTests.swift in Sources */,

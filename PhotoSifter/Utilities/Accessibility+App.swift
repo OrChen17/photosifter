@@ -35,13 +35,16 @@ private struct CardButtonModifier: ViewModifier {
 }
 
 enum StripAccessibility {
-    static func label(position: Int, count: Int, decision: Decision?, isCurrent: Bool) -> String {
+    static func label(
+        position: Int, count: Int, decision: Decision?, isCurrent: Bool, mark: String? = nil
+    ) -> String {
         var parts = [String(localized: "Photo \(position) of \(count)")]
         switch decision {
         case .keep: parts.append(String(localized: "kept"))
         case .delete: parts.append(String(localized: "marked for delete"))
         case nil: break
         }
+        if let mark { parts.append(mark) }
         if isCurrent { parts.append(String(localized: "current")) }
         return parts.joined(separator: ", ")
     }

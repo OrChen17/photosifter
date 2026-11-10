@@ -449,7 +449,7 @@ struct SweepSifterView: View {
 
 /// Centered icon + title + message + accessory, used for the scanning, empty
 /// and finished states of the home screen.
-private struct StatusPanel<Accessory: View>: View {
+struct StatusPanel<Accessory: View>: View {
     let symbol: String
     let symbolColor: Color
     let title: String
