@@ -106,41 +106,47 @@ actor VideoLibraryService {
     private static let fileSizeKey = "fileSize"
     private static let outputExtension = "mov"
     private static let durationTolerance = 0.5
+    private static let locallyAvailableKey = "locallyAvailable"
+    private static let locallyAvailableGetter = NSSelectorFromString("isLocallyAvailable")
+    private static let maxConcurrentInspections = max(2, ProcessInfo.processInfo.activeProcessorCount)
     static let keepsLibraryPosition = true
     private static let addedDateKey = "addedDate"
     private static let addedDateSetter = NSSelectorFromString("setAddedDate:")
 
     /// Every video we can handle, biggest file first.
     func fetchVideos(excluding excluded: Set<String>) async -> [VideoItem] {
-        let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.video.rawValue)
-        let result = PHAsset.fetchAssets(with: options)
-        var items: [VideoItem] = []
-        result.enumerateObjects { asset, _, _ in
+        let localOnly = !AppSettings.cloudDownloadEnabled
+        let found = await Self.candidates(excluding: excluded)
+            .concurrentMap(limit: Self.maxConcurrentInspections) { await Self.inspect($0, localOnly: localOnly) }
+        return found.compactMap { $0 }.sorted { $0.fileBytes > $1.fileBytes }
+    }
+
+    private static func candidates(excluding excluded: Set<String>) -> [PHAsset] {
+        var assets: [PHAsset] = []
+        PHAsset.fetchAssets(with: .video, options: nil).enumerateObjects { asset, _, _ in
             guard !excluded.contains(asset.localIdentifier),
-                  asset.mediaSubtypes.isDisjoint(with: Self.unsupportedSubtypes),
+                  asset.mediaSubtypes.isDisjoint(with: unsupportedSubtypes),
                   asset.duration > 0
             else { return }
-            let bytes = Self.fileBytes(of: asset)
-            guard bytes > 0 else { return }
-            items.append(VideoItem(asset: asset, fileBytes: bytes))
+            assets.append(asset)
         }
-        let sorted = items.sorted { $0.fileBytes > $1.fileBytes }
-        guard !AppSettings.cloudDownloadEnabled else { return sorted }
-        return await Self.localOnly(sorted)
+        return assets
     }
 
-    private static func localOnly(_ items: [VideoItem]) async -> [VideoItem] {
-        let flags = await items.concurrentMap(limit: GroupingService.maxConcurrentLocalChecks) { item in
-            guard let resource = playbackResource(of: item.asset) else { return false }
-            return await PhotoLibraryService.shared.isLocallyAvailable(resource)
-        }
-        return zip(items, flags).filter(\.1).map(\.0)
+    private static func inspect(_ asset: PHAsset, localOnly: Bool) async -> VideoItem? {
+        let resources = PHAssetResource.assetResources(for: asset).filter { videoResourceTypes.contains($0.type) }
+        let bytes = resources.reduce(Int64(0)) { $0 + (($1.value(forKey: fileSizeKey) as? Int64) ?? 0) }
+        guard bytes > 0 else { return nil }
+        let item = VideoItem(asset: asset, fileBytes: bytes)
+        guard localOnly else { return item }
+        guard let playback = resources.first(where: { $0.type == .fullSizeVideo }) ?? resources.first else { return nil }
+        if let marked = markedLocal(playback) { return marked ? item : nil }
+        return await PhotoLibraryService.shared.isLocallyAvailable(playback) ? item : nil
     }
 
-    private static func playbackResource(of asset: PHAsset) -> PHAssetResource? {
-        let resources = PHAssetResource.assetResources(for: asset)
-        return resources.first { $0.type == .fullSizeVideo } ?? resources.first { $0.type == .video }
+    private static func markedLocal(_ resource: PHAssetResource) -> Bool? {
+        guard resource.responds(to: locallyAvailableGetter) else { return nil }
+        return resource.value(forKey: locallyAvailableKey) as? Bool
     }
 
     func loadAVAsset(for asset: PHAsset) async -> AVAsset? {
@@ -159,12 +165,6 @@ actor VideoLibraryService {
         let values = try? FileManager.default.temporaryDirectory
             .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
         return values?.volumeAvailableCapacityForImportantUsage
-    }
-
-    private static func fileBytes(of asset: PHAsset) -> Int64 {
-        PHAssetResource.assetResources(for: asset)
-            .filter { videoResourceTypes.contains($0.type) }
-            .reduce(Int64(0)) { $0 + (($1.value(forKey: fileSizeKey) as? Int64) ?? 0) }
     }
 
     static func addedDate(of asset: PHAsset) -> Date? {

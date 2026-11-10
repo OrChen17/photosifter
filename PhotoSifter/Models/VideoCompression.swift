@@ -31,26 +31,26 @@ enum VideoResolutionCap: String, CaseIterable, Identifiable, Sendable {
 
 enum VideoFrameRateCap: String, CaseIterable, Identifiable, Sendable {
     case original
+    case fps60
     case fps30
-    case fps24
 
-    static let recommended: VideoFrameRateCap = .fps24
+    static let recommended: VideoFrameRateCap = .fps30
 
     var id: Self { self }
 
     var framesPerSecond: Double? {
         switch self {
         case .original: nil
+        case .fps60:    60
         case .fps30:    30
-        case .fps24:    24
         }
     }
 
     var label: String {
         switch self {
         case .original: String(localized: "Original")
+        case .fps60:    "60 fps"
         case .fps30:    "30 fps"
-        case .fps24:    "24 fps"
         }
     }
 }
@@ -79,11 +79,11 @@ extension VideoResolutionCap {
 }
 
 extension VideoFrameRateCap {
-    private static let tolerance = 0.5
-
     static func options(for source: VideoSource) -> [VideoFrameRateCap] {
         guard source.frameRate > 0 else { return allCases }
-        return allCases.filter { cap in cap.framesPerSecond.map { $0 < source.frameRate - tolerance } ?? true }
+        return allCases.filter { cap in
+            cap.framesPerSecond.map { FrameRateDecimator.wholeStride(from: source.frameRate, to: $0) != nil } ?? true
+        }
     }
 
     func effective(for source: VideoSource) -> VideoFrameRateCap {
@@ -222,7 +222,9 @@ struct VideoCompressionPlan: Equatable, Sendable {
 
         outputSize = Self.cappedSize(source.displaySize, shortSide: settings.resolution.shortSide)
 
-        let cap = settings.frameRate.framesPerSecond
+        let cap = source.frameRate > 0
+            ? settings.frameRate.effective(for: source).framesPerSecond
+            : settings.frameRate.framesPerSecond
         if source.frameRate > 0 {
             frameRate = min(source.frameRate, cap ?? source.frameRate)
         } else {
@@ -271,15 +273,32 @@ struct VideoCompressionPlan: Equatable, Sendable {
 /// Kept frames keep their own timestamps, so audio stays in sync.
 final class FrameRateDecimator {
     private static let tolerance = 0.001
+    private static let strideTolerance = 0.05
+    private static let minimumStride = 2
     private let interval: Double?
+    private let stride: Int?
     private var nextTime: Double?
+    private var frameIndex = 0
+
+    static func wholeStride(from sourceFrameRate: Double, to targetFrameRate: Double) -> Int? {
+        guard sourceFrameRate > 0, targetFrameRate > 0 else { return nil }
+        let ratio = sourceFrameRate / targetFrameRate
+        let whole = ratio.rounded()
+        guard Int(whole) >= minimumStride, abs(ratio - whole) <= strideTolerance else { return nil }
+        return Int(whole)
+    }
 
     init(sourceFrameRate: Double, targetFrameRate: Double) {
         let lowers = targetFrameRate > 0 && targetFrameRate < sourceFrameRate - 0.5
-        interval = lowers ? 1 / targetFrameRate : nil
+        stride = lowers ? Self.wholeStride(from: sourceFrameRate, to: targetFrameRate) : nil
+        interval = lowers && stride == nil ? 1 / targetFrameRate : nil
     }
 
     func shouldKeep(presentationSeconds time: Double) -> Bool {
+        if let stride {
+            defer { frameIndex += 1 }
+            return frameIndex % stride == 0
+        }
         guard let interval else { return true }
         guard let next = nextTime else {
             nextTime = time + interval

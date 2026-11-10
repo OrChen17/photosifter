@@ -11,10 +11,10 @@ final class VideoCompressionPlanTests: XCTestCase {
         VideoSource(displaySize: CGSize(width: width, height: height), frameRate: fps, duration: duration, fileBytes: bytes)
     }
 
-    func testRecommendedCapsFourKSixtyToTenEightyTwentyFour() {
+    func testRecommendedCapsFourKSixtyToTenEightyThirty() {
         let plan = VideoCompressionPlan(source: source(3840, 2160), settings: VideoCompressionSettings(duration: 60))
         XCTAssertEqual(plan.outputSize, CGSize(width: 1920, height: 1080))
-        XCTAssertEqual(plan.frameRate, 24)
+        XCTAssertEqual(plan.frameRate, 30)
         XCTAssertTrue(plan.isWorthwhile)
     }
 
@@ -81,7 +81,7 @@ final class VideoCompressionPlanTests: XCTestCase {
 
     func testUnknownFrameRateAssumesTheCap() {
         let plan = VideoCompressionPlan(source: source(3840, 2160, fps: 0), settings: VideoCompressionSettings(duration: 60))
-        XCTAssertEqual(plan.frameRate, 24)
+        XCTAssertEqual(plan.frameRate, 30)
     }
 }
 
@@ -246,12 +246,14 @@ final class VideoCapOptionTests: XCTestCase {
     func testOptionsOnlyOfferCapsThatLowerTheVideo() {
         let hd60 = source(width: 1920, height: 1080, fps: 60)
         XCTAssertEqual(VideoResolutionCap.options(for: hd60), [.original, .p720])
-        XCTAssertEqual(VideoFrameRateCap.options(for: hd60), [.original, .fps30, .fps24])
+        XCTAssertEqual(VideoFrameRateCap.options(for: hd60), [.original, .fps30])
+        XCTAssertEqual(VideoFrameRateCap.options(for: source(width: 1920, height: 1080, fps: 59.94)), [.original, .fps30])
+        XCTAssertEqual(VideoFrameRateCap.options(for: source(width: 1920, height: 1080, fps: 120)), [.original, .fps60, .fps30])
         XCTAssertEqual(VideoResolutionCap.p1080.effective(for: hd60), .original)
 
         let uhd30 = source(width: 2160, height: 3840, fps: 30)
         XCTAssertEqual(VideoResolutionCap.options(for: uhd30), [.original, .p1080, .p720])
-        XCTAssertEqual(VideoFrameRateCap.options(for: uhd30), [.original, .fps24])
+        XCTAssertEqual(VideoFrameRateCap.options(for: uhd30), [.original])
         XCTAssertEqual(VideoFrameRateCap.fps30.effective(for: uhd30), .original)
     }
 
@@ -282,13 +284,24 @@ final class VideoCapOptionTests: XCTestCase {
     }
 
     func testFrameRateAloneSavesAboutItsShare() {
-        let hd30 = source(width: 1920, height: 1080, fps: 30)
+        let hd60 = source(width: 1920, height: 1080, fps: 60)
         let settings = VideoCompressionSettings(
-            duration: 10, resolution: .original, frameRate: .fps24, quality: .original
+            duration: 10, resolution: .original, frameRate: .fps30, quality: .original
         )
-        let plan = VideoCompressionPlan(source: hd30, settings: settings)
+        let plan = VideoCompressionPlan(source: hd60, settings: settings)
         let savedShare = Double(plan.savedBytes) / Double(plan.originalBytes)
-        XCTAssertEqual(savedShare, 0.2, accuracy: 0.05)
+        XCTAssertEqual(savedShare, 0.5, accuracy: 0.05)
+    }
+
+    func testFrameRateIsNeverLoweredUnevenly() {
+        let hd30 = source(width: 1920, height: 1080, fps: 30)
+        let plan = VideoCompressionPlan(source: hd30, settings: VideoCompressionSettings(duration: 10))
+        XCTAssertFalse(plan.lowersFrameRate)
+        XCTAssertEqual(plan.frameRate, 30)
+
+        let decimator = FrameRateDecimator(sourceFrameRate: 59.94, targetFrameRate: 30)
+        let kept = (0..<6000).filter { decimator.shouldKeep(presentationSeconds: Double($0) / 59.94) }
+        XCTAssertEqual(kept, Array(stride(from: 0, to: 6000, by: 2)))
     }
 
     func testQualityOptionsHideLevelsAboveTheSource() {
@@ -305,7 +318,7 @@ final class VideoCapOptionTests: XCTestCase {
 /// Runs the real encoder on a generated clip.
 final class VideoTranscoderTests: XCTestCase {
     private static let sourceSize = CGSize(width: 2560, height: 1440)
-    private static let sourceFrameRate: Int32 = 30
+    private static let sourceFrameRate: Int32 = 60
     private static let sourceSeconds = 3
 
     private var directory: URL!
@@ -317,6 +330,25 @@ final class VideoTranscoderTests: XCTestCase {
 
     override func tearDownWithError() throws {
         try? FileManager.default.removeItem(at: directory)
+    }
+
+    private static func frameGaps(of asset: AVAsset) async throws -> [Double] {
+        let tracks = try await asset.loadTracks(withMediaType: .video)
+        let track = try XCTUnwrap(tracks.first)
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+        ])
+        reader.add(output)
+        reader.startReading()
+        var times: [Double] = []
+        while let sample = output.copyNextSampleBuffer() {
+            let time = CMSampleBufferGetPresentationTimeStamp(sample)
+            guard CMSampleBufferGetImageBuffer(sample) != nil, time.isNumeric else { continue }
+            times.append(time.seconds)
+        }
+        times.sort()
+        return zip(times.dropFirst(), times).map { $0 - $1 }
     }
 
     func testTranscodeCapsSizeAndFrameRateAndTrims() async throws {
@@ -342,7 +374,10 @@ final class VideoTranscoderTests: XCTestCase {
         let track = try await output.loadTracks(withMediaType: .video).first
         let (size, frameRate) = try await XCTUnwrap(track).load(.naturalSize, .nominalFrameRate)
         XCTAssertEqual(size, CGSize(width: 1920, height: 1080))
-        XCTAssertEqual(Double(frameRate), 24, accuracy: 1.5)
+        XCTAssertEqual(Double(frameRate), 30, accuracy: 1.5)
+        let gaps = try await Self.frameGaps(of: output)
+        XCTAssertGreaterThan(gaps.count, 30)
+        XCTAssertEqual(try XCTUnwrap(gaps.max()), try XCTUnwrap(gaps.min()), accuracy: 0.004)
         let duration = try await output.load(.duration).seconds
         XCTAssertEqual(duration, 2, accuracy: 0.2)
     }
