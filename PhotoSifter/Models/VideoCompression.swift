@@ -31,27 +31,29 @@ enum VideoResolutionCap: String, CaseIterable, Identifiable, Sendable {
 
 enum VideoFrameRateCap: String, CaseIterable, Identifiable, Sendable {
     case original
-    case fps60
-    case fps30
+    case half
+    case third
+    case quarter
 
-    static let recommended: VideoFrameRateCap = .fps30
+    static let recommended: VideoFrameRateCap = .half
+    static let lowestFrameRate = 24.0
+    private static let lowestFrameRateTolerance = 0.5
 
     var id: Self { self }
 
-    var framesPerSecond: Double? {
+    var divisor: Int? {
         switch self {
         case .original: nil
-        case .fps60:    60
-        case .fps30:    30
+        case .half:     2
+        case .third:    3
+        case .quarter:  4
         }
     }
 
-    var label: String {
-        switch self {
-        case .original: String(localized: "Original")
-        case .fps60:    "60 fps"
-        case .fps30:    "30 fps"
-        }
+    func framesPerSecond(for source: VideoSource) -> Double? {
+        guard let divisor, source.frameRate > 0 else { return nil }
+        let rate = source.frameRate / Double(divisor)
+        return rate >= Self.lowestFrameRate - Self.lowestFrameRateTolerance ? rate : nil
     }
 }
 
@@ -80,10 +82,7 @@ extension VideoResolutionCap {
 
 extension VideoFrameRateCap {
     static func options(for source: VideoSource) -> [VideoFrameRateCap] {
-        guard source.frameRate > 0 else { return allCases }
-        return allCases.filter { cap in
-            cap.framesPerSecond.map { FrameRateDecimator.wholeStride(from: source.frameRate, to: $0) != nil } ?? true
-        }
+        allCases.filter { $0 == .original || $0.framesPerSecond(for: source) != nil }
     }
 
     func effective(for source: VideoSource) -> VideoFrameRateCap {
@@ -91,8 +90,9 @@ extension VideoFrameRateCap {
     }
 
     func label(for source: VideoSource) -> String {
-        guard self == .original, source.frameRate > 0 else { return label }
-        return String(localized: "\(Int(source.frameRate.rounded())) fps")
+        guard source.frameRate > 0 else { return String(localized: "Original") }
+        let rate = framesPerSecond(for: source) ?? source.frameRate
+        return String(localized: "\(Int(rate.rounded())) fps")
     }
 }
 
@@ -222,9 +222,7 @@ struct VideoCompressionPlan: Equatable, Sendable {
 
         outputSize = Self.cappedSize(source.displaySize, shortSide: settings.resolution.shortSide)
 
-        let cap = source.frameRate > 0
-            ? settings.frameRate.effective(for: source).framesPerSecond
-            : settings.frameRate.framesPerSecond
+        let cap = settings.frameRate.framesPerSecond(for: source)
         if source.frameRate > 0 {
             frameRate = min(source.frameRate, cap ?? source.frameRate)
         } else {
