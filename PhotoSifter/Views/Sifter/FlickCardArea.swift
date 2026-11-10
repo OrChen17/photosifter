@@ -215,7 +215,10 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     private var topCardTransition: AnyTransition {
         reduceMotion
             ? .opacity
-            : .asymmetric(insertion: .identity, removal: .offset(exitOffset).animation(exitAnimation))
+            : .asymmetric(
+                insertion: .identity,
+                removal: AnyTransition(CardExitTransition(offset: exitOffset)).animation(exitAnimation)
+            )
     }
 
     private var exitAnimation: Animation {
@@ -241,6 +244,16 @@ struct FlickCardArea<Strip: View, PrimaryActions: View, BottomBar: View>: View {
     private func recordHintSwipe() {
         guard showsSwipeHint else { return }
         hintSwipeCount += 1
+    }
+}
+
+private struct CardExitTransition: Transition {
+    let offset: CGSize
+
+    func body(content: Content, phase: TransitionPhase) -> some View {
+        content
+            .offset(phase.isIdentity ? .zero : offset)
+            .allowsHitTesting(phase.isIdentity)
     }
 }
 

@@ -1,10 +1,196 @@
 import AVFoundation
+import CoreLocation
 import VideoToolbox
 
 enum VideoTranscodeError: Error, Equatable {
     case noVideoTrack
     case cannotRead
     case cannotWrite
+}
+
+struct VideoCaptureInfo: Sendable {
+    var date: Date?
+    var coordinate: CLLocationCoordinate2D?
+}
+
+struct VideoOutputMetadata {
+    let items: [AVMetadataItem]
+    let headerDate: Date?
+}
+
+enum VideoCaptureMetadata {
+    static let dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+    private static let dateLocale = "en_US_POSIX"
+    private static let locationFormat = "%+08.4f%+09.4f/"
+    private static let sameInstantTolerance: TimeInterval = 1
+
+    static func output(
+        from source: [AVMetadataItem],
+        fallbackDate: Date?,
+        capture: VideoCaptureInfo,
+        timeZone: TimeZone = .current
+    ) async -> VideoOutputMetadata {
+        var items: [AVMetadataItem] = []
+        var sourceDate: Date?
+        var hasLocation = false
+        for item in source {
+            if item.identifier == .quickTimeMetadataCreationDate {
+                let date = try? await item.load(.dateValue)
+                if let wanted = capture.date,
+                   date.map({ abs($0.timeIntervalSince(wanted)) > sameInstantTolerance }) ?? true {
+                    continue
+                }
+                sourceDate = sourceDate ?? date
+            }
+            if item.identifier == .quickTimeMetadataLocationISO6709 { hasLocation = true }
+            items.append(item)
+        }
+        let headerDate = capture.date ?? sourceDate ?? fallbackDate
+        if sourceDate == nil, let headerDate {
+            items.append(item(.quickTimeMetadataCreationDate, dateString(headerDate, timeZone: timeZone)))
+        }
+        if !hasLocation, let coordinate = capture.coordinate, CLLocationCoordinate2DIsValid(coordinate) {
+            let value = String(format: locationFormat, coordinate.latitude, coordinate.longitude)
+            items.append(item(.quickTimeMetadataLocationISO6709, value))
+        }
+        return VideoOutputMetadata(items: items, headerDate: headerDate)
+    }
+
+    static func dateString(_ date: Date, timeZone: TimeZone) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: dateLocale)
+        formatter.timeZone = timeZone
+        formatter.dateFormat = dateFormat
+        return formatter.string(from: date)
+    }
+
+    private static func item(_ identifier: AVMetadataIdentifier, _ value: String) -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.identifier = identifier
+        item.value = value as NSString
+        item.dataType = kCMMetadataBaseDataType_UTF8 as String
+        return item
+    }
+}
+
+enum MovieHeaderDates {
+    private struct Atom {
+        let type: String
+        let payload: Range<Int>
+    }
+
+    private static let movieType = "moov"
+    private static let movieHeaderType = "mvhd"
+    private static let containerTypes: Set<String> = ["trak", "mdia"]
+    private static let dateTypes: Set<String> = [movieHeaderType, "tkhd", "mdhd"]
+    private static let epochOffset: TimeInterval = 2_082_844_800
+    private static let headerSize = 8
+    private static let extendedHeaderSize = 16
+    private static let extendedSizeMarker: UInt64 = 1
+    private static let toEndMarker: UInt64 = 0
+    private static let versionAndFlagsSize = 4
+    private static let longVersion: UInt8 = 1
+
+    static func stamp(fileAt url: URL, creationDate: Date) throws {
+        let seconds = creationDate.timeIntervalSince1970 + epochOffset
+        guard seconds >= 0, seconds <= TimeInterval(UInt32.max) else { return }
+        let handle = try FileHandle(forUpdating: url)
+        defer { try? handle.close() }
+        guard let (movie, movieOffset) = try readMovie(from: handle) else { return }
+        for atom in dateAtoms(in: movie, range: 0..<movie.count) {
+            guard atom.payload.count > versionAndFlagsSize else { continue }
+            let isLong = movie[atom.payload.lowerBound] == longVersion
+            let width = isLong ? MemoryLayout<UInt64>.size : MemoryLayout<UInt32>.size
+            guard atom.payload.count >= versionAndFlagsSize + width else { continue }
+            let bytes = bigEndianBytes(UInt64(seconds), width: width)
+            try handle.seek(toOffset: movieOffset + UInt64(atom.payload.lowerBound + versionAndFlagsSize))
+            try handle.write(contentsOf: bytes)
+        }
+        try handle.synchronize()
+    }
+
+    static func creationDate(ofFileAt url: URL) throws -> Date? {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        guard let (movie, _) = try readMovie(from: handle),
+              let header = dateAtoms(in: movie, range: 0..<movie.count).first(where: { $0.type == movieHeaderType }),
+              header.payload.count > versionAndFlagsSize
+        else { return nil }
+        let isLong = movie[header.payload.lowerBound] == longVersion
+        let width = isLong ? MemoryLayout<UInt64>.size : MemoryLayout<UInt32>.size
+        guard header.payload.count >= versionAndFlagsSize + width else { return nil }
+        let seconds = bigEndian(movie, at: header.payload.lowerBound + versionAndFlagsSize, width: width)
+        return Date(timeIntervalSince1970: TimeInterval(seconds) - epochOffset)
+    }
+
+    private static func readMovie(from handle: FileHandle) throws -> (Data, UInt64)? {
+        let fileSize = try handle.seekToEnd()
+        var offset: UInt64 = 0
+        while offset + UInt64(headerSize) <= fileSize {
+            try handle.seek(toOffset: offset)
+            guard let header = try handle.read(upToCount: extendedHeaderSize), header.count >= headerSize else { return nil }
+            var size = bigEndian(header, at: 0, width: MemoryLayout<UInt32>.size)
+            var payloadStart = UInt64(headerSize)
+            if size == extendedSizeMarker {
+                guard header.count >= extendedHeaderSize else { return nil }
+                size = bigEndian(header, at: headerSize, width: MemoryLayout<UInt64>.size)
+                payloadStart = UInt64(extendedHeaderSize)
+            } else if size == toEndMarker {
+                size = fileSize - offset
+            }
+            guard size >= payloadStart, offset + size <= fileSize else { return nil }
+            if type(header) == movieType {
+                try handle.seek(toOffset: offset + payloadStart)
+                guard let movie = try handle.read(upToCount: Int(size - payloadStart)),
+                      movie.count == Int(size - payloadStart)
+                else { return nil }
+                return (movie, offset + payloadStart)
+            }
+            offset += size
+        }
+        return nil
+    }
+
+    private static func dateAtoms(in data: Data, range: Range<Int>) -> [Atom] {
+        var found: [Atom] = []
+        var offset = range.lowerBound
+        while offset + headerSize <= range.upperBound {
+            var size = Int(bigEndian(data, at: offset, width: MemoryLayout<UInt32>.size))
+            var payloadStart = offset + headerSize
+            if size == Int(extendedSizeMarker) {
+                guard offset + extendedHeaderSize <= range.upperBound else { break }
+                size = Int(clamping: bigEndian(data, at: offset + headerSize, width: MemoryLayout<UInt64>.size))
+                payloadStart = offset + extendedHeaderSize
+            } else if size == Int(toEndMarker) {
+                size = range.upperBound - offset
+            }
+            guard size >= payloadStart - offset, size <= range.upperBound - offset else { break }
+            let atom = Atom(
+                type: type(data.subdata(in: offset..<offset + headerSize)),
+                payload: payloadStart..<offset + size
+            )
+            if dateTypes.contains(atom.type) {
+                found.append(atom)
+            } else if containerTypes.contains(atom.type) {
+                found += dateAtoms(in: data, range: atom.payload)
+            }
+            offset += size
+        }
+        return found
+    }
+
+    private static func type(_ header: Data) -> String {
+        let bytes = header.subdata(in: MemoryLayout<UInt32>.size..<headerSize)
+        return String(decoding: bytes, as: UTF8.self)
+    }
+
+    private static func bigEndian(_ data: Data, at offset: Int, width: Int) -> UInt64 {
+        data.subdata(in: offset..<offset + width).reduce(UInt64(0)) { $0 << 8 | UInt64($1) }
+    }
+
+    private static func bigEndianBytes(_ value: UInt64, width: Int) -> Data {
+        Data((0..<width).reversed().map { UInt8(truncatingIfNeeded: value >> (UInt64($0) * 8)) })
+    }
 }
 
 /// Re-encodes one video to HEVC at the plan's size, frame rate and bitrate.
@@ -71,10 +257,11 @@ final class VideoTranscoder: @unchecked Sendable {
         asset: AVAsset,
         plan: VideoCompressionPlan,
         to outputURL: URL,
+        capture: VideoCaptureInfo = VideoCaptureInfo(),
         progress: @escaping @Sendable (Double) -> Void
     ) async throws {
         try await withTaskCancellationHandler {
-            try await run(asset: asset, plan: plan, outputURL: outputURL, progress: progress)
+            try await run(asset: asset, plan: plan, outputURL: outputURL, capture: capture, progress: progress)
         } onCancel: {
             cancel()
         }
@@ -84,6 +271,7 @@ final class VideoTranscoder: @unchecked Sendable {
         asset: AVAsset,
         plan: VideoCompressionPlan,
         outputURL: URL,
+        capture: VideoCaptureInfo,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws {
         guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else {
@@ -94,7 +282,10 @@ final class VideoTranscoder: @unchecked Sendable {
             .naturalSize, .preferredTransform, .nominalFrameRate, .formatDescriptions
         )
         let isHDR = try await videoTrack.load(.mediaCharacteristics).contains(.containsHDRVideo)
-        let metadata = try await asset.load(.metadata)
+        let fallbackDate = try? await asset.load(.creationDate)?.load(.dateValue)
+        let metadata = await VideoCaptureMetadata.output(
+            from: try await asset.load(.metadata), fallbackDate: fallbackDate, capture: capture
+        )
 
         let range = CMTimeRange(
             start: CMTime(seconds: plan.trimStart, preferredTimescale: Self.timescale),
@@ -104,7 +295,7 @@ final class VideoTranscoder: @unchecked Sendable {
         let reader = try AVAssetReader(asset: asset)
         reader.timeRange = range
         let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
-        writer.metadata = metadata
+        writer.metadata = metadata.items
 
         let pixelFormat = isHDR
             ? kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange
@@ -187,6 +378,9 @@ final class VideoTranscoder: @unchecked Sendable {
         }
         await writer.finishWriting()
         guard writer.status == .completed else { throw writer.error ?? VideoTranscodeError.cannotWrite }
+        if let headerDate = metadata.headerDate {
+            try? MovieHeaderDates.stamp(fileAt: outputURL, creationDate: headerDate)
+        }
         progress(1)
     }
 

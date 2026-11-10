@@ -102,6 +102,7 @@ final class VideoSifterViewModel {
     private var readyCopies: [String: VideoCopy] = [:]
     private var copyBytes: [String: Int64] = [:]
     private var timeObserver: Any?
+    private var rateObservation: NSKeyValueObservation?
     private var currentAsset: AVAsset?
     private var previewTask: Task<Void, Never>?
     private(set) var encodeStates: [String: EncodeState] = [:]
@@ -293,9 +294,10 @@ final class VideoSifterViewModel {
         defer { activeTranscoder = nil }
         let outputURL = VideoTranscoder.makeOutputURL()
         let id = item.id
+        let capture = VideoCaptureInfo(date: item.asset.creationDate, coordinate: item.asset.location?.coordinate)
 
         do {
-            try await transcoder.transcode(asset: asset, plan: plan, to: outputURL) { [weak self] value in
+            try await transcoder.transcode(asset: asset, plan: plan, to: outputURL, capture: capture) { [weak self] value in
                 Task { @MainActor in
                     guard let self, self.activeEncodeID == id else { return }
                     self.encodeFraction = value
@@ -338,6 +340,13 @@ final class VideoSifterViewModel {
             forInterval: Self.time(Self.playheadInterval), queue: .main
         ) { [weak self] time in
             MainActor.assumeIsolated { self?.tick(time.seconds) }
+        }
+        rateObservation = newPlayer.observe(\.rate) { [weak self] observed, _ in
+            let playing = observed.rate != 0
+            Task { @MainActor in
+                guard let self, self.player === observed, self.isPlaying != playing else { return }
+                self.isPlaying = playing
+            }
         }
         player = newPlayer
         currentAsset = asset
@@ -426,6 +435,8 @@ final class VideoSifterViewModel {
     private func tearDownPlayer() {
         if let timeObserver { player?.removeTimeObserver(timeObserver) }
         timeObserver = nil
+        rateObservation?.invalidate()
+        rateObservation = nil
         previewTask?.cancel()
         previewTask = nil
         currentAsset = nil

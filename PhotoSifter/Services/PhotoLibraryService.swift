@@ -151,7 +151,10 @@ actor PhotoLibraryService {
         let types: Set<PHAssetResourceType> = [.photo, .fullSizePhoto, .alternatePhoto, .adjustmentBasePhoto]
         guard let resource = PHAssetResource.assetResources(for: asset)
             .first(where: { types.contains($0.type) }) else { return false }
+        return await isLocallyAvailable(resource)
+    }
 
+    func isLocallyAvailable(_ resource: PHAssetResource) async -> Bool {
         let options = PHAssetResourceRequestOptions()
         options.isNetworkAccessAllowed = false
 

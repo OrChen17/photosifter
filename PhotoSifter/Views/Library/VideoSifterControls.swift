@@ -1,11 +1,14 @@
 import AVFoundation
+import AVKit
 import SwiftUI
+import UIKit
 
 enum VideoSymbol {
     static let compress = "arrow.down.right.and.arrow.up.left"
     static let delete = "trash.fill"
     static let keep = "checkmark.circle.fill"
     static let play = "play.fill"
+    static let fullScreen = "arrow.up.left.and.arrow.down.right"
     static let unavailable = "icloud.slash"
 }
 
@@ -27,8 +30,11 @@ struct VideoCardPlayer: View {
     let isPlaying: Bool
     let isUnavailable: Bool
     let onToggle: () -> Void
+    let onFullScreen: () -> Void
 
     private static let playButtonSide: CGFloat = 64
+    private static let fullScreenButtonSide: CGFloat = 40
+    private static let fullScreenButtonInset: CGFloat = 12
 
     var body: some View {
         ZStack {
@@ -57,6 +63,22 @@ struct VideoCardPlayer: View {
         .accessibilityElement()
         .accessibilityLabel(isPlaying ? String(localized: "Pause video") : String(localized: "Play video"))
         .accessibilityAddTraits(.isButton)
+        .overlay(alignment: .topTrailing) {
+            if player != nil, !isUnavailable {
+                Button(action: onFullScreen) {
+                    Image(systemName: VideoSymbol.fullScreen)
+                        .font(.system(.footnote, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: Self.fullScreenButtonSide, height: Self.fullScreenButtonSide)
+                        .appFrostedGlass(in: Circle())
+                        .contentShape(Circle())
+                }
+                .buttonStyle(PressScaleButtonStyle())
+                .padding(Self.fullScreenButtonInset)
+                .accessibilityLabel(String(localized: "Full screen"))
+                .accessibilityIdentifier("videoFullScreenButton")
+            }
+        }
     }
 }
 
@@ -211,5 +233,71 @@ struct VideoActionButtons: View {
         .buttonStyle(PressScaleButtonStyle())
         .disabled(!isEnabled)
         .animation(.easeOut(duration: 0.2), value: isEnabled)
+    }
+}
+
+// MARK: - Full screen
+
+enum VideoFullScreenPlayer {
+    @MainActor
+    static func present(_ player: AVPlayer?) {
+        guard let player, let top = topViewController(in: keyWindow()), !(top is AVPlayerViewController) else { return }
+        let controller = AVPlayerViewController()
+        controller.player = player
+        controller.modalPresentationStyle = .fullScreen
+        top.present(controller, animated: true) { player.play() }
+        restorePortraitAfterDismissal(of: controller)
+    }
+
+    private static let dismissPollInterval = Duration.milliseconds(150)
+    private static let relayoutDelay = Duration.milliseconds(400)
+
+    @MainActor
+    private static func restorePortraitAfterDismissal(of controller: UIViewController) {
+        Task { @MainActor in
+            while controller.presentingViewController != nil {
+                try? await Task.sleep(for: dismissPollInterval)
+            }
+            guard let window = keyWindow() else { return }
+            window.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+            window.windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait))
+            try? await Task.sleep(for: relayoutDelay)
+            relayout(window.rootViewController)
+        }
+    }
+
+    @MainActor
+    private static func relayout(_ controller: UIViewController?) {
+        guard let controller else { return }
+        if let navigation = controller as? UINavigationController {
+            navigation.navigationBar.setNeedsLayout()
+            navigation.navigationBar.layoutIfNeeded()
+        }
+        controller.view.setNeedsLayout()
+        controller.children.forEach(relayout)
+    }
+
+    @MainActor
+    static func topViewController(in window: UIWindow?) -> UIViewController? {
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed { top = presented }
+        return top
+    }
+
+    @MainActor
+    private static func keyWindow() -> UIWindow? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)
+    }
+}
+
+final class AppOrientationDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        VideoFullScreenPlayer.topViewController(in: window) is AVPlayerViewController ? .allButUpsideDown : .portrait
     }
 }

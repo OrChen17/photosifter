@@ -106,9 +106,12 @@ actor VideoLibraryService {
     private static let fileSizeKey = "fileSize"
     private static let outputExtension = "mov"
     private static let durationTolerance = 0.5
+    static let keepsLibraryPosition = true
+    private static let addedDateKey = "addedDate"
+    private static let addedDateSetter = NSSelectorFromString("setAddedDate:")
 
     /// Every video we can handle, biggest file first.
-    func fetchVideos(excluding excluded: Set<String>) -> [VideoItem] {
+    func fetchVideos(excluding excluded: Set<String>) async -> [VideoItem] {
         let options = PHFetchOptions()
         options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.video.rawValue)
         let result = PHAsset.fetchAssets(with: options)
@@ -122,7 +125,22 @@ actor VideoLibraryService {
             guard bytes > 0 else { return }
             items.append(VideoItem(asset: asset, fileBytes: bytes))
         }
-        return items.sorted { $0.fileBytes > $1.fileBytes }
+        let sorted = items.sorted { $0.fileBytes > $1.fileBytes }
+        guard !AppSettings.cloudDownloadEnabled else { return sorted }
+        return await Self.localOnly(sorted)
+    }
+
+    private static func localOnly(_ items: [VideoItem]) async -> [VideoItem] {
+        let flags = await items.concurrentMap(limit: GroupingService.maxConcurrentLocalChecks) { item in
+            guard let resource = playbackResource(of: item.asset) else { return false }
+            return await PhotoLibraryService.shared.isLocallyAvailable(resource)
+        }
+        return zip(items, flags).filter(\.1).map(\.0)
+    }
+
+    private static func playbackResource(of asset: PHAsset) -> PHAssetResource? {
+        let resources = PHAssetResource.assetResources(for: asset)
+        return resources.first { $0.type == .fullSizeVideo } ?? resources.first { $0.type == .video }
     }
 
     func loadAVAsset(for asset: PHAsset) async -> AVAsset? {
@@ -149,6 +167,12 @@ actor VideoLibraryService {
             .reduce(Int64(0)) { $0 + (($1.value(forKey: fileSizeKey) as? Int64) ?? 0) }
     }
 
+    static func addedDate(of asset: PHAsset) -> Date? {
+        if #available(iOS 26.0, *) { return asset.addedDate }
+        guard asset.responds(to: NSSelectorFromString(addedDateKey)) else { return nil }
+        return asset.value(forKey: addedDateKey) as? Date
+    }
+
     private static func asset(withID id: String) -> PHAsset? {
         PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject
     }
@@ -172,6 +196,8 @@ extension VideoLibraryService: VideoLibraryReplacing {
             .map { ($0.originalFilename as NSString).deletingPathExtension }
             .map { "\($0).\(Self.outputExtension)" }
 
+        let addedDate = Self.addedDate(of: original)
+
         let box = IdentifierBox()
         try await PHPhotoLibrary.shared().performChanges {
             let request = PHAssetCreationRequest.forAsset()
@@ -183,6 +209,9 @@ extension VideoLibraryService: VideoLibraryReplacing {
             request.location = original.location
             request.isFavorite = original.isFavorite
             request.isHidden = original.isHidden
+            if Self.keepsLibraryPosition, let addedDate, request.responds(to: Self.addedDateSetter) {
+                request.perform(Self.addedDateSetter, with: addedDate as NSDate)
+            }
             guard let placeholder = request.placeholderForCreatedAsset else { return }
             box.value = placeholder.localIdentifier
             for album in albums {

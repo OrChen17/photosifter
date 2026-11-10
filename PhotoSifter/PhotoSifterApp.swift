@@ -79,6 +79,7 @@ enum PostHogBootstrap {
 
 @main
 struct PhotoSifterApp: App {
+    @UIApplicationDelegateAdaptor(AppOrientationDelegate.self) private var orientationDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var libraryViewModel = LibraryViewModel()
     @State private var appSettings = AppSettings()

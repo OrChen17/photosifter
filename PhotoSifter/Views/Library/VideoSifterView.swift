@@ -117,7 +117,8 @@ struct VideoSifterView: View {
                 player: vm.player,
                 isPlaying: vm.isPlaying,
                 isUnavailable: vm.isCurrentUnavailable,
-                onToggle: vm.togglePlayback
+                onToggle: vm.togglePlayback,
+                onFullScreen: { VideoFullScreenPlayer.present(vm.player) }
             )),
             strip: {
                 SweepStripView(
@@ -157,17 +158,9 @@ struct VideoSifterView: View {
     // MARK: - Controls under the card
 
     private var controls: some View {
-        @Bindable var vm = vm
-        return VStack(spacing: 12) {
+        VStack(spacing: 12) {
             if let source = vm.currentSource {
-                VideoTrimBar(
-                    start: $vm.settings.trimStart,
-                    end: $vm.settings.trimEnd,
-                    duration: source.duration,
-                    thumbnails: vm.thumbnails,
-                    playhead: vm.playhead,
-                    onScrub: vm.scrub(to:)
-                )
+                VideoTrimSection(vm: vm, duration: source.duration)
                 capBars(source: source)
                 qualityBar(source: source)
             }
@@ -373,5 +366,22 @@ struct VideoSifterView: View {
                 .appGlass(in: Capsule(style: .continuous))
         }
         .buttonStyle(PressScaleButtonStyle(pressedScale: PressScale.card))
+    }
+}
+
+private struct VideoTrimSection: View {
+    let vm: VideoSifterViewModel
+    let duration: Double
+
+    var body: some View {
+        @Bindable var vm = vm
+        VideoTrimBar(
+            start: $vm.settings.trimStart,
+            end: $vm.settings.trimEnd,
+            duration: duration,
+            thumbnails: vm.thumbnails,
+            playhead: vm.playhead,
+            onScrub: vm.scrub(to:)
+        )
     }
 }

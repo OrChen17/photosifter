@@ -1,4 +1,6 @@
 import AVFoundation
+import CoreLocation
+import Photos
 import XCTest
 @testable import PhotoSifter
 
@@ -345,6 +347,61 @@ final class VideoTranscoderTests: XCTestCase {
         XCTAssertEqual(duration, 2, accuracy: 0.2)
     }
 
+    func testOutputFileCarriesTheCaptureDateAndPlace() async throws {
+        let sourceURL = directory.appendingPathComponent("source.mov")
+        try await Self.writeClip(to: sourceURL, metadata: [
+            VideoMetadataFixtures.item(.quickTimeMetadataMake, VideoMetadataFixtures.make),
+            VideoMetadataFixtures.item(.quickTimeMetadataModel, VideoMetadataFixtures.model),
+        ])
+        let asset = AVURLAsset(url: sourceURL)
+        let source = try await VideoTranscoder.loadSource(from: asset, fileBytes: 1)
+        let plan = VideoCompressionPlan(source: source, settings: VideoCompressionSettings(duration: source.duration))
+        let outputURL = directory.appendingPathComponent("out.mov")
+        let capture = VideoCaptureInfo(date: VideoMetadataFixtures.captureDate, coordinate: VideoMetadataFixtures.coordinate)
+
+        try await VideoTranscoder().transcode(asset: asset, plan: plan, to: outputURL, capture: capture) { _ in }
+
+        let isValid = await VideoTranscoder.isValidOutput(at: outputURL, expectedDuration: source.duration)
+        XCTAssertTrue(isValid)
+        let output = AVURLAsset(url: outputURL)
+        let items = try await output.load(.metadata)
+        let dateItem = try XCTUnwrap(items.first { $0.identifier == .quickTimeMetadataCreationDate })
+        let fileDate = try await dateItem.load(.dateValue)
+        XCTAssertEqual(fileDate, VideoMetadataFixtures.captureDate)
+        let assetDate = try await output.load(.creationDate)?.load(.dateValue)
+        XCTAssertEqual(assetDate, VideoMetadataFixtures.captureDate)
+        XCTAssertEqual(try MovieHeaderDates.creationDate(ofFileAt: outputURL), VideoMetadataFixtures.captureDate)
+        let place = try await XCTUnwrap(items.first { $0.identifier == .quickTimeMetadataLocationISO6709 }).load(.stringValue)
+        XCTAssertEqual(place, VideoMetadataFixtures.coordinateString)
+        let make = try await XCTUnwrap(items.first { $0.identifier == .quickTimeMetadataMake }).load(.stringValue)
+        XCTAssertEqual(make, VideoMetadataFixtures.make)
+        let model = try await XCTUnwrap(items.first { $0.identifier == .quickTimeMetadataModel }).load(.stringValue)
+        XCTAssertEqual(model, VideoMetadataFixtures.model)
+    }
+
+    func testOutputWithoutPhotosDateKeepsTheSourceFileDate() async throws {
+        let sourceURL = directory.appendingPathComponent("source.mov")
+        try await Self.writeClip(to: sourceURL)
+        try MovieHeaderDates.stamp(fileAt: sourceURL, creationDate: VideoMetadataFixtures.captureDate)
+        let asset = AVURLAsset(url: sourceURL)
+        let source = try await VideoTranscoder.loadSource(from: asset, fileBytes: 1)
+        let plan = VideoCompressionPlan(source: source, settings: VideoCompressionSettings(duration: source.duration))
+        let outputURL = directory.appendingPathComponent("out.mov")
+
+        try await VideoTranscoder().transcode(asset: asset, plan: plan, to: outputURL) { _ in }
+
+        XCTAssertEqual(try MovieHeaderDates.creationDate(ofFileAt: outputURL), VideoMetadataFixtures.captureDate)
+    }
+
+    func testStampLeavesAFileThatIsNotAMovieAlone() throws {
+        let url = directory.appendingPathComponent("junk.mov")
+        let junk = Data(repeating: 7, count: 64)
+        try junk.write(to: url)
+        try MovieHeaderDates.stamp(fileAt: url, creationDate: VideoMetadataFixtures.captureDate)
+        XCTAssertEqual(try Data(contentsOf: url), junk)
+        XCTAssertNil(try MovieHeaderDates.creationDate(ofFileAt: url))
+    }
+
     func testCancelRemovesTheOutputFile() async throws {
         let sourceURL = directory.appendingPathComponent("source.mov")
         try await Self.writeClip(to: sourceURL)
@@ -362,8 +419,9 @@ final class VideoTranscoderTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: outputURL.path))
     }
 
-    private static func writeClip(to url: URL) async throws {
+    static func writeClip(to url: URL, metadata: [AVMetadataItem] = []) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
+        writer.metadata = metadata
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: Int(sourceSize.width),
@@ -391,5 +449,141 @@ final class VideoTranscoderTests: XCTestCase {
         input.markAsFinished()
         await writer.finishWriting()
         XCTAssertEqual(writer.status, .completed)
+    }
+}
+
+enum VideoMetadataFixtures {
+    static let captureDate = Date(timeIntervalSince1970: 1_614_855_600)
+    static let coordinate = CLLocationCoordinate2D(latitude: 32.0853, longitude: 34.7818)
+    static let coordinateString = "+32.0853+034.7818/"
+    static let make = "Apple"
+    static let model = "iPhone 14 Pro"
+    static let jerusalem = TimeZone(identifier: "Asia/Jerusalem")!
+    static let sourceDateString = "2021-03-04T13:00:00+0200"
+
+    static func item(_ identifier: AVMetadataIdentifier, _ value: String) -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.identifier = identifier
+        item.value = value as NSString
+        item.dataType = kCMMetadataBaseDataType_UTF8 as String
+        return item
+    }
+}
+
+final class VideoCaptureMetadataTests: XCTestCase {
+    private func strings(_ items: [AVMetadataItem], _ identifier: AVMetadataIdentifier) async throws -> [String] {
+        var values: [String] = []
+        for item in items where item.identifier == identifier {
+            let value = try await item.load(.stringValue)
+            values.append(try XCTUnwrap(value))
+        }
+        return values
+    }
+
+    func testAddsDateAndPlaceWhenTheSourceHasNone() async throws {
+        let capture = VideoCaptureInfo(date: VideoMetadataFixtures.captureDate, coordinate: VideoMetadataFixtures.coordinate)
+        let result = await VideoCaptureMetadata.output(
+            from: [], fallbackDate: nil, capture: capture, timeZone: VideoMetadataFixtures.jerusalem
+        )
+        XCTAssertEqual(result.headerDate, VideoMetadataFixtures.captureDate)
+        let dates = try await strings(result.items, .quickTimeMetadataCreationDate)
+        XCTAssertEqual(dates, [VideoMetadataFixtures.sourceDateString])
+        let places = try await strings(result.items, .quickTimeMetadataLocationISO6709)
+        XCTAssertEqual(places, [VideoMetadataFixtures.coordinateString])
+    }
+
+    func testKeepsTheSourceDateStringWhenItIsTheSameInstant() async throws {
+        let original = "2021-03-04T06:00:00-0500"
+        let source = [
+            VideoMetadataFixtures.item(.quickTimeMetadataCreationDate, original),
+            VideoMetadataFixtures.item(.quickTimeMetadataLocationISO6709, VideoMetadataFixtures.coordinateString),
+        ]
+        let capture = VideoCaptureInfo(date: VideoMetadataFixtures.captureDate, coordinate: VideoMetadataFixtures.coordinate)
+        let result = await VideoCaptureMetadata.output(
+            from: source, fallbackDate: nil, capture: capture, timeZone: VideoMetadataFixtures.jerusalem
+        )
+        XCTAssertEqual(result.items.count, source.count)
+        let dates = try await strings(result.items, .quickTimeMetadataCreationDate)
+        XCTAssertEqual(dates, [original])
+    }
+
+    func testPhotosDateWinsOverADifferentSourceDate() async throws {
+        let source = [VideoMetadataFixtures.item(.quickTimeMetadataCreationDate, "2019-01-01T00:00:00+0000")]
+        let capture = VideoCaptureInfo(date: VideoMetadataFixtures.captureDate, coordinate: nil)
+        let result = await VideoCaptureMetadata.output(
+            from: source, fallbackDate: nil, capture: capture, timeZone: VideoMetadataFixtures.jerusalem
+        )
+        let dates = try await strings(result.items, .quickTimeMetadataCreationDate)
+        XCTAssertEqual(dates, [VideoMetadataFixtures.sourceDateString])
+        XCTAssertEqual(result.headerDate, VideoMetadataFixtures.captureDate)
+    }
+
+    func testFallsBackToTheFileDateWhenPhotosHasNone() async throws {
+        let result = await VideoCaptureMetadata.output(
+            from: [], fallbackDate: VideoMetadataFixtures.captureDate, capture: VideoCaptureInfo(),
+            timeZone: VideoMetadataFixtures.jerusalem
+        )
+        XCTAssertEqual(result.headerDate, VideoMetadataFixtures.captureDate)
+        let dates = try await strings(result.items, .quickTimeMetadataCreationDate)
+        XCTAssertEqual(dates, [VideoMetadataFixtures.sourceDateString])
+    }
+}
+
+final class VideoLibraryCopyTests: XCTestCase {
+    private static let optInVariable = "VIDEO_LIBRARY_TESTS"
+    private static let pastAddedDate = Date(timeIntervalSince1970: 1_620_000_000)
+    private static let addedDateSetter = NSSelectorFromString("setAddedDate:")
+
+    func testCopyTakesTheOriginalsDateAndLibraryPosition() async throws {
+        try XCTSkipIf(
+            ProcessInfo.processInfo.environment[Self.optInVariable] == nil,
+            "Adds two videos to the library. Run with TEST_RUNNER_\(Self.optInVariable)=1."
+        )
+        try XCTSkipIf(PHPhotoLibrary.authorizationStatus(for: .readWrite) != .authorized, "Needs full photo access.")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sourceURL = directory.appendingPathComponent("source.mov")
+        try await VideoTranscoderTests.writeClip(to: sourceURL)
+
+        var originalID: String?
+        try await PHPhotoLibrary.shared().performChanges {
+            let request = PHAssetCreationRequest.forAsset()
+            request.addResource(with: .video, fileURL: sourceURL, options: nil)
+            request.creationDate = VideoMetadataFixtures.captureDate
+            request.location = CLLocation(
+                latitude: VideoMetadataFixtures.coordinate.latitude, longitude: VideoMetadataFixtures.coordinate.longitude
+            )
+            if request.responds(to: Self.addedDateSetter) {
+                request.perform(Self.addedDateSetter, with: Self.pastAddedDate as NSDate)
+            }
+            originalID = request.placeholderForCreatedAsset?.localIdentifier
+        }
+        let id = try XCTUnwrap(originalID)
+        let original = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject)
+        let originalAdded = try XCTUnwrap(VideoLibraryService.addedDate(of: original))
+        try XCTSkipIf(
+            abs(originalAdded.timeIntervalSince(Self.pastAddedDate)) > 1,
+            "This system does not let a test set the added date of the original."
+        )
+
+        let avAsset = await VideoLibraryService.shared.loadAVAsset(for: original)
+        let asset = try XCTUnwrap(avAsset)
+        let source = try await VideoTranscoder.loadSource(from: asset, fileBytes: 1)
+        let plan = VideoCompressionPlan(source: source, settings: VideoCompressionSettings(duration: source.duration))
+        let outputURL = directory.appendingPathComponent("out.mov")
+        let capture = VideoCaptureInfo(date: original.creationDate, coordinate: original.location?.coordinate)
+        try await VideoTranscoder().transcode(asset: asset, plan: plan, to: outputURL, capture: capture) { _ in }
+
+        let made = try await VideoReplacer(library: VideoLibraryService.shared)
+            .makeCopy(originalID: id, fromFileAt: outputURL, expectedDuration: plan.duration)
+        let copy = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [made.copyID], options: nil).firstObject)
+
+        XCTAssertNotEqual(made.copyID, id)
+        XCTAssertEqual(copy.creationDate, VideoMetadataFixtures.captureDate)
+        XCTAssertEqual(VideoLibraryService.addedDate(of: copy), originalAdded)
+        let location = try XCTUnwrap(copy.location)
+        XCTAssertEqual(location.coordinate.latitude, VideoMetadataFixtures.coordinate.latitude, accuracy: 0.001)
+        print("VIDEO_LIBRARY_COPY original=\(id) copy=\(made.copyID)")
     }
 }
