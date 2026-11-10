@@ -169,6 +169,7 @@ struct VideoSifterView: View {
                     onScrub: vm.scrub(to:)
                 )
                 capBars(source: source)
+                qualityBar(source: source)
             }
             VideoActionButtons(
                 savedBytes: vm.plan?.savedBytes,
@@ -217,6 +218,16 @@ struct VideoSifterView: View {
             )
             .accessibilityIdentifier("videoFrameRateBar")
         }
+    }
+
+    private func qualityBar(source: VideoSource) -> some View {
+        GlassSegmentBar(
+            title: String(localized: "Quality"),
+            options: VideoQuality.options(for: source).map { .init(value: $0, label: $0.label) },
+            selection: vm.settings.quality.effective(for: source),
+            onSelect: { vm.settings.quality = $0 }
+        )
+        .accessibilityIdentifier("videoQualityBar")
     }
 
     private func throwLeft(_ action: VideoDecision) {

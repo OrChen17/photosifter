@@ -255,18 +255,48 @@ final class VideoCapOptionTests: XCTestCase {
 
     func testCompressIsOffWhenNothingIsLowered() {
         let hd24 = source(width: 1920, height: 1080, fps: 24)
-        let untouched = VideoCompressionPlan(source: hd24, settings: VideoCompressionSettings(duration: 10))
+        let untouched = VideoCompressionPlan(
+            source: hd24, settings: VideoCompressionSettings(duration: 10, quality: .original)
+        )
         XCTAssertFalse(untouched.changesVideo)
         XCTAssertFalse(untouched.canCompress)
 
-        var trimmed = VideoCompressionSettings(duration: 10)
+        var trimmed = VideoCompressionSettings(duration: 10, quality: .original)
         trimmed.trimEnd = 4
         XCTAssertTrue(VideoCompressionPlan(source: hd24, settings: trimmed).canCompress)
 
         let uhd = source(width: 3840, height: 2160, fps: 30)
         XCTAssertTrue(VideoCompressionPlan(source: uhd, settings: VideoCompressionSettings(duration: 10)).canCompress)
-        let original = VideoCompressionSettings(duration: 10, resolution: .original, frameRate: .original)
+        let original = VideoCompressionSettings(duration: 10, resolution: .original, frameRate: .original, quality: .original)
         XCTAssertFalse(VideoCompressionPlan(source: uhd, settings: original).canCompress)
+    }
+
+    func testLowerQualityAloneAllowsCompress() {
+        let hd24 = source(width: 1920, height: 1080, fps: 24)
+        let settings = VideoCompressionSettings(
+            duration: 10, resolution: .original, frameRate: .original, quality: .balanced
+        )
+        XCTAssertTrue(VideoCompressionPlan(source: hd24, settings: settings).canCompress)
+    }
+
+    func testFrameRateAloneSavesAboutItsShare() {
+        let hd30 = source(width: 1920, height: 1080, fps: 30)
+        let settings = VideoCompressionSettings(
+            duration: 10, resolution: .original, frameRate: .fps24, quality: .original
+        )
+        let plan = VideoCompressionPlan(source: hd30, settings: settings)
+        let savedShare = Double(plan.savedBytes) / Double(plan.originalBytes)
+        XCTAssertEqual(savedShare, 0.2, accuracy: 0.05)
+    }
+
+    func testQualityOptionsHideLevelsAboveTheSource() {
+        let lean = VideoSource(
+            displaySize: CGSize(width: 1920, height: 1080), frameRate: 30, duration: 10, fileBytes: 5_000_000
+        )
+        XCTAssertEqual(VideoQuality.options(for: lean), [.original, .small])
+        XCTAssertEqual(VideoQuality.balanced.effective(for: lean), .original)
+        let rich = source(width: 1920, height: 1080, fps: 30)
+        XCTAssertEqual(VideoQuality.options(for: rich), VideoQuality.allCases)
     }
 }
 

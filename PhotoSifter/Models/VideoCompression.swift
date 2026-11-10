@@ -96,6 +96,48 @@ extension VideoFrameRateCap {
     }
 }
 
+/// How many bits each pixel of each frame gets. This, not the frame rate,
+/// is what most of the saving comes from, so the user picks it.
+enum VideoQuality: String, CaseIterable, Identifiable, Sendable {
+    case original
+    case high
+    case balanced
+    case small
+
+    static let recommended: VideoQuality = .balanced
+
+    var id: Self { self }
+
+    /// nil keeps the source's own rate.
+    var bitsPerPixel: Double? {
+        switch self {
+        case .original: nil
+        case .high:     0.12
+        case .balanced: 0.08
+        case .small:    0.05
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .original: String(localized: "Original")
+        case .high:     String(localized: "High")
+        case .balanced: String(localized: "Balanced")
+        case .small:    String(localized: "Small")
+        }
+    }
+
+    /// Only the levels that really lower this video.
+    static func options(for source: VideoSource) -> [VideoQuality] {
+        guard let sourceRate = source.videoBitsPerPixel else { return allCases }
+        return allCases.filter { quality in quality.bitsPerPixel.map { $0 < sourceRate } ?? true }
+    }
+
+    func effective(for source: VideoSource) -> VideoQuality {
+        Self.options(for: source).contains(self) ? self : .original
+    }
+}
+
 struct VideoSource: Equatable, Sendable {
     /// Size as shown on screen (rotation applied).
     var displaySize: CGSize
@@ -103,21 +145,34 @@ struct VideoSource: Equatable, Sendable {
     var frameRate: Double
     var duration: Double
     var fileBytes: Int64
+
+    /// Bits per pixel per frame of the video track; nil when it can't be told.
+    var videoBitsPerPixel: Double? {
+        let pixels = Double(displaySize.width * displaySize.height)
+        guard duration > 0, pixels > 0 else { return nil }
+        let rate = frameRate > 0 ? frameRate : VideoCompressionPlan.fallbackFrameRate
+        let videoBitrate = Double(fileBytes) * 8 / duration - Double(VideoCompressionPlan.audioBitrate)
+        guard videoBitrate > 0 else { return nil }
+        return videoBitrate / (pixels * rate)
+    }
 }
 
 struct VideoCompressionSettings: Equatable, Sendable {
     var resolution: VideoResolutionCap = .recommended
     var frameRate: VideoFrameRateCap = .recommended
+    var quality: VideoQuality = .recommended
     var trimStart: Double = 0
     var trimEnd: Double
 
     init(
         duration: Double,
         resolution: VideoResolutionCap = .recommended,
-        frameRate: VideoFrameRateCap = .recommended
+        frameRate: VideoFrameRateCap = .recommended,
+        quality: VideoQuality = .recommended
     ) {
         self.resolution = resolution
         self.frameRate = frameRate
+        self.quality = quality
         trimEnd = duration
     }
 }
@@ -125,7 +180,6 @@ struct VideoCompressionSettings: Equatable, Sendable {
 /// Everything the encoder needs, plus the size estimate shown to the user.
 /// Values only ever go down: a video below the caps keeps its size and frame rate.
 struct VideoCompressionPlan: Equatable, Sendable {
-    static let bitsPerPixel = 0.08
     static let minimumVideoBitrate = 400_000
     static let audioBitrate = 128_000
     static let containerOverhead = 1.02
@@ -144,7 +198,7 @@ struct VideoCompressionPlan: Equatable, Sendable {
     let duration: Double
     let originalBytes: Int64
     let estimatedBytes: Int64
-    /// False when size, frame rate and length all stay as they are.
+    /// False when size, frame rate, quality and length all stay as they are.
     let changesVideo: Bool
     let lowersResolution: Bool
     let lowersFrameRate: Bool
@@ -180,11 +234,16 @@ struct VideoCompressionPlan: Equatable, Sendable {
             ? frameRate < source.frameRate - Self.frameRateTolerance
             : cap != nil
         let trims = duration < source.duration - Self.trimTolerance
-        changesVideo = shrinks || slows || trims
+        let sourceRate = source.videoBitsPerPixel
+        let wantedRate = settings.quality.bitsPerPixel
+        let lowersQuality = wantedRate.map { wanted in sourceRate.map { wanted < $0 } ?? true } ?? false
+        changesVideo = shrinks || slows || trims || lowersQuality
         lowersResolution = shrinks
         lowersFrameRate = slows
 
-        let target = Double(outputSize.width * outputSize.height) * frameRate * Self.bitsPerPixel
+        let bitsPerPixel = [wantedRate, sourceRate].compactMap { $0 }.min()
+            ?? VideoQuality.recommended.bitsPerPixel ?? 0
+        let target = Double(outputSize.width * outputSize.height) * frameRate * bitsPerPixel
         var bitrate = max(Double(Self.minimumVideoBitrate), target)
         if source.duration > 0 {
             let sourceTotal = Double(source.fileBytes) * 8 / source.duration

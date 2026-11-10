@@ -220,15 +220,19 @@ final class VideoTranscoder: @unchecked Sendable {
         for pump in pumps {
             pump.input.requestMediaDataWhenReady(on: queue) { [self] in
                 while !pump.isDone, pump.input.isReadyForMoreMediaData {
-                    guard !isCancelled, let sample = pump.output.copyNextSampleBuffer() else {
-                        if isCancelled { pumps.forEach(finish) } else { finish(pump) }
-                        return
+                    let keepGoing = autoreleasepool {
+                        guard !isCancelled, let sample = pump.output.copyNextSampleBuffer() else {
+                            if isCancelled { pumps.forEach(finish) } else { finish(pump) }
+                            return false
+                        }
+                        guard pump.shouldAppend(sample) else { return true }
+                        guard pump.input.append(sample) else {
+                            pumps.forEach(finish)
+                            return false
+                        }
+                        return true
                     }
-                    guard pump.shouldAppend(sample) else { continue }
-                    guard pump.input.append(sample) else {
-                        pumps.forEach(finish)
-                        return
-                    }
+                    guard keepGoing else { return }
                 }
             }
         }
