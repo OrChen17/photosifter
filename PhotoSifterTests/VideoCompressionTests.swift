@@ -246,14 +246,22 @@ final class VideoCapOptionTests: XCTestCase {
     func testOptionsOnlyOfferCapsThatLowerTheVideo() {
         let hd60 = source(width: 1920, height: 1080, fps: 60)
         XCTAssertEqual(VideoResolutionCap.options(for: hd60), [.original, .p720])
-        XCTAssertEqual(VideoFrameRateCap.options(for: hd60), [.original, .half])
+        XCTAssertEqual(VideoFrameRateCap.options(for: hd60), [.original, .half, .third, .quarter])
+        XCTAssertEqual(VideoFrameRateCap.options(for: hd60).map { $0.label(for: hd60) }, ["60 fps", "30 fps", "20 fps", "15 fps"])
+        XCTAssertEqual(VideoFrameRateCap.auto.effective(for: hd60), .half)
+        let odd39 = source(width: 1920, height: 1080, fps: 39)
+        XCTAssertEqual(VideoFrameRateCap.options(for: odd39), [.original, .half])
+        XCTAssertEqual(VideoFrameRateCap.auto.effective(for: odd39), .original)
+        XCTAssertEqual(VideoCompressionPlan(
+            source: odd39, settings: VideoCompressionSettings(duration: 10, frameRate: .half)
+        ).frameRate, 19.5)
         XCTAssertEqual(VideoFrameRateCap.half.label(for: hd60), "30 fps")
         XCTAssertEqual(VideoFrameRateCap.original.label(for: hd60), "60 fps")
         let ntsc60 = source(width: 1920, height: 1080, fps: 59.94)
-        XCTAssertEqual(VideoFrameRateCap.options(for: ntsc60), [.original, .half])
+        XCTAssertEqual(VideoFrameRateCap.options(for: ntsc60), [.original, .half, .third, .quarter])
         XCTAssertEqual(VideoFrameRateCap.half.label(for: ntsc60), "30 fps")
         let hd48 = source(width: 1920, height: 1080, fps: 48)
-        XCTAssertEqual(VideoFrameRateCap.options(for: hd48), [.original, .half])
+        XCTAssertEqual(VideoFrameRateCap.options(for: hd48), [.original, .half, .third])
         XCTAssertEqual(VideoFrameRateCap.half.label(for: hd48), "24 fps")
         let hd120 = source(width: 1920, height: 1080, fps: 120)
         XCTAssertEqual(VideoFrameRateCap.options(for: hd120), [.original, .half, .third, .quarter])
@@ -263,9 +271,9 @@ final class VideoCapOptionTests: XCTestCase {
 
         let uhd30 = source(width: 2160, height: 3840, fps: 30)
         XCTAssertEqual(VideoResolutionCap.options(for: uhd30), [.original, .p1080, .p720])
-        XCTAssertEqual(VideoFrameRateCap.options(for: uhd30), [.original])
-        XCTAssertEqual(VideoFrameRateCap.half.effective(for: uhd30), .original)
-        XCTAssertEqual(VideoFrameRateCap.quarter.effective(for: hd60), .original)
+        XCTAssertEqual(VideoFrameRateCap.options(for: uhd30), [.original, .half])
+        XCTAssertEqual(VideoFrameRateCap.auto.effective(for: uhd30), .original)
+        XCTAssertEqual(VideoFrameRateCap.third.effective(for: uhd30), .original)
     }
 
     func testCompressIsOffWhenNothingIsLowered() {

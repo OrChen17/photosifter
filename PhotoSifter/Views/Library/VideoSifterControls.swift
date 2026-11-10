@@ -29,6 +29,7 @@ struct VideoCardPlayer: View {
     let player: AVPlayer?
     let isPlaying: Bool
     let isUnavailable: Bool
+    let qualitySample: VideoSifterViewModel.QualitySampleState
     let onToggle: () -> Void
     let onFullScreen: () -> Void
 
@@ -48,7 +49,7 @@ struct VideoCardPlayer: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .appFrostedGlass(in: Capsule(style: .continuous))
-            } else if player != nil, !isPlaying {
+            } else if player != nil, !isPlaying, qualitySample != .preparing {
                 Image(systemName: VideoSymbol.play)
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.white)
@@ -63,6 +64,30 @@ struct VideoCardPlayer: View {
         .accessibilityElement()
         .accessibilityLabel(isPlaying ? String(localized: "Pause video") : String(localized: "Play video"))
         .accessibilityAddTraits(.isButton)
+        .overlay(alignment: .topLeading) {
+            if qualitySample != .none {
+                HStack(spacing: 6) {
+                    if qualitySample == .preparing {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.white)
+                    }
+                    Text(qualitySample == .preparing
+                         ? String(localized: "Making quality sample")
+                         : String(localized: "Quality sample"))
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 12)
+                .frame(height: Self.fullScreenButtonSide)
+                .appFrostedGlass(in: Capsule(style: .continuous))
+                .padding(Self.fullScreenButtonInset)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+                .accessibilityIdentifier("videoQualitySampleBadge")
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: qualitySample)
         .overlay(alignment: .topTrailing) {
             if player != nil, !isUnavailable {
                 Button(action: onFullScreen) {

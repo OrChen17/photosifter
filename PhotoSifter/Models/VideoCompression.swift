@@ -30,20 +30,22 @@ enum VideoResolutionCap: String, CaseIterable, Identifiable, Sendable {
 }
 
 enum VideoFrameRateCap: String, CaseIterable, Identifiable, Sendable {
+    case auto
     case original
     case half
     case third
     case quarter
 
-    static let recommended: VideoFrameRateCap = .half
-    static let lowestFrameRate = 24.0
+    static let recommended: VideoFrameRateCap = .auto
+    static let lowestFrameRate = 15.0
+    static let lowestAutomaticFrameRate = 24.0
     private static let lowestFrameRateTolerance = 0.5
 
     var id: Self { self }
 
     var divisor: Int? {
         switch self {
-        case .original: nil
+        case .auto, .original: nil
         case .half:     2
         case .third:    3
         case .quarter:  4
@@ -51,9 +53,15 @@ enum VideoFrameRateCap: String, CaseIterable, Identifiable, Sendable {
     }
 
     func framesPerSecond(for source: VideoSource) -> Double? {
+        guard self != .auto else { return Self.automatic(for: source).framesPerSecond(for: source) }
         guard let divisor, source.frameRate > 0 else { return nil }
         let rate = source.frameRate / Double(divisor)
         return rate >= Self.lowestFrameRate - Self.lowestFrameRateTolerance ? rate : nil
+    }
+
+    static func automatic(for source: VideoSource) -> VideoFrameRateCap {
+        let floor = lowestAutomaticFrameRate - lowestFrameRateTolerance
+        return (half.framesPerSecond(for: source) ?? 0) >= floor ? .half : .original
     }
 }
 
@@ -82,11 +90,12 @@ extension VideoResolutionCap {
 
 extension VideoFrameRateCap {
     static func options(for source: VideoSource) -> [VideoFrameRateCap] {
-        allCases.filter { $0 == .original || $0.framesPerSecond(for: source) != nil }
+        allCases.filter { $0 == .original || ($0 != .auto && $0.framesPerSecond(for: source) != nil) }
     }
 
     func effective(for source: VideoSource) -> VideoFrameRateCap {
-        Self.options(for: source).contains(self) ? self : .original
+        guard self != .auto else { return Self.automatic(for: source) }
+        return Self.options(for: source).contains(self) ? self : .original
     }
 
     func label(for source: VideoSource) -> String {

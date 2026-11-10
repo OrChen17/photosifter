@@ -117,6 +117,7 @@ struct VideoSifterView: View {
                 player: vm.player,
                 isPlaying: vm.isPlaying,
                 isUnavailable: vm.isCurrentUnavailable,
+                qualitySample: vm.qualitySample,
                 onToggle: vm.togglePlayback,
                 onFullScreen: { VideoFullScreenPlayer.present(vm.player) }
             )),

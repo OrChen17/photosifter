@@ -71,7 +71,14 @@ final class VideoSifterViewModel {
         var deleteDeclined = false
     }
 
+    enum QualitySampleState: Equatable {
+        case none
+        case preparing
+        case showing
+    }
+
     static let thumbnailCount = 8
+    static let qualitySampleLength = 10.0
     private static let thumbnailMaxSide: CGFloat = 160
     private static let freeSpaceMargin = 1.2
     private static let timescale: CMTimeScale = 600
@@ -105,6 +112,12 @@ final class VideoSifterViewModel {
     private var rateObservation: NSKeyValueObservation?
     private var currentAsset: AVAsset?
     private var previewTask: Task<Void, Never>?
+    private(set) var qualitySample: QualitySampleState = .none
+    private var mainItem: AVPlayerItem?
+    private var sampleTask: Task<Void, Never>?
+    private var sampleURL: URL?
+    private var sampleStart = 0.0
+    private var sampleDuration = 0.0
     private(set) var encodeStates: [String: EncodeState] = [:]
     private(set) var encodeFraction: Double = 0
     private var activeEncodeID: String?
@@ -162,8 +175,10 @@ final class VideoSifterViewModel {
             guard let item = currentItem else { return }
             let old = settings
             settingsByID[item.id] = newValue
-            if old.resolution != newValue.resolution || old.frameRate != newValue.frameRate {
-                refreshPreview()
+            let reshaped = old.resolution != newValue.resolution || old.frameRate != newValue.frameRate
+            if reshaped { refreshPreview() }
+            if old.quality != newValue.quality || (reshaped && qualitySample != .none) {
+                refreshQualitySample()
             }
         }
     }
@@ -335,7 +350,9 @@ final class VideoSifterViewModel {
         }
         guard currentItem?.id == item.id, !Task.isCancelled else { return }
         source = loaded
-        let newPlayer = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+        let newItem = AVPlayerItem(asset: asset)
+        mainItem = newItem
+        let newPlayer = AVPlayer(playerItem: newItem)
         timeObserver = newPlayer.addPeriodicTimeObserver(
             forInterval: Self.time(Self.playheadInterval), queue: .main
         ) { [weak self] time in
@@ -362,6 +379,12 @@ final class VideoSifterViewModel {
         if isPlaying {
             player.pause()
             isPlaying = false
+        } else if qualitySample == .showing {
+            if playhead >= sampleStart + sampleDuration - Self.playheadInterval {
+                player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+            }
+            player.play()
+            isPlaying = true
         } else {
             applyTrimToPlayer()
             if playhead >= settings.trimEnd - Self.playheadInterval || playhead < settings.trimStart {
@@ -381,6 +404,7 @@ final class VideoSifterViewModel {
     func scrub(to seconds: Double) {
         guard let player else { return }
         pause()
+        if qualitySample == .showing { endQualitySample() }
         applyTrimToPlayer()
         playhead = seconds
         player.seek(to: Self.time(seconds), toleranceBefore: .zero, toleranceAfter: .zero)
@@ -388,6 +412,13 @@ final class VideoSifterViewModel {
 
     private func tick(_ seconds: Double) {
         guard isPlaying else { return }
+        if qualitySample == .showing {
+            playhead = sampleStart + seconds
+            guard seconds >= sampleDuration - Self.playheadInterval, let player else { return }
+            player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+            player.play()
+            return
+        }
         playhead = seconds
         guard seconds >= settings.trimEnd - Self.playheadInterval, let player else { return }
         player.seek(to: Self.time(settings.trimStart), toleranceBefore: .zero, toleranceAfter: .zero)
@@ -398,7 +429,7 @@ final class VideoSifterViewModel {
     /// what the smaller copy will look like before picking compress.
     private func refreshPreview() {
         previewTask?.cancel()
-        guard let item = player?.currentItem, let asset = currentAsset, let plan else { return }
+        guard let item = mainItem, let asset = currentAsset, let plan else { return }
         guard plan.lowersResolution || plan.lowersFrameRate else {
             item.videoComposition = nil
             return
@@ -407,7 +438,7 @@ final class VideoSifterViewModel {
         let frameRate = plan.lowersFrameRate ? plan.frameRate : nil
         previewTask = Task { [weak self] in
             guard let composition = try? await Self.previewComposition(for: asset, size: size, frameRate: frameRate),
-                  !Task.isCancelled, self?.player?.currentItem === item
+                  !Task.isCancelled, self?.mainItem === item
             else { return }
             item.videoComposition = composition
         }
@@ -429,7 +460,58 @@ final class VideoSifterViewModel {
     }
 
     private func applyTrimToPlayer() {
-        player?.currentItem?.forwardPlaybackEndTime = Self.time(settings.trimEnd)
+        mainItem?.forwardPlaybackEndTime = Self.time(settings.trimEnd)
+    }
+
+    private func refreshQualitySample() {
+        endQualitySample()
+        guard let asset = currentAsset, let source, let item = currentItem, player != nil else { return }
+        let chosen = settings
+        guard chosen.quality.effective(for: source) != .original else { return }
+        var sampled = chosen
+        let start = max(chosen.trimStart, min(playhead, chosen.trimEnd - Self.qualitySampleLength))
+        sampled.trimStart = start
+        sampled.trimEnd = min(start + Self.qualitySampleLength, chosen.trimEnd)
+        let plan = VideoCompressionPlan(source: source, settings: sampled)
+        guard plan.duration > 0 else { return }
+
+        pause()
+        qualitySample = .preparing
+        let transcoder = VideoTranscoder()
+        let url = VideoTranscoder.makeOutputURL()
+        let id = item.id
+        sampleTask = Task { [weak self] in
+            let encoded = (try? await transcoder.transcode(asset: asset, plan: plan, to: url) { _ in }) != nil
+            guard encoded, !Task.isCancelled, let self,
+                  self.currentItem?.id == id, self.qualitySample == .preparing, let player = self.player
+            else {
+                try? FileManager.default.removeItem(at: url)
+                if !Task.isCancelled, let self, self.qualitySample == .preparing { self.qualitySample = .none }
+                return
+            }
+            self.sampleURL = url
+            self.sampleStart = plan.trimStart
+            self.sampleDuration = plan.duration
+            player.replaceCurrentItem(with: AVPlayerItem(url: url))
+            self.qualitySample = .showing
+            self.playhead = plan.trimStart
+            player.play()
+            self.isPlaying = true
+        }
+    }
+
+    private func endQualitySample() {
+        sampleTask?.cancel()
+        sampleTask = nil
+        if qualitySample == .showing, let mainItem, let player {
+            player.pause()
+            isPlaying = false
+            player.replaceCurrentItem(with: mainItem)
+            player.seek(to: Self.time(playhead), toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+        if let sampleURL { try? FileManager.default.removeItem(at: sampleURL) }
+        sampleURL = nil
+        qualitySample = .none
     }
 
     private func tearDownPlayer() {
@@ -439,6 +521,12 @@ final class VideoSifterViewModel {
         rateObservation = nil
         previewTask?.cancel()
         previewTask = nil
+        sampleTask?.cancel()
+        sampleTask = nil
+        if let sampleURL { try? FileManager.default.removeItem(at: sampleURL) }
+        sampleURL = nil
+        qualitySample = .none
+        mainItem = nil
         currentAsset = nil
         player?.pause()
         player = nil
